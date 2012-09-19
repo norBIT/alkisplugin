@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 0 406.31379 351.68746"
+   version="1.1"
+   xml:space="preserve"
+   id="svg2"
+   inkscape:version="0.48.3.1 r9886"
+   width="100%"
+   height="100%"
+   sodipodi:docname="alkis3588.svg"
+   style="fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round"><metadata
+   id="metadata25"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1855"
+   inkscape:window-height="1025"
+   id="namedview23"
+   showgrid="false"
+   inkscape:zoom="1.1125147"
+   inkscape:cx="17.488719"
+   inkscape:cy="25.34892"
+   inkscape:window-x="0"
+   inkscape:window-y="33"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="svg2" />
+<defs
+   id="defs4">
+<clipPath
+   id="clipId0">
+<path
+   d="M 0,600 800,600 800,0 0,0 z"
+   id="path7"
+   inkscape:connector-curvature="0" />
+</clipPath>
+</defs>
+<g
+   clip-path="url(#clipId0)"
+   id="g9"
+   style="fill:none;stroke:#000000;stroke-width:0.1"
+   transform="translate(-194.24871,-123.9375)" />
+<g
+   clip-path="url(#clipId0)"
+   id="g11"
+   style="fill:#000000;stroke:none"
+   transform="translate(-194.24871,-123.9375)">
+<path
+   d="M 397.53125,123.9375 198.8125,468.125 l -4.56379,7.44376 8.87629,0.0562 397.4375,0 z m 0,20 185.71875,321.6875 -371.4375,0 z"
+   id="path13"
+   inkscape:connector-curvature="0"
+   sodipodi:nodetypes="cccccccccc" />
+
+
+</g>
+<g
+   clip-path="url(#clipId0)"
+   id="g19"
+   style="fill:#000000;stroke:none"
+   transform="translate(-194.24871,-123.9375)">
+<text
+   transform="matrix(138.847,0,0,138.847,327.848,426.135)"
+   font-weight="bold"
+   font-size="1.39636"
+   id="text21"
+   style="font-size:1.39636004px;font-weight:bold;font-family:'Arial,\'sans-serif\''">H</text>
+
+
+</g>
+</svg>
