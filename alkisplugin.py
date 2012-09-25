@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from PyQt4.QtCore import QObject, QSettings, QString, QVariant, Qt, QPointF
+from PyQt4.QtCore import QObject, QSettings, QString, QVariant, Qt, QPointF, qDebug
 from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 
@@ -360,14 +360,14 @@ class alkisplugin:
 			self.iface.legendInterface().addGroup( t, False, alkisGroup )
 			thisGroup = self.iface.legendInterface().groups().count() - 1
 
-			#print u"Thema: %s" % t
+			qDebug( QString( "Thema: %1" ).arg( t ) )
 
 			sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen" 
 			    + u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
 			    + u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'" % t
 			    + u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
                             + u" ORDER BY darstellungsprioritaet")
-			#print "SQL: ", sql
+			qDebug( QString( "SQL: %1" ).arg( sql ) )
 			if qry.exec_( sql ):
 				r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
 				r.deleteAllCategories()
@@ -401,7 +401,7 @@ class alkisplugin:
 			    + u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'" % t
 			    + u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
 			    + u" ORDER BY darstellungsprioritaet" )
-			#print "SQL: ", sql
+			qDebug( QString( "SQL: %1" ).arg( sql ) )
 			if qry.exec_(sql):
 				r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
 				r.deleteAllCategories()
@@ -437,7 +437,7 @@ class alkisplugin:
 			    + u" WHERE EXISTS (SELECT * FROM po_lines WHERE thema='%s'" % t
 			    + u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
 			    + u" ORDER BY darstellungsprioritaet" )
-			#print "SQL: ", sql
+			qDebug( QString( "SQL: %1" ).arg( sql ) )
 			if qry.exec_( sql ):
 				r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
 				r.deleteAllCategories()
@@ -468,7 +468,7 @@ class alkisplugin:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 
 			sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE thema='%s'" % t
-			#print "SQL: ", sql
+			qDebug( QString( "SQL: %1" ).arg( sql ) )
 			if qry.exec_( sql ):
 				r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
 				r.deleteAllCategories()
@@ -494,7 +494,7 @@ class alkisplugin:
 					r.addCategory( QgsRendererCategoryV2( "%d" % sn, sym, "" ) )
 					n += 1
 
-				#print "classes: ", n
+				qDebug( QString( "classes: %1" ).arg( n ) )
 				if n>0:
 					layer = self.iface.addVectorLayer(
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=po_points (point) sql=thema='%s'" % (conninfo, t),
@@ -548,7 +548,7 @@ class alkisplugin:
 					+ u" WHERE thema='" + t + "'"
 					+ u")\" (" + geom + ") sql=" )
 
-				#print "URI: ", uri
+				qDebug( QString( "URI: %1" ).arg( uri ) )
 
 				layer = self.iface.addVectorLayer(
 					uri,
