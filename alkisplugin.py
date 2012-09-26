@@ -385,7 +385,7 @@ class alkisplugin:
 				if n>0:
 					layer = self.iface.addVectorLayer(
 						u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=thema='%s'" % (conninfo, t),
-						u"Flächen",
+						u"Flächen (%s)" % t,
 						"postgres" )
 					layer.setRendererV2( r )
 					self.iface.refreshLegend( layer )
@@ -421,7 +421,7 @@ class alkisplugin:
 				if n>0:
 					layer = self.iface.addVectorLayer(
 						u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=thema='%s'" % (conninfo, t),
-						u"Grenzen",
+						u"Grenzen (%s)" % t,
 						"postgres" )
 					layer.setRendererV2( r )
 					self.iface.refreshLegend( layer )
@@ -457,7 +457,7 @@ class alkisplugin:
 				if n>0:
 					layer = self.iface.addVectorLayer(
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=25832 table=po_lines (line) sql=thema='%s'" % (conninfo, t),
-							u"Linien",
+							u"Linien (%s)" % t,
 							"postgres" )
 	
 					layer.setRendererV2( r )
@@ -498,7 +498,7 @@ class alkisplugin:
 				if n>0:
 					layer = self.iface.addVectorLayer(
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=po_points (point) sql=thema='%s'" % (conninfo, t),
-							u"Punkte",
+							u"Punkte (%s)" % t,
 							"postgres" )
 					layer.setRendererV2( r )
 					self.iface.refreshLegend( layer )
@@ -552,7 +552,7 @@ class alkisplugin:
 
 				layer = self.iface.addVectorLayer(
 					uri,
-					u"Beschriftungen",
+					u"Beschriftungen (%s)" % t,
 					"postgres" )
 
                                 sym = QgsMarkerSymbolV2()
