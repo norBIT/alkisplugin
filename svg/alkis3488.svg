@@ -7,7 +7,7 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   viewBox="0 0 752.20677 192.3125"
+   viewBox="0 0 752.21 752.21"
    version="1.1"
    xml:space="preserve"
    id="svg2"
@@ -32,7 +32,7 @@
    id="namedview23"
    showgrid="false"
    inkscape:zoom="0.39333333"
-   inkscape:cx="142.96188"
+   inkscape:cx="-218.05507"
    inkscape:cy="95.499997"
    inkscape:window-x="0"
    inkscape:window-y="33"
@@ -52,11 +52,11 @@
    clip-path="url(#clipId0)"
    id="g9"
    style="fill:none;stroke:#000000;stroke-width:0.1"
-   transform="translate(-42.168251,-203.1875)" />
+   transform="translate(-42.168251,356.71001)" />
 <g
    clip-path="url(#clipId0)"
    id="g11"
-   transform="matrix(0.94739947,0,0,1,-0.08782581,-203.1875)"
+   transform="matrix(0.94739947,0,0,1,-0.08782581,76.761239)"
    style="fill:#00cccc;stroke:none">
 <path
    d="M 215.47229,203.1875 0.11601745,298.26251 C -2.1915918,298.43854 167.45442,373.75222 215.47229,395.5 l 0,-84.34375 578.59043,0 0,-23.625 -578.59043,0 z"

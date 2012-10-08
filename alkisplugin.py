@@ -27,13 +27,13 @@ class Conf(QDialog, conf.Ui_Dialog):
 		self.bb.rejected.connect(self.reject)
 
 	def accept(self):
-              	s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 		s.setValue( "service", self.leSERVICE.text() )
 		s.setValue( "host", self.leHOST.text() )
 		s.setValue( "port", self.lePORT.text() )
-               	s.setValue( "dbname", self.leDBNAME.text() )
-               	s.setValue( "uid", self.leUID.text() )
-               	s.setValue( "pwd", self.lePWD.text() )
+		s.setValue( "dbname", self.leDBNAME.text() )
+		s.setValue( "uid", self.leUID.text() )
+		s.setValue( "pwd", self.lePWD.text() )
 
 		QDialog.accept(self)
 
@@ -432,7 +432,7 @@ class alkisplugin:
 
 			sql = (u"SELECT"
 			    + u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
- 			    + u" FROM alkis_linien"
+			    + u" FROM alkis_linien"
                             + u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
 			    + u" WHERE EXISTS (SELECT * FROM po_lines WHERE thema='%s'" % t
 			    + u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
@@ -497,7 +497,7 @@ class alkisplugin:
 				qDebug( QString( "classes: %1" ).arg( n ) )
 				if n>0:
 					layer = self.iface.addVectorLayer(
-							u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=po_points (point) sql=thema='%s'" % (conninfo, t),
+							u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE thema='%s')\" (point) sql=" % (conninfo, t),
 							u"Punkte (%s)" % t,
 							"postgres" )
 					layer.setRendererV2( r )
@@ -531,19 +531,19 @@ class alkisplugin:
 					+ u",drehwinkel_grad AS tangle"
 					+ u",(size_umn*0.0254)::float8 AS tsize"
 					+ u",text"
- 				        + u",CASE"
- 				        + u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
- 				        + u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
- 				        + u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
- 				        + u" END AS halign"
- 				        + u",CASE"
- 				        + u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
- 				        + u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
- 				        + u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
- 				        + u" END AS valign"
- 					+ u",'Arial'::text AS family"
- 				        + u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
- 				        + u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
+					+ u",CASE"
+					+ u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
+					+ u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
+					+ u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
+					+ u" END AS halign"
+					+ u",CASE"
+					+ u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
+					+ u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
+					+ u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
+					+ u" END AS valign"
+					+ u",'Arial'::text AS family"
+					+ u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
+					+ u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
 					+ u" FROM po_labels"
 					+ u" WHERE thema='" + t + "'"
 					+ u")\" (" + geom + ") sql=" )
@@ -561,22 +561,24 @@ class alkisplugin:
 				self.iface.refreshLegend( layer )
 
 				lyr = QgsPalLayerSettings()
-                		lyr.fieldName = "text"
+				lyr.fieldName = "text"
 				lyr.isExpression = False
 				lyr.enabled = True
-                		lyr.fontSizeInMapUnits = True
+				lyr.fontSizeInMapUnits = True
 				lyr.textFont.setPointSizeF( 2.5 )
 				lyr.textFont.setFamily( "Sans Serif" )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, layer.dataProvider().fieldNameIndex("italic") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, layer.dataProvider().fieldNameIndex("bold") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, layer.dataProvider().fieldNameIndex("halign") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, layer.dataProvider().fieldNameIndex("valign") )
-                		lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
-                		lyr.writeToLayer( layer )
+				lyr.bufferSizeInMapUnits = True
+				lyr.bufferSize = 0.25
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, layer.dataProvider().fieldNameIndex("italic") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, layer.dataProvider().fieldNameIndex("bold") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, layer.dataProvider().fieldNameIndex("halign") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, layer.dataProvider().fieldNameIndex("valign") )
+				lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
+				lyr.writeToLayer( layer )
 
 				self.iface.refreshLegend( layer )
 
