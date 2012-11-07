@@ -2,7 +2,7 @@
 # -*- coding: utf8 -*-
 
 from PyQt4.QtCore import QObject, QSettings, QString, QVariant, Qt, QPointF, qDebug
-from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor
+from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 
 from qgis.core import *
@@ -260,6 +260,8 @@ class alkisplugin:
 
 	def __init__(self, iface):
 		self.iface = iface
+		self.markerLayer = None
+		self.alkisGroup = None
 
 	def initGui(self):
 		self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
@@ -272,10 +274,17 @@ class alkisplugin:
 		self.insertAction.setStatusTip("ALKIS-Layer einbinden")
 		self.insertAction.triggered.connect(self.run)
 
+		self.searchAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Beschriftung suchen", self.iface.mainWindow())
+		self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
+		self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
+		self.searchAction.triggered.connect(self.search)
+
 		if hasattr(self.iface, "addPluginToDatabaseMenu"):
+			self.iface.addPluginToDatabaseMenu("&ALKIS", self.searchAction)
 			self.iface.addPluginToDatabaseMenu("&ALKIS", self.insertAction)
 			self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
 		else:
+			self.iface.addPluginToMenu("&ALKIS", self.searchAction)
 			self.iface.addPluginToMenu("&ALKIS", self.insertAction)
 			self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
@@ -284,11 +293,39 @@ class alkisplugin:
 		self.confAction = None
 		self.insertAction.deleteLater()
 		self.insertAction = None
+		self.searchAction.deleteLater()
+		self.searchAction = None
 
 	def conf(self):
 		dlg = Conf()
 		dlg.exec_()
 
+	def search(self):
+		if self.markerLayer is None:
+			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/markerLayer" )
+			if ok:
+				self.markerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+		if self.markerLayer is None:
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Markierungslayer nicht gefunden!\n" )
+			return
+
+		(text,ok) = QInputDialog.getText( self.iface.mainWindow(), u"Beschriftung suchen", u"Suchbegriff" )
+		if not ok:
+			return
+
+		if text.isEmpty():
+			text = "false"
+		else:
+			text = u"text LIKE '%%%s%%'" % text.replace("'", "''")
+
+		self.markerLayer.setSubsetString( text )
+
+		currentLayer = self.iface.activeLayer()
+
+		self.iface.setActiveLayer( self.markerLayer )
+		self.iface.zoomToActiveLayer()
+		self.iface.setActiveLayer( currentLayer )
 
 	def run(self):
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
@@ -299,7 +336,7 @@ class alkisplugin:
 		dbname = s.value( "dbname", "" ).toString()
 		uid = s.value( "uid", "" ).toString()
 		pwd = s.value( "pwd", "" ).toString()
-		
+
 		uri = QgsDataSourceURI()
 
 		if service.isEmpty():
@@ -341,8 +378,8 @@ class alkisplugin:
 			s.setValue( "svg/searchPathsForSVG", svgpaths.join("|") )
 
 		self.iface.legendInterface().addGroup( "ALKIS", False )
-		alkisGroup = self.iface.legendInterface().groups().count() - 1
-		
+		self.alkisGroup = self.iface.legendInterface().groups().count() - 1
+
 		for t in (
 			u"Flurstücke",
 			u"Gebäude",
@@ -357,7 +394,7 @@ class alkisplugin:
 			u"Wohnbauflächen"
 			):
 
-			self.iface.legendInterface().addGroup( t, False, alkisGroup )
+			self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
 			thisGroup = self.iface.legendInterface().groups().count() - 1
 
 			qDebug( QString( "Thema: %1" ).arg( t ) )
@@ -375,10 +412,10 @@ class alkisplugin:
 				n = 0
 				while qry.next():
 					sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
-	
+
 					sn = qry.value(0).toString()
 					sym.setColor( QColor( qry.value(1).toInt()[0], qry.value(2).toInt()[0], qry.value(3).toInt()[0] ) )
-	
+
 					r.addCategory( QgsRendererCategoryV2( sn, sym, "" ) )
 					n += 1
 
@@ -459,7 +496,7 @@ class alkisplugin:
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=25832 table=po_lines (line) sql=thema='%s'" % (conninfo, t),
 							u"Linien (%s)" % t,
 							"postgres" )
-	
+
 					layer.setRendererV2( r )
 					self.iface.refreshLegend( layer )
 				else:
@@ -486,7 +523,7 @@ class alkisplugin:
 					symlayer = QgsSvgMarkerSymbolLayerV2( svg )
 					symlayer.setSize( w )
 					symlayer.setOffset( QPointF( -x, -y ) )
-					
+
 					sym = QgsMarkerSymbolV2( [symlayer] )
 					sym.setSize( w )
 					sym.setOutputUnit( QgsSymbolV2.MapUnit )
@@ -586,8 +623,24 @@ class alkisplugin:
 
 			self.iface.legendInterface().setGroupExpanded( thisGroup, False )
 
-		self.iface.legendInterface().setGroupExpanded( alkisGroup, False )
-		self.iface.legendInterface().setGroupVisible( alkisGroup, False )
+		self.iface.legendInterface().setGroupExpanded( self.alkisGroup, False )
+		self.iface.legendInterface().setGroupVisible( self.alkisGroup, False )
+
+		self.markerLayer = self.iface.addVectorLayer(
+					u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=po_labels (point) sql=false" % conninfo,
+					u"Markierung",
+					"postgres" )
+
+		sym = QgsMarkerSymbolV2()
+		sym.setColor( Qt.yellow )
+		sym.setSize( 20.0 )
+		sym.setOutputUnit( QgsSymbolV2.MM )
+		sym.setAlpha( 0.5 )
+		self.markerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
+		self.iface.legendInterface().moveLayer( self.markerLayer, self.alkisGroup )
+
+		QgsProject.instance().writeEntry( "alkis", "/markerLayer", self.markerLayer.id() )
+
 		self.iface.mapCanvas().setRenderFlag( True )
 		s.setValue( "/qgis/addNewLayersToCurrentGroup", oldAdd )
 		QApplication.restoreOverrideCursor()
