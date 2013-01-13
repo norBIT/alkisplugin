@@ -367,18 +367,14 @@ class alkisplugin:
 
 		qry = QSqlQuery(db)
 
-		s = QSettings()
-		oldAdd = s.value( "/qgis/addNewLayersToCurrentGroup", False ).toBool()
-		s.setValue( "/qgis/addNewLayersToCurrentGroup", True )
-
 		svgpaths = s.value( "svg/searchPathsForSVG" ).toString().split("|")
 		svgpath = os.path.dirname(__file__) + "/svg"
 		if not svgpaths.contains( svgpath, Qt.CaseInsensitive ):
 			svgpaths.append( svgpath )
 			s.setValue( "svg/searchPathsForSVG", svgpaths.join("|") )
 
-		self.iface.legendInterface().addGroup( "ALKIS", False )
-		self.alkisGroup = self.iface.legendInterface().groups().count() - 1
+		self.alkisGroup = self.iface.legendInterface().addGroup( "ALKIS", False )
+		qDebug( QString( "alkisGroup:%1" ).arg( self.alkisGroup ) )
 
 		for t in (
 			u"Flurstücke",
@@ -394,8 +390,7 @@ class alkisplugin:
 			u"Wohnbauflächen"
 			):
 
-			self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
-			thisGroup = self.iface.legendInterface().groups().count() - 1
+			thisGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
 
 			qDebug( QString( "Thema: %1" ).arg( t ) )
 
@@ -424,8 +419,10 @@ class alkisplugin:
 						u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=thema='%s'" % (conninfo, t),
 						u"Flächen (%s)" % t,
 						"postgres" )
+					layer.setReadOnly()
 					layer.setRendererV2( r )
-					self.iface.refreshLegend( layer )
+					self.iface.legendInterface().refreshLayerSymbology( layer )
+					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
 					del r
 			else:
@@ -460,8 +457,10 @@ class alkisplugin:
 						u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=thema='%s'" % (conninfo, t),
 						u"Grenzen (%s)" % t,
 						"postgres" )
+					layer.setReadOnly()
 					layer.setRendererV2( r )
-					self.iface.refreshLegend( layer )
+					self.iface.legendInterface().refreshLayerSymbology( layer )
+					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
 					del r
 			else:
@@ -496,9 +495,10 @@ class alkisplugin:
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=25832 table=po_lines (line) sql=thema='%s'" % (conninfo, t),
 							u"Linien (%s)" % t,
 							"postgres" )
-
+					layer.setReadOnly()
 					layer.setRendererV2( r )
-					self.iface.refreshLegend( layer )
+					self.iface.legendInterface().refreshLayerSymbology( layer )
+					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
 					del r
 			else:
@@ -537,8 +537,10 @@ class alkisplugin:
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE thema='%s')\" (point) sql=" % (conninfo, t),
 							u"Punkte (%s)" % t,
 							"postgres" )
+					layer.setReadOnly()
 					layer.setRendererV2( r )
-					self.iface.refreshLegend( layer )
+					self.iface.legendInterface().refreshLayerSymbology( layer )
+					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
 					del r
 
@@ -554,8 +556,8 @@ class alkisplugin:
 					continue
 
 				if n==1:
-					self.iface.legendInterface().addGroup( "Beschriftungen", False, thisGroup )
-					self.iface.legendInterface().moveLayer( layer, self.iface.legendInterface().groups().count() - 1 )
+					labelGroup = self.iface.legendInterface().addGroup( "Beschriftungen", False, thisGroup )
+					self.iface.legendInterface().moveLayer( layer, labelGroup )
 
 				uri = ( conninfo
                                         + u" estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table="
@@ -591,11 +593,13 @@ class alkisplugin:
 					uri,
 					u"Beschriftungen (%s)" % t,
 					"postgres" )
+				layer.setReadOnly()
 
                                 sym = QgsMarkerSymbolV2()
                                 sym.setSize( 0.0 );
                                 layer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
-				self.iface.refreshLegend( layer )
+				self.iface.legendInterface().refreshLayerSymbology( layer )
+				self.iface.legendInterface().moveLayer( layer, thisGroup )
 
 				lyr = QgsPalLayerSettings()
 				lyr.fieldName = "text"
@@ -617,7 +621,7 @@ class alkisplugin:
 				lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
 				lyr.writeToLayer( layer )
 
-				self.iface.refreshLegend( layer )
+				self.iface.legendInterface().refreshLayerSymbology( layer )
 
 				n += 1
 
@@ -642,5 +646,4 @@ class alkisplugin:
 		QgsProject.instance().writeEntry( "alkis", "/markerLayer", self.markerLayer.id() )
 
 		self.iface.mapCanvas().setRenderFlag( True )
-		s.setValue( "/qgis/addNewLayersToCurrentGroup", oldAdd )
 		QApplication.restoreOverrideCursor()
