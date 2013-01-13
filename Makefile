@@ -11,7 +11,6 @@ resources.qrc: logo.png
 
 update: all
 	rsync \
-		--dry-run \
 		-avpP \
 		--exclude ".git" \
 		--exclude "*.pyc" \
