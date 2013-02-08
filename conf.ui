@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1069</width>
-    <height>239</height>
+    <width>580</width>
+    <height>249</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,16 +20,6 @@
       <string>Datenbankeinstellungen</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="5" column="3">
-       <widget class="QLineEdit" name="lePORT">
-        <property name="inputMask">
-         <string>99999; </string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="3">
        <widget class="QLineEdit" name="leSERVICE"/>
       </item>
@@ -66,23 +56,6 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="2">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Port</string>
-        </property>
-        <property name="buddy">
-         <cstring>leDBNAME</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLineEdit" name="leHOST">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
       <item row="5" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
@@ -90,16 +63,6 @@
         </property>
         <property name="buddy">
          <cstring>lePWD</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Host</string>
-        </property>
-        <property name="buddy">
-         <cstring>leDBNAME</cstring>
         </property>
        </widget>
       </item>
@@ -120,14 +83,97 @@
         </property>
        </widget>
       </item>
+      <item row="5" column="3">
+       <widget class="QLineEdit" name="lePORT">
+        <property name="inputMask">
+         <string>99999; </string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLineEdit" name="leHOST">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="2">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Port</string>
+        </property>
+        <property name="buddy">
+         <cstring>leDBNAME</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Host</string>
+        </property>
+        <property name="buddy">
+         <cstring>leDBNAME</cstring>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
-   <item row="1" column="0">
+   <item row="2" column="0">
     <widget class="QDialogButtonBox" name="bb">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>norGIS-Verbindung</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="2">
+       <widget class="QLineEdit" name="leAPPHOST">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <widget class="QLineEdit" name="leAPPPORT">
+        <property name="inputMask">
+         <string>99999; </string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Host</string>
+        </property>
+        <property name="buddy">
+         <cstring>leDBNAME</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Port</string>
+        </property>
+        <property name="buddy">
+         <cstring>leDBNAME</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

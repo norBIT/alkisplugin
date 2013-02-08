@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="/plugins/alkis" >
      <file>logo.png</file>
+     <file>info.png</file>
   </qresource>
 </RCC>

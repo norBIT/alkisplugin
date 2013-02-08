@@ -2,12 +2,13 @@
 # -*- coding: utf8 -*-
 
 from PyQt4.QtCore import QObject, QSettings, QString, QVariant, Qt, QPointF, qDebug
-from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog
+from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 
 from qgis.core import *
+from qgis.gui import *
 
-import conf, os, resources
+import conf, os, socket, resources
 
 class Conf(QDialog, conf.Ui_Dialog):
 	def __init__(self):
@@ -23,6 +24,9 @@ class Conf(QDialog, conf.Ui_Dialog):
 		self.leUID.setText( s.value( "uid", "" ).toString() )
 		self.lePWD.setText( s.value( "pwd", "" ).toString() )
 
+		self.leAPPHOST.setText( s.value( "apphost", "localhost" ).toString() )
+		self.leAPPPORT.setText( s.value( "appport", "6102" ).toString() )
+
 		self.bb.accepted.connect(self.accept)
 		self.bb.rejected.connect(self.reject)
 
@@ -34,9 +38,10 @@ class Conf(QDialog, conf.Ui_Dialog):
 		s.setValue( "dbname", self.leDBNAME.text() )
 		s.setValue( "uid", self.leUID.text() )
 		s.setValue( "pwd", self.lePWD.text() )
+		s.setValue( "apphost", self.leAPPHOST.text() )
+		s.setValue( "appport", self.leAPPPORT.text() )
 
 		QDialog.accept(self)
-
 
 class alkisplugin:
 	exts = {
@@ -288,13 +293,23 @@ class alkisplugin:
 			self.iface.addPluginToMenu("&ALKIS", self.insertAction)
 			self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
+		self.infoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage", self.iface.mainWindow())
+		self.infoAction.activated.connect( self.setInfoTool )
+		self.iface.addToolBarIcon( self.infoAction )
+
+		self.infoTool = ALKISInfo( self.iface.mapCanvas() )
+
 	def unload(self):
+		self.iface.removeToolBarIcon( self.infoAction )
+
 		self.confAction.deleteLater()
 		self.confAction = None
 		self.insertAction.deleteLater()
 		self.insertAction = None
 		self.searchAction.deleteLater()
 		self.searchAction = None
+		self.infoTool.deleteLater()
+		self.infoTool = None
 
 	def conf(self):
 		dlg = Conf()
@@ -610,15 +625,26 @@ class alkisplugin:
 				lyr.textFont.setFamily( "Sans Serif" )
 				lyr.bufferSizeInMapUnits = True
 				lyr.bufferSize = 0.25
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, layer.dataProvider().fieldNameIndex("italic") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, layer.dataProvider().fieldNameIndex("bold") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, layer.dataProvider().fieldNameIndex("halign") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, layer.dataProvider().fieldNameIndex("valign") )
-				lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
+				try:
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, "tsize" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, "family" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, "italic" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, "bold" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, "tx" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, "ty" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, "halign" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, "valign" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, "tangle" )
+				except:
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, layer.dataProvider().fieldNameIndex("italic") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, layer.dataProvider().fieldNameIndex("bold") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, layer.dataProvider().fieldNameIndex("halign") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, layer.dataProvider().fieldNameIndex("valign") )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
 				lyr.writeToLayer( layer )
 
 				self.iface.legendInterface().refreshLayerSymbology( layer )
@@ -647,3 +673,106 @@ class alkisplugin:
 
 		self.iface.mapCanvas().setRenderFlag( True )
 		QApplication.restoreOverrideCursor()
+
+	def setInfoTool(self):
+		self.iface.mapCanvas().setMapTool( self.infoTool )
+
+
+class ALKISInfo(QgsMapTool):
+	def __init__(self, canvas):
+		QgsMapTool.__init__(self, canvas)
+		self.canvas = canvas
+		self.cursor = QCursor( QPixmap( ["16 16 3 1",
+					"      c None",
+					".     c #FF0000",
+					"+     c #FFFFFF",
+					"                ",
+					"       +.+      ",
+					"      ++.++     ",
+					"     +.....+    ",
+					"    +.     .+   ",
+					"   +.   .   .+  ",
+					"  +.    .    .+ ",
+					" ++.    .    .++",
+					" ... ...+... ...",
+					" ++.    .    .++",
+					"  +.    .    .+ ",
+					"   +.   .   .+  ",
+					"   ++.     .+   ",
+					"    ++.....+    ",
+					"      ++.++     ",
+					"       +.+      "] ) )
+
+		self.crs = QgsCoordinateReferenceSystem(25832)
+
+	def canvasPressEvent(self,event):
+		pass
+
+	def canvasMoveEvent(self,event):
+		pass
+
+	def canvasReleaseEvent(self,e):
+		point = self.canvas.getCoordinateTransform().toMapCoordinates( e.x(), e.y() )
+
+		r = self.canvas.mapRenderer()
+		if r.hasCrsTransformEnabled():
+			t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
+			point = t.transform( point )
+
+		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+
+		service = s.value( "service", "" ).toString()
+		host = s.value( "host", "" ).toString()
+		port = s.value( "port", "5432" ).toString()
+		dbname = s.value( "dbname", "" ).toString()
+		uid = s.value( "uid", "" ).toString()
+		pwd = s.value( "pwd", "" ).toString()
+
+		uri = QgsDataSourceURI()
+
+		if service.isEmpty():
+			uri.setConnection( host, port, dbname, uid, pwd )
+		else:
+			uri.setConnection( service, dbname, uid, pwd )
+
+		conninfo = uri.connectionInfo()
+
+		db = QSqlDatabase.addDatabase( "QPSQL" )
+		db.setConnectOptions( conninfo )
+
+		if not db.open():
+			while not db.open():
+				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
+					return
+
+				uri.setUsername(uid)
+				uri.setPassword(pwd)
+
+				db.setConnectOptions( uri.connectionInfo() )
+
+			QgsCredentials.instance().put( conninfo, uid, pwd )
+
+		QApplication.setOverrideCursor( Qt.WaitCursor )
+
+		qry = QSqlQuery(db)
+
+		if not qry.exec_(
+			u"SELECT "
+			+ u"to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
+			+ u"'-' || to_char(flurnummer,'fm000') ||"
+			+ u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
+			+ u" FROM ax_flurstueck"
+			+ u" WHERE endet IS NULL"
+			+ u" AND st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'))" % ( point.x(), point.y() )
+			):
+			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
+			return
+
+		if not qry.next():
+			QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
+			return
+
+		sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+		sock.connect( (s.value( "apphost", "localhost" ).toString(), s.value( "appport", "6102" ).toInt()[0] ) )
+		sock.send( "EDBS#ALBKEY#%s" % ( qry.value(0).toString() ) )
+		sock.close()
