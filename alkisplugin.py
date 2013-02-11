@@ -769,10 +769,13 @@ class ALKISInfo(QgsMapTool):
 			return
 
 		if not qry.next():
+			QApplication.restoreOverrideCursor()
 			QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
 			return
 
 		sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
 		sock.connect( (s.value( "apphost", "localhost" ).toString(), s.value( "appport", "6102" ).toInt()[0] ) )
-		sock.send( "EDBS#ALBKEY#%s" % ( qry.value(0).toString() ) )
+		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % ( qry.value(0).toString() ) )
 		sock.close()
+
+		QApplication.restoreOverrideCursor()
