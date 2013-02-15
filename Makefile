@@ -14,6 +14,7 @@ update: all
 		-avpP \
 		--exclude ".git" \
 		--exclude "*.pyc" \
+		--exclude ".gitignore" \
 		-v \
 		./ \
 		jef@zeus.intern.norbit.de:/shares/runtime/norBIT/QGIS/alkis/

@@ -8,6 +8,13 @@ from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from qgis.core import *
 from qgis.gui import *
 
+try:
+	import win32gui
+	win32 = True
+except:
+	win32 = False
+
+
 import conf, os, socket, resources
 
 class Conf(QDialog, conf.Ui_Dialog):
@@ -265,7 +272,8 @@ class alkisplugin:
 
 	def __init__(self, iface):
 		self.iface = iface
-		self.markerLayer = None
+		self.pointMarkerLayer = None
+		self.areaMarkerLayer = None
 		self.alkisGroup = None
 
 	def initGui(self):
@@ -279,10 +287,11 @@ class alkisplugin:
 		self.insertAction.setStatusTip("ALKIS-Layer einbinden")
 		self.insertAction.triggered.connect(self.run)
 
-		self.searchAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Beschriftung suchen", self.iface.mainWindow())
+		self.searchAction = QAction(QIcon(":/plugins/alkis/find.png"), "Beschriftung suchen", self.iface.mainWindow())
 		self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
 		self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
 		self.searchAction.triggered.connect(self.search)
+		self.iface.addToolBarIcon( self.searchAction )
 
 		if hasattr(self.iface, "addPluginToDatabaseMenu"):
 			self.iface.addPluginToDatabaseMenu("&ALKIS", self.searchAction)
@@ -297,7 +306,7 @@ class alkisplugin:
 		self.infoAction.activated.connect( self.setInfoTool )
 		self.iface.addToolBarIcon( self.infoAction )
 
-		self.infoTool = ALKISInfo( self.iface.mapCanvas() )
+		self.infoTool = ALKISInfo( self.iface )
 
 	def unload(self):
 		self.iface.removeToolBarIcon( self.infoAction )
@@ -316,13 +325,13 @@ class alkisplugin:
 		dlg.exec_()
 
 	def search(self):
-		if self.markerLayer is None:
-			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/markerLayer" )
+		if self.pointMarkerLayer is None:
+			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/pointMarkerLayer" )
 			if ok:
-				self.markerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+				self.pointMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
-		if self.markerLayer is None:
-			QMessageBox.warning( None, "ALKIS", u"Fehler: Markierungslayer nicht gefunden!\n" )
+		if self.pointMarkerLayer is None:
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!\n" )
 			return
 
 		(text,ok) = QInputDialog.getText( self.iface.mainWindow(), u"Beschriftung suchen", u"Suchbegriff" )
@@ -334,11 +343,11 @@ class alkisplugin:
 		else:
 			text = u"text LIKE '%%%s%%'" % text.replace("'", "''")
 
-		self.markerLayer.setSubsetString( text )
+		self.pointMarkerLayer.setSubsetString( text )
 
 		currentLayer = self.iface.activeLayer()
 
-		self.iface.setActiveLayer( self.markerLayer )
+		self.iface.setActiveLayer( self.pointMarkerLayer )
 		self.iface.zoomToActiveLayer()
 		self.iface.setActiveLayer( currentLayer )
 
@@ -389,7 +398,8 @@ class alkisplugin:
 			s.setValue( "svg/searchPathsForSVG", svgpaths.join("|") )
 
 		self.alkisGroup = self.iface.legendInterface().addGroup( "ALKIS", False )
-		qDebug( QString( "alkisGroup:%1" ).arg( self.alkisGroup ) )
+
+		markerGroup = self.iface.legendInterface().addGroup( "Markierungen", False, self.alkisGroup )
 
 		for t in (
 			u"Flurstücke",
@@ -409,7 +419,7 @@ class alkisplugin:
 
 			qDebug( QString( "Thema: %1" ).arg( t ) )
 
-			sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen" 
+			sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
 			    + u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
 			    + u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'" % t
 			    + u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
@@ -530,10 +540,16 @@ class alkisplugin:
 				while qry.next():
 					sn = qry.value(0).toInt()[0]
 					svg = "alkis%d.svg" % sn
-					x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
-					y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
-					w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
-					h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
+					if alkisplugin.exts.has_key(sn):
+						x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
+						y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
+						w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
+						h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
+					else:
+						x = 0
+						y = 0
+						w = 1
+						h = 1
 
 					symlayer = QgsSvgMarkerSymbolLayerV2( svg )
 					symlayer.setSize( w )
@@ -656,9 +672,9 @@ class alkisplugin:
 		self.iface.legendInterface().setGroupExpanded( self.alkisGroup, False )
 		self.iface.legendInterface().setGroupVisible( self.alkisGroup, False )
 
-		self.markerLayer = self.iface.addVectorLayer(
+		self.pointMarkerLayer = self.iface.addVectorLayer(
 					u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=po_labels (point) sql=false" % conninfo,
-					u"Markierung",
+					u"Punktmarkierung",
 					"postgres" )
 
 		sym = QgsMarkerSymbolV2()
@@ -666,10 +682,24 @@ class alkisplugin:
 		sym.setSize( 20.0 )
 		sym.setOutputUnit( QgsSymbolV2.MM )
 		sym.setAlpha( 0.5 )
-		self.markerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
-		self.iface.legendInterface().moveLayer( self.markerLayer, self.alkisGroup )
+		self.pointMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
+		self.iface.legendInterface().moveLayer( self.pointMarkerLayer, markerGroup )
 
-		QgsProject.instance().writeEntry( "alkis", "/markerLayer", self.markerLayer.id() )
+		self.areaMarkerLayer = self.iface.addVectorLayer(
+					u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=false" % conninfo,
+					u"Flächenmarkierung",
+					"postgres" )
+
+		sym = QgsMarkerSymbolV2()
+		sym.setColor( Qt.yellow )
+		sym.setSize( 20.0 )
+		sym.setOutputUnit( QgsSymbolV2.MM )
+		sym.setAlpha( 0.5 )
+		self.pointMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
+		self.iface.legendInterface().moveLayer( self.areaMarkerLayer, markerGroup )
+
+		QgsProject.instance().writeEntry( "alkis", "/pointMarkerLayer", self.pointMarkerLayer.id() )
+		QgsProject.instance().writeEntry( "alkis", "/areaMarkerLayer", self.areaMarkerLayer.id() )
 
 		self.iface.mapCanvas().setRenderFlag( True )
 		QApplication.restoreOverrideCursor()
@@ -679,9 +709,9 @@ class alkisplugin:
 
 
 class ALKISInfo(QgsMapTool):
-	def __init__(self, canvas):
-		QgsMapTool.__init__(self, canvas)
-		self.canvas = canvas
+	def __init__(self, iface):
+		QgsMapTool.__init__(self, iface.mapCanvas())
+		self.iface = iface
 		self.cursor = QCursor( QPixmap( ["16 16 3 1",
 					"      c None",
 					".     c #FF0000",
@@ -705,6 +735,8 @@ class ALKISInfo(QgsMapTool):
 
 		self.crs = QgsCoordinateReferenceSystem(25832)
 
+		self.areaMarkerLayer = None
+
 	def canvasPressEvent(self,event):
 		pass
 
@@ -712,12 +744,21 @@ class ALKISInfo(QgsMapTool):
 		pass
 
 	def canvasReleaseEvent(self,e):
-		point = self.canvas.getCoordinateTransform().toMapCoordinates( e.x(), e.y() )
+		point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates( e.x(), e.y() )
 
-		r = self.canvas.mapRenderer()
+		r = self.iface.mapCanvas().mapRenderer()
 		if r.hasCrsTransformEnabled():
 			t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
 			point = t.transform( point )
+
+		if self.areaMarkerLayer is None:
+			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+			if ok:
+				self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+		if self.areaMarkerLayer is None:
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
+			return
 
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
@@ -758,7 +799,8 @@ class ALKISInfo(QgsMapTool):
 
 		if not qry.exec_(
 			u"SELECT "
-			+ u"to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
+			+ u"gml_id"
+			+ u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
 			+ u"'-' || to_char(flurnummer,'fm000') ||"
 			+ u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
 			+ u" FROM ax_flurstueck"
@@ -773,9 +815,23 @@ class ALKISInfo(QgsMapTool):
 			QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
 			return
 
+		self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id='" + qry.value(0).toString() + "'" )
+
+		currentLayer = self.iface.activeLayer()
+
+		#self.iface.setActiveLayer( self.areaMarkerLayer )
+		#self.iface.zoomToActiveLayer()
+		#self.iface.setActiveLayer( currentLayer )
+		self.iface.mapCanvas().refresh()
+
 		sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
 		sock.connect( (s.value( "apphost", "localhost" ).toString(), s.value( "appport", "6102" ).toInt()[0] ) )
-		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % ( qry.value(0).toString() ) )
+		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % ( qry.value(1).toString() ) )
 		sock.close()
+
+		if win32:
+			s = QSettings( "norBIT", "EDBSgen/PRO" )
+			window = win32gui.FindWindow( None, unicode( s.value( "albWin", "norGIS" ).toString() ) )
+			win32gui.SetForegroundWindow( window )
 
 		QApplication.restoreOverrideCursor()
