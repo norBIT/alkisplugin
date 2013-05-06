@@ -805,7 +805,7 @@ class ALKISInfo(QgsMapTool):
 			+ u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
 			+ u" FROM ax_flurstueck"
 			+ u" WHERE endet IS NULL"
-			+ u" AND st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'))" % ( point.x(), point.y() )
+			+ u" AND st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() )
 			):
 			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
 			return

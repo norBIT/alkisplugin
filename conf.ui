@@ -178,6 +178,17 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>leDBNAME</tabstop>
+  <tabstop>leUID</tabstop>
+  <tabstop>lePWD</tabstop>
+  <tabstop>leSERVICE</tabstop>
+  <tabstop>leHOST</tabstop>
+  <tabstop>lePORT</tabstop>
+  <tabstop>leAPPHOST</tabstop>
+  <tabstop>leAPPPORT</tabstop>
+  <tabstop>bb</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
