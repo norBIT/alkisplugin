@@ -51,6 +51,117 @@ class Conf(QDialog, conf.Ui_Dialog):
 		QDialog.accept(self)
 
 class alkisplugin:
+	themen = (
+                {
+                        'name'   : u"Flurstücke",
+                        'area'   : { 'min':0, 'max':5000 },
+                        'outline': { 'min':0, 'max':5000 },
+                        'line'   : { 'min':0, 'max':5000 },
+                        'point'  : { 'min':0, 'max':5000 },
+                        'label'  : { 'min':0, 'max':5000 },
+			'classes': {
+				'2001': u'Bruchstriche',
+				'2004': u'Zuordnungspfeil',
+				'2028': u'Flurstücksgrenze',
+			},
+                },
+                {
+                        'name'   : u"Gebäude",
+                        'area'   : { 'min':0, 'max':3500 },
+                        'outline': { 'min':0, 'max':3500 },
+                        'line'   : { 'min':0, 'max':3500 },
+                        'point'  : { 'min':0, 'max':3500 },
+                        'label'  : { 'min':0, 'max':3500 },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Rechtliche Festlegungen",
+                        'area'   : { 'min':None, 'max':None },
+                        'outline': { 'min':None, 'max':None },
+                        'line'   : { 'min':None, 'max':None },
+                        'point'  : { 'min':None, 'max':None },
+                        'label'  : { 'min':None, 'max':None },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Verkehr",
+                        'area'   : { 'min':None, 'max':None },
+                        'outline': { 'min':None, 'max':None },
+                        'line'   : { 'min':None, 'max':None },
+                        'point'  : { 'min':None, 'max':None },
+                        'label'  : { 'min':None, 'max':None },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Friedhöfe",
+                        'area'   : { 'min':None, 'max':None },
+                        'outline': { 'min':None, 'max':None },
+                        'line'   : { 'min':None, 'max':None },
+                        'point'  : { 'min':None, 'max':None },
+                        'label'  : { 'min':None, 'max':None },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Vegetation",
+                        'area'   : { 'min':None, 'max':None },
+                        'outline': { 'min':None, 'max':None },
+                        'line'   : { 'min':None, 'max':None },
+                        'point'  : { 'min':None, 'max':None },
+                        'label'  : { 'min':None, 'max':None },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Gewässer",
+                        'area'   : { 'min':None, 'max':None, },
+                        'outline': { 'min':None, 'max':None, },
+                        'line'   : { 'min':None, 'max':None, },
+                        'point'  : { 'min':None, 'max':None, },
+                        'label'  : { 'min':None, 'max':None, },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Politische Grenzen",
+                        'area'   : { 'min':None, 'max':None, },
+                        'outline': { 'min':None, 'max':None, },
+                        'line'   : { 'min':None, 'max':None, },
+                        'point'  : { 'min':None, 'max':None, },
+                        'label'  : { 'min':None, 'max':None, },
+                        'classes': {
+                                        '2010': u'Landkreisgrenze',
+                                        '2012': u'Flurgrenze',
+                                        '2014': u'Gemarkungsgrenze',
+                                        '2022': u'Gemeindegrenze',
+                        },
+                },
+                {
+                        'name'   : u"Industrie und Gewerbe",
+                        'area'   : { 'min':None, 'max':None, },
+                        'outline': { 'min':None, 'max':None, },
+                        'line'   : { 'min':None, 'max':None, },
+                        'point'  : { 'min':None, 'max':None, },
+                        'label'  : { 'min':None, 'max':None, },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Sport und Freizeit",
+                        'area'   : { 'min':None, 'max':None, },
+                        'outline': { 'min':None, 'max':None, },
+                        'line'   : { 'min':None, 'max':None, },
+                        'point'  : { 'min':None, 'max':None, },
+                        'label'  : { 'min':None, 'max':None, },
+                        'classes': { },
+                },
+                {
+                        'name'   : u"Wohnbauflächen",
+                        'area'   : { 'min':None, 'max':None, },
+                        'outline': { 'min':None, 'max':None, },
+                        'line'   : { 'min':None, 'max':None, },
+                        'point'  : { 'min':None, 'max':None, },
+                        'label'  : { 'min':None, 'max':None, },
+                        'classes': { },
+		}
+		)
+
 	exts = {
 		3010: { 'minx':-0.6024,	'miny':-1.0152,	'maxx':0.6171,	'maxy':1.2357 },
 		3011: { 'minx':-0.6216,	'miny':-1.0061,	'maxx':0.6299,	'maxy':1.2222 },
@@ -351,6 +462,22 @@ class alkisplugin:
 		self.iface.zoomToActiveLayer()
 		self.iface.setActiveLayer( currentLayer )
 
+	def setScale(self, layer, d):
+		if d['min'] is None and d['max'] is None:
+			return
+
+		if not d['min'] is None: layer.setMinimumScale(d['min'])
+		if not d['max'] is None: layer.setMaximumScale(d['max'])
+
+		layer.toggleScaleBasedVisibility(True)
+
+	def categoryLabel(self, d, sn):
+		qDebug( "categories: " + str(d['classes']) )
+		if d['classes'].has_key(unicode(sn)):
+			return d['classes'][unicode(sn)]
+		else:
+			return "(%s)" % sn
+
 	def run(self):
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
@@ -401,20 +528,8 @@ class alkisplugin:
 
 		markerGroup = self.iface.legendInterface().addGroup( "Markierungen", False, self.alkisGroup )
 
-		for t in (
-			u"Flurstücke",
-			u"Gebäude",
-			u"Rechtliche Festlegungen",
-			u"Verkehr",
-			u"Friedhöfe",
-			u"Vegetation",
-			u"Gewässer",
-			u"Politische Grenzen",
-			u"Industrie und Gewerbe",
-			u"Sport und Freizeit",
-			u"Wohnbauflächen"
-			):
-
+		for d in alkisplugin.themen:
+			t = d['name']
 			thisGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
 
 			qDebug( QString( "Thema: %1" ).arg( t ) )
@@ -436,7 +551,7 @@ class alkisplugin:
 					sn = qry.value(0).toString()
 					sym.setColor( QColor( qry.value(1).toInt()[0], qry.value(2).toInt()[0], qry.value(3).toInt()[0] ) )
 
-					r.addCategory( QgsRendererCategoryV2( sn, sym, "" ) )
+					r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
 					n += 1
 
 				if n>0:
@@ -446,6 +561,7 @@ class alkisplugin:
 						"postgres" )
 					layer.setReadOnly()
 					layer.setRendererV2( r )
+					self.setScale( layer, d['area'] )
 					self.iface.legendInterface().refreshLayerSymbology( layer )
 					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
@@ -474,7 +590,7 @@ class alkisplugin:
 					sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, qry.value(4).toDouble()[0] ) )
 					sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
-					r.addCategory( QgsRendererCategoryV2( sn, sym, "" ) )
+					r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
 					n += 1
 
 				if n>0:
@@ -484,6 +600,7 @@ class alkisplugin:
 						"postgres" )
 					layer.setReadOnly()
 					layer.setRendererV2( r )
+					self.setScale( layer, d['outline'] )
 					self.iface.legendInterface().refreshLayerSymbology( layer )
 					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
@@ -512,7 +629,7 @@ class alkisplugin:
 					sym.setWidth( qry.value(4).toDouble()[0] )
 					sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
-					r.addCategory( QgsRendererCategoryV2( sn, sym, "" ) )
+					r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
 					n += 1
 
 				if n>0:
@@ -522,6 +639,7 @@ class alkisplugin:
 							"postgres" )
 					layer.setReadOnly()
 					layer.setRendererV2( r )
+					self.setScale( layer, d['line'] )
 					self.iface.legendInterface().refreshLayerSymbology( layer )
 					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
@@ -559,7 +677,7 @@ class alkisplugin:
 					sym.setSize( w )
 					sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
-					r.addCategory( QgsRendererCategoryV2( "%d" % sn, sym, "" ) )
+					r.addCategory( QgsRendererCategoryV2( "%d" % sn, sym, self.categoryLabel(d, sn) ) )
 					n += 1
 
 				qDebug( QString( "classes: %1" ).arg( n ) )
@@ -570,14 +688,17 @@ class alkisplugin:
 							"postgres" )
 					layer.setReadOnly()
 					layer.setRendererV2( r )
+					self.setScale( layer, d['point'] )
 					self.iface.legendInterface().refreshLayerSymbology( layer )
 					self.iface.legendInterface().moveLayer( layer, thisGroup )
 				else:
 					del r
 
 			n = 0
+			labelGroup = -1
 			for i in range(2):
 				geom = "point" if i==0 else "line"
+				geomtype = "MULTIPOINT" if i==0 else "MULTILINESTRING"
 
 				if not qry.exec_( "SELECT count(*) FROM po_labels WHERE thema='%s' AND NOT %s IS NULL" % (t,geom) ):
 					QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
@@ -591,7 +712,7 @@ class alkisplugin:
 					self.iface.legendInterface().moveLayer( layer, labelGroup )
 
 				uri = ( conninfo
-                                        + u" estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table="
+                                        + u" estimatedmetadata=true key='ogc_fid' type=" + geomtype + " srid=25832 table="
 					+ u"\"("
 					+ u"SELECT"
 					+ u" ogc_fid"
@@ -625,6 +746,8 @@ class alkisplugin:
 					u"Beschriftungen (%s)" % t,
 					"postgres" )
 				layer.setReadOnly()
+
+				self.setScale( layer, d['label'] )
 
                                 sym = QgsMarkerSymbolV2()
                                 sym.setSize( 0.0 );
@@ -664,6 +787,9 @@ class alkisplugin:
 				lyr.writeToLayer( layer )
 
 				self.iface.legendInterface().refreshLayerSymbology( layer )
+
+				if labelGroup!=-1:
+					self.iface.legendInterface().moveLayer( layer, labelGroup )
 
 				n += 1
 
