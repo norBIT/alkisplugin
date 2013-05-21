@@ -642,15 +642,15 @@ class alkisplugin:
 				lyr.bufferSizeInMapUnits = True
 				lyr.bufferSize = 0.25
 				try:
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, "tsize" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, "family" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, "italic" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, "bold" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, "tx" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, "ty" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, "halign" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, "valign" )
-					lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, "tangle" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, True, False, "", "tsize" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, True, False, "", "family" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, True, False, "", "italic" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
+					lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
 				except:
 					lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
 					lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
