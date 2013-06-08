@@ -1,9 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from PyQt4.QtCore import QObject, QSettings, QString, QVariant, Qt, QPointF, qDebug
+from PyQt4.QtCore import QObject, QSettings, QVariant, Qt, QPointF
 from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
+from PyQt4 import QtCore
 
 from qgis.core import *
 from qgis.gui import *
@@ -14,8 +15,10 @@ try:
 except:
 	win32 = False
 
-
 import conf, os, socket, resources
+
+def qDebug(s):
+	QtCore.qDebug( s.encode('ascii', 'ignore') )
 
 class Conf(QDialog, conf.Ui_Dialog):
 	def __init__(self):
@@ -24,15 +27,15 @@ class Conf(QDialog, conf.Ui_Dialog):
 
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
-		self.leSERVICE.setText( s.value( "service", "" ).toString() )
-		self.leHOST.setText( s.value( "host", "" ).toString() )
-		self.lePORT.setText( s.value( "port", "5432" ).toString() )
-		self.leDBNAME.setText( s.value( "dbname", "" ).toString() )
-		self.leUID.setText( s.value( "uid", "" ).toString() )
-		self.lePWD.setText( s.value( "pwd", "" ).toString() )
+		self.leSERVICE.setText( s.value( "service", "" ) )
+		self.leHOST.setText( s.value( "host", "" ) )
+		self.lePORT.setText( s.value( "port", "5432" ) )
+		self.leDBNAME.setText( s.value( "dbname", "" ) )
+		self.leUID.setText( s.value( "uid", "" ) )
+		self.lePWD.setText( s.value( "pwd", "" ) )
 
-		self.leAPPHOST.setText( s.value( "apphost", "localhost" ).toString() )
-		self.leAPPPORT.setText( s.value( "appport", "6102" ).toString() )
+		self.leAPPHOST.setText( s.value( "apphost", "localhost" ) )
+		self.leAPPPORT.setText( s.value( "appport", "6102" ) )
 
 		self.bb.accepted.connect(self.accept)
 		self.bb.rejected.connect(self.reject)
@@ -449,7 +452,7 @@ class alkisplugin:
 		if not ok:
 			return
 
-		if text.isEmpty():
+		if text == "":
 			text = "false"
 		else:
 			text = u"text LIKE '%%%s%%'" % text.replace("'", "''")
@@ -472,7 +475,7 @@ class alkisplugin:
 		layer.toggleScaleBasedVisibility(True)
 
 	def categoryLabel(self, d, sn):
-		qDebug( "categories: " + str(d['classes']) )
+		qDebug( "categories: %s" % d['classes'] )
 		if d['classes'].has_key(unicode(sn)):
 			return d['classes'][unicode(sn)]
 		else:
@@ -481,16 +484,16 @@ class alkisplugin:
 	def run(self):
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
-		service = s.value( "service", "" ).toString()
-		host = s.value( "host", "" ).toString()
-		port = s.value( "port", "5432" ).toString()
-		dbname = s.value( "dbname", "" ).toString()
-		uid = s.value( "uid", "" ).toString()
-		pwd = s.value( "pwd", "" ).toString()
+		service = s.value( "service", "" )
+		host = s.value( "host", "" )
+		port = s.value( "port", "5432" )
+		dbname = s.value( "dbname", "" )
+		uid = s.value( "uid", "" )
+		pwd = s.value( "pwd", "" )
 
 		uri = QgsDataSourceURI()
 
-		if service.isEmpty():
+		if service == "":
 			uri.setConnection( host, port, dbname, uid, pwd )
 		else:
 			uri.setConnection( service, dbname, uid, pwd )
@@ -518,9 +521,9 @@ class alkisplugin:
 
 		qry = QSqlQuery(db)
 
-		svgpaths = s.value( "svg/searchPathsForSVG" ).toString().split("|")
+		svgpaths = s.value( "svg/searchPathsForSVG" ).split("|")
 		svgpath = os.path.dirname(__file__) + "/svg"
-		if not svgpaths.contains( svgpath, Qt.CaseInsensitive ):
+		if not svgpath.upper() in map(unicode.upper, svgpaths):
 			svgpaths.append( svgpath )
 			s.setValue( "svg/searchPathsForSVG", svgpaths.join("|") )
 
@@ -532,14 +535,14 @@ class alkisplugin:
 			t = d['name']
 			thisGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
 
-			qDebug( QString( "Thema: %1" ).arg( t ) )
+			qDebug( "Thema: %s" % t )
 
 			sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
-			    + u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-			    + u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'" % t
-			    + u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
-                            + u" ORDER BY darstellungsprioritaet")
-			qDebug( QString( "SQL: %1" ).arg( sql ) )
+			       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
+			       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'"
+			       u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
+                               u" ORDER BY darstellungsprioritaet") % t
+			qDebug( "SQL: %s" % sql )
 			if qry.exec_( sql ):
 				r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
 				r.deleteAllCategories()
@@ -548,8 +551,8 @@ class alkisplugin:
 				while qry.next():
 					sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
 
-					sn = qry.value(0).toString()
-					sym.setColor( QColor( qry.value(1).toInt()[0], qry.value(2).toInt()[0], qry.value(3).toInt()[0] ) )
+					sn = qry.value(0)
+					sym.setColor( QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) )
 
 					r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
 					n += 1
@@ -570,13 +573,13 @@ class alkisplugin:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 
 			sql = (u"SELECT"
-			    + u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
-			    + u" FROM alkis_linien"
-			    + u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-			    + u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'" % t
-			    + u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
-			    + u" ORDER BY darstellungsprioritaet" )
-			qDebug( QString( "SQL: %1" ).arg( sql ) )
+			       u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
+			       u" FROM alkis_linien"
+			       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+			       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'"
+			       u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
+			       u" ORDER BY darstellungsprioritaet" ) % t
+			qDebug( "SQL: %s" % sql )
 			if qry.exec_(sql):
 				r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
 				r.deleteAllCategories()
@@ -585,9 +588,9 @@ class alkisplugin:
 				while qry.next():
 					sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
 
-					sn = qry.value(0).toString()
-					c = QColor( qry.value(1).toInt()[0], qry.value(2).toInt()[0], qry.value(3).toInt()[0] )
-					sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, qry.value(4).toDouble()[0] ) )
+					sn = qry.value(0)
+					c = QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) )
+					sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, float(qry.value(4)) ) )
 					sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
 					r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
@@ -609,13 +612,13 @@ class alkisplugin:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 
 			sql = (u"SELECT"
-			    + u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
-			    + u" FROM alkis_linien"
-                            + u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-			    + u" WHERE EXISTS (SELECT * FROM po_lines WHERE thema='%s'" % t
-			    + u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-			    + u" ORDER BY darstellungsprioritaet" )
-			qDebug( QString( "SQL: %1" ).arg( sql ) )
+			       u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
+			       u" FROM alkis_linien"
+                               u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+			       u" WHERE EXISTS (SELECT * FROM po_lines WHERE thema='%s'"
+			       u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
+			       u" ORDER BY darstellungsprioritaet" ) % t
+			qDebug( "SQL: %s" % sql )
 			if qry.exec_( sql ):
 				r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
 				r.deleteAllCategories()
@@ -624,9 +627,9 @@ class alkisplugin:
 				while qry.next():
 					sym = QgsSymbolV2.defaultSymbol( QGis.Line )
 
-					sn = qry.value(0).toString()
-					sym.setColor( QColor( qry.value(1).toInt()[0], qry.value(2).toInt()[0], qry.value(3).toInt()[0] ) )
-					sym.setWidth( qry.value(4).toDouble()[0] )
+					sn = qry.value(0)
+					sym.setColor( QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) )
+					sym.setWidth( float(qry.value(4)) )
 					sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
 					r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
@@ -648,7 +651,7 @@ class alkisplugin:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 
 			sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE thema='%s'" % t
-			qDebug( QString( "SQL: %1" ).arg( sql ) )
+			qDebug( "SQL: %s" % sql )
 			if qry.exec_( sql ):
 				r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
 				r.deleteAllCategories()
@@ -656,7 +659,7 @@ class alkisplugin:
 
 				n = 0
 				while qry.next():
-					sn = qry.value(0).toInt()[0]
+					sn = int(qry.value(0))
 					svg = "alkis%d.svg" % sn
 					if alkisplugin.exts.has_key(sn):
 						x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
@@ -680,7 +683,7 @@ class alkisplugin:
 					r.addCategory( QgsRendererCategoryV2( "%d" % sn, sym, self.categoryLabel(d, sn) ) )
 					n += 1
 
-				qDebug( QString( "classes: %1" ).arg( n ) )
+				qDebug( "classes: %d" % n )
 				if n>0:
 					layer = self.iface.addVectorLayer(
 							u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE thema='%s')\" (point) sql=" % (conninfo, t),
@@ -704,42 +707,42 @@ class alkisplugin:
 					QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 					continue
 
-				if not qry.next() or qry.value(0).toInt()[0]==0:
+				if not qry.next() or int(qry.value(0))==0:
 					continue
 
 				if n==1:
 					labelGroup = self.iface.legendInterface().addGroup( "Beschriftungen", False, thisGroup )
 					self.iface.legendInterface().moveLayer( layer, labelGroup )
 
-				uri = ( conninfo
-                                        + u" estimatedmetadata=true key='ogc_fid' type=" + geomtype + " srid=25832 table="
-					+ u"\"("
-					+ u"SELECT"
-					+ u" ogc_fid"
-					+ u"," + geom
-					+ u",st_x(point) AS tx"
-					+ u",st_y(point) AS ty"
-					+ u",drehwinkel_grad AS tangle"
-					+ u",(size_umn*0.0254)::float8 AS tsize"
-					+ u",text"
-					+ u",CASE"
-					+ u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
-					+ u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
-					+ u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
-					+ u" END AS halign"
-					+ u",CASE"
-					+ u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
-					+ u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
-					+ u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
-					+ u" END AS valign"
-					+ u",'Arial'::text AS family"
-					+ u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
-					+ u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
-					+ u" FROM po_labels"
-					+ u" WHERE thema='" + t + "'"
-					+ u")\" (" + geom + ") sql=" )
+				uri = ( conninfo +
+                                    u" estimatedmetadata=true key='ogc_fid' type=%s srid=25832 table="
+				    u"\"("
+				    u"SELECT"
+				    u" ogc_fid"
+				    u",%s"
+				    u",st_x(point) AS tx"
+				    u",st_y(point) AS ty"
+				    u",drehwinkel_grad AS tangle"
+				    u",(size_umn*0.0254)::float8 AS tsize"
+				    u",text"
+				    u",CASE"
+				    u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
+				    u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
+				    u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
+				    u" END AS halign"
+				    u",CASE"
+				    u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
+				    u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
+				    u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
+				    u" END AS valign"
+				    u",'Arial'::text AS family"
+				    u",CASE WHEN font_umn LIKE '%%italic%%' THEN 1 ELSE 0 END AS italic"
+				    u",CASE WHEN font_umn LIKE '%%bold%%' THEN 1 ELSE 0 END AS bold"
+				    u" FROM po_labels"
+				    u" WHERE thema='%s'"
+				    u")\" (%s) sql=" ) % (geomtype,geom,t,geom)
 
-				qDebug( QString( "URI: %1" ).arg( uri ) )
+				qDebug( "URI: %s" % uri )
 
 				layer = self.iface.addVectorLayer(
 					uri,
@@ -888,16 +891,16 @@ class ALKISInfo(QgsMapTool):
 
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
-		service = s.value( "service", "" ).toString()
-		host = s.value( "host", "" ).toString()
-		port = s.value( "port", "5432" ).toString()
-		dbname = s.value( "dbname", "" ).toString()
-		uid = s.value( "uid", "" ).toString()
-		pwd = s.value( "pwd", "" ).toString()
+		service = s.value( "service", "" )
+		host = s.value( "host", "" )
+		port = s.value( "port", "5432" )
+		dbname = s.value( "dbname", "" )
+		uid = s.value( "uid", "" )
+		pwd = s.value( "pwd", "" )
 
 		uri = QgsDataSourceURI()
 
-		if service.isEmpty():
+		if service == "":
 			uri.setConnection( host, port, dbname, uid, pwd )
 		else:
 			uri.setConnection( service, dbname, uid, pwd )
@@ -925,13 +928,13 @@ class ALKISInfo(QgsMapTool):
 
 		if not qry.exec_(
 			u"SELECT "
-			+ u"gml_id"
-			+ u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
-			+ u"'-' || to_char(flurnummer,'fm000') ||"
-			+ u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
-			+ u" FROM ax_flurstueck"
-			+ u" WHERE endet IS NULL"
-			+ u" AND st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() )
+			u"gml_id"
+			u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
+			u"'-' || to_char(flurnummer,'fm000') ||"
+			u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
+			u" FROM ax_flurstueck"
+			u" WHERE endet IS NULL"
+			u" AND st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() )
 			):
 			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
 			return
@@ -941,7 +944,7 @@ class ALKISInfo(QgsMapTool):
 			QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
 			return
 
-		self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id='" + qry.value(0).toString() + "'" )
+		self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id='" + qry.value(0) + "'" )
 
 		currentLayer = self.iface.activeLayer()
 
@@ -951,13 +954,13 @@ class ALKISInfo(QgsMapTool):
 		self.iface.mapCanvas().refresh()
 
 		sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-		sock.connect( (s.value( "apphost", "localhost" ).toString(), s.value( "appport", "6102" ).toInt()[0] ) )
-		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % ( qry.value(1).toString() ) )
+		sock.connect( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) )
+		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % qry.value(1) )
 		sock.close()
 
 		if win32:
 			s = QSettings( "norBIT", "EDBSgen/PRO" )
-			window = win32gui.FindWindow( None, unicode( s.value( "albWin", "norGIS" ).toString() ) )
+			window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
 			win32gui.SetForegroundWindow( window )
 
 		QApplication.restoreOverrideCursor()
