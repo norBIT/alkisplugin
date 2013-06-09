@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from PyQt4.QtCore import QObject, QSettings, QVariant, Qt, QPointF
+from PyQt4.QtCore import QObject, QSettings, Qt, QPointF
 from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore

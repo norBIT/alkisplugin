@@ -1,11 +1,11 @@
 [general]
 name=ALKIS-Einbindung
-description=Dieses Plugin dient zur Einbindung von ALKIS-Layern.
+description=Diese Erweiterung dient zur Einbindung von ALKIS-Layern.
 category=Database
 version=0.1.0
 qgisMinimumVersion=1.8.0
 
-author=Juergen E. Fischer
+author=Jürgen E. Fischer
 email=jef@norbit.de
 
 icon=:/plugins/alkis/logo.png
