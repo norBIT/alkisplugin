@@ -954,7 +954,7 @@ class ALKISInfo(QgsMapTool):
 		self.iface.mapCanvas().refresh()
 
 		sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-		sock.connect( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) )
+		sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
 		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % qry.value(1) )
 		sock.close()
 

@@ -3,7 +3,7 @@ name=ALKIS-Einbindung
 description=Diese Erweiterung dient zur Einbindung von ALKIS-Layern.
 category=Database
 version=0.1.0
-qgisMinimumVersion=1.8.0
+qgisMinimumVersion=2.0
 
 author=Jürgen E. Fischer
 email=jef@norbit.de
