@@ -2,6 +2,7 @@
   <qresource prefix="/plugins/alkis" >
      <file>logo.png</file>
      <file>info.png</file>
+     <file>pinfo.png</file>
      <file>find.png</file>
   </qresource>
 </RCC>
