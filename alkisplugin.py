@@ -536,11 +536,12 @@ class alkisplugin:
 
 		qry = QSqlQuery(db)
 
-		svgpaths = s.value( "svg/searchPathsForSVG" ).split("|")
+		qs = QSettings( "QGIS", "QGIS2" )
+		svgpaths = qs.value( "svg/searchPathsForSVG", "", type=str ).split("|")
 		svgpath = os.path.dirname(__file__) + "/svg"
 		if not svgpath.upper() in map(unicode.upper, svgpaths):
 			svgpaths.append( svgpath )
-			s.setValue( "svg/searchPathsForSVG", svgpaths.join("|") )
+			qs.setValue( "svg/searchPathsForSVG", "|".join( svgpaths ) )
 
 		self.alkisGroup = self.iface.legendInterface().addGroup( "ALKIS", False )
 
