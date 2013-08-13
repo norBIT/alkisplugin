@@ -458,12 +458,21 @@ class alkisplugin:
 		self.pointInfoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
 		self.pointInfoAction.activated.connect( self.setPointInfoTool )
 		self.iface.addToolBarIcon( self.pointInfoAction )
-		self.pointInfoTool = ALKISPointInfo( self.iface )
+		self.pointInfoTool = ALKISPointInfo( self )
 
 		self.polygonInfoAction = QAction(QIcon(":/plugins/alkis/pinfo.png"), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
 		self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
 		self.iface.addToolBarIcon( self.polygonInfoAction )
-		self.polygonInfoTool = ALKISPolygonInfo( self.iface )
+		self.polygonInfoTool = ALKISPolygonInfo( self )
+
+		self.clearAction = QAction(QIcon(":/plugins/alkis/clear.png"), "Hervorhebungen entfernen", self.iface.mainWindow())
+		self.clearAction.setWhatsThis("Hervorhebungen entfernen")
+		self.clearAction.setStatusTip("Hervorhebungen entfernen")
+		self.clearAction.triggered.connect(self.clearHighlight)
+		self.iface.addToolBarIcon( self.clearAction )
+
+		if not self.register():
+			self.iface.mainWindow().initializationCompleted.connect( self.register )
 
 	def unload(self):
 		try:
@@ -476,6 +485,8 @@ class alkisplugin:
 			self.insertAction = None
 			self.searchAction.deleteLater()
 			self.searchAction = None
+			self.clearAction.deleteLater()
+			self.clearAction = None
 
 			self.pointInfoTool.deleteLater()
 			self.pointInfoTool = None
@@ -913,10 +924,119 @@ class alkisplugin:
 	def setPolygonInfoTool(self):
 		self.iface.mapCanvas().setMapTool( self.polygonInfoTool )
 
+	def register(self):
+		edbsgen = self.iface.mainWindow().findChild( QObject, "EDBSQuery" )
+		if edbsgen:
+			if edbsgen.received.connect( self.message ):
+				qDebug( "connected" )
+			else:
+				qDebug( "not connected" )
+		else:
+			return False
+
+
+	def message(self, msg):
+		QMessageBox.warning( None, "ALKIS", u"Nachricht:%s" % msg )
+
+
+	def clearHighlight(self):
+		if not self.areaMarkerLayer:
+			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+			if ok:
+				self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+		if not self.areaMarkerLayer:
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
+			return
+
+		self.areaMarkerLayer.setSubsetString( "false" )
+		currentLayer = self.iface.activeLayer()
+		self.iface.mapCanvas().refresh()
+
+	def highlight(self, where):
+		if self.areaMarkerLayer is None:
+			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+			if ok:
+				self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+		if self.areaMarkerLayer is None:
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
+			return
+
+		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+
+		service = s.value( "service", "" )
+		host = s.value( "host", "" )
+		port = s.value( "port", "5432" )
+		dbname = s.value( "dbname", "" )
+		uid = s.value( "uid", "" )
+		pwd = s.value( "pwd", "" )
+
+		uri = QgsDataSourceURI()
+
+		if service == "":
+			uri.setConnection( host, port, dbname, uid, pwd )
+		else:
+			uri.setConnection( service, dbname, uid, pwd )
+
+		conninfo = uri.connectionInfo()
+
+		db = QSqlDatabase.addDatabase( "QPSQL" )
+		db.setConnectOptions( conninfo )
+
+		if not db.open():
+			while not db.open():
+				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
+					return
+
+				uri.setUsername(uid)
+				uri.setPassword(pwd)
+
+				db.setConnectOptions( uri.connectionInfo() )
+
+			QgsCredentials.instance().put( conninfo, uid, pwd )
+
+		qry = QSqlQuery(db)
+
+		fs = []
+
+		if not qry.exec_(
+			u"SELECT "
+			u"gml_id"
+			u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
+			u"'-' || to_char(flurnummer,'fm000') ||"
+			u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
+			u" FROM ax_flurstueck"
+			u" WHERE endet IS NULL"
+			u" AND (%s)" % where
+			):
+			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
+			return fs
+
+		while qry.next():
+			fs.append( { 'gmlid': qry.value(0), 'flsnr':qry.value(1) } )
+
+		if len(fs)==0:
+			return fs
+
+		gmlids = []
+		for e in fs:
+			gmlids.append( e['gmlid'] )
+
+		self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id IN ('" + "','".join( gmlids ) + "')" )
+
+		currentLayer = self.iface.activeLayer()
+
+		self.iface.mapCanvas().refresh()
+
+		return fs
+
+
 class ALKISPointInfo(QgsMapTool):
-	def __init__(self, iface):
-		QgsMapTool.__init__(self, iface.mapCanvas())
-		self.iface = iface
+	def __init__(self, plugin):
+		QgsMapTool.__init__(self, plugin.iface.mapCanvas())
+		self.plugin = plugin
+		self.iface = plugin.iface
 		self.cursor = QCursor( QPixmap( ["16 16 3 1",
 					"      c None",
 					".     c #FF0000",
@@ -965,86 +1085,38 @@ class ALKISPointInfo(QgsMapTool):
 			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 			return
 
-		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-
-		service = s.value( "service", "" )
-		host = s.value( "host", "" )
-		port = s.value( "port", "5432" )
-		dbname = s.value( "dbname", "" )
-		uid = s.value( "uid", "" )
-		pwd = s.value( "pwd", "" )
-
-		uri = QgsDataSourceURI()
-
-		if service == "":
-			uri.setConnection( host, port, dbname, uid, pwd )
-		else:
-			uri.setConnection( service, dbname, uid, pwd )
-
-		conninfo = uri.connectionInfo()
-
-		db = QSqlDatabase.addDatabase( "QPSQL" )
-		db.setConnectOptions( conninfo )
-
-		if not db.open():
-			while not db.open():
-				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
-					return
-
-				uri.setUsername(uid)
-				uri.setPassword(pwd)
-
-				db.setConnectOptions( uri.connectionInfo() )
-
-			QgsCredentials.instance().put( conninfo, uid, pwd )
-
 		QApplication.setOverrideCursor( Qt.WaitCursor )
 
-		qry = QSqlQuery(db)
+		fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() ) )
 
-		if not qry.exec_(
-			u"SELECT "
-			u"gml_id"
-			u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
-			u"'-' || to_char(flurnummer,'fm000') ||"
-			u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
-			u" FROM ax_flurstueck"
-			u" WHERE endet IS NULL"
-			u" AND st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() )
-			):
-			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
-			return
-
-		if not qry.next():
+		if len(fs) == 0:
 			QApplication.restoreOverrideCursor()
 			QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
 			return
 
-		self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id='" + qry.value(0) + "'" )
+		try:
+			s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+			sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+			sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
+			sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'] )
+			sock.close()
 
-		currentLayer = self.iface.activeLayer()
-
-		#self.iface.setActiveLayer( self.areaMarkerLayer )
-		#self.iface.zoomToActiveLayer()
-		#self.iface.setActiveLayer( currentLayer )
-		self.iface.mapCanvas().refresh()
-
-		sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-		sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
-		sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % qry.value(1) )
-		sock.close()
-
-		if win32:
-			s = QSettings( "norBIT", "EDBSgen/PRO" )
-			window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
-			win32gui.SetForegroundWindow( window )
+			if win32:
+				s = QSettings( "norBIT", "EDBSgen/PRO" )
+				window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
+				win32gui.SetForegroundWindow( window )
+		except:
+			QMessageBox.information( None, u"Fehler", u"Verbindung schlug fehl." )
 
 		QApplication.restoreOverrideCursor()
 
+
+
 class ALKISPolygonInfo(QgsMapTool):
-	def __init__(self, iface):
-		QgsMapTool.__init__(self, iface.mapCanvas())
-		self.iface = iface
+	def __init__(self, plugin):
+		QgsMapTool.__init__(self, plugin.iface.mapCanvas())
+		self.plugin = plugin
+		self.iface = plugin.iface
 		self.cursor = QCursor( QPixmap( ["16 16 3 1",
 					"      c None",
 					".     c #FF0000",
@@ -1067,7 +1139,7 @@ class ALKISPolygonInfo(QgsMapTool):
 					"       +.+      "] ) )
 
 		self.crs = QgsCoordinateReferenceSystem(25832)
-		self.rubberBand = QgsRubberBand( iface.mapCanvas(), QGis.Polygon )
+		self.rubberBand = QgsRubberBand( self.iface.mapCanvas(), QGis.Polygon )
 		self.areaMarkerLayer = None
 
 	def canvasPressEvent(self,e):
@@ -1089,95 +1161,35 @@ class ALKISPolygonInfo(QgsMapTool):
 			t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
 			point = t.transform( point )
 
-		if self.areaMarkerLayer is None:
-			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
-			if ok:
-				self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
-
-		if self.areaMarkerLayer is None:
-			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
-			return
-
-		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-
-		service = s.value( "service", "" )
-		host = s.value( "host", "" )
-		port = s.value( "port", "5432" )
-		dbname = s.value( "dbname", "" )
-		uid = s.value( "uid", "" )
-		pwd = s.value( "pwd", "" )
-
-		uri = QgsDataSourceURI()
-
-		if service == "":
-			uri.setConnection( host, port, dbname, uid, pwd )
-		else:
-			uri.setConnection( service, dbname, uid, pwd )
-
-		conninfo = uri.connectionInfo()
-
-		db = QSqlDatabase.addDatabase( "QPSQL" )
-		db.setConnectOptions( conninfo )
-
-		if not db.open():
-			while not db.open():
-				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
-					return
-
-				uri.setUsername(uid)
-				uri.setPassword(pwd)
-
-				db.setConnectOptions( uri.connectionInfo() )
-
-			QgsCredentials.instance().put( conninfo, uid, pwd )
-
 		QApplication.setOverrideCursor( Qt.WaitCursor )
-
-		qry = QSqlQuery(db)
 
 		if self.rubberBand.numberOfVertices()>=3:
 			g = self.rubberBand.asGeometry()
+			fs = self.plugin.highlight( "st_intersects(wkb_geometry,st_geomfromewkt('SRID=25832;POLYGON((%s))'::text))" % ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) ) )
 
-			if not qry.exec_(
-				u"SELECT "
-				u"gml_id"
-				u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
-				u"'-' || to_char(flurnummer,'fm000') ||"
-				u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
-				u" FROM ax_flurstueck"
-				u" WHERE endet IS NULL"
-				u" AND st_intersects(wkb_geometry,st_geomfromewkt('SRID=25832;POLYGON((%s))'::text))" % ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) )
-				):
-				QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
-				return
-
-			gmlids = []
-			flsnrs = []
-			while qry.next():
-				gmlids.append( qry.value(0) )
-				flsnrs.append( qry.value(1) )
-
-			if not gmlids:
+			if len(fs) == 0:
 				QApplication.restoreOverrideCursor()
 				QMessageBox.information( None, u"Fehler", u"Keine Flurstücke gefunden." )
 				return
 
-			self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id IN ('" + "','".join( gmlids ) + "')" )
+			gmlids = []
+			for e in fs:
+				gmlids.append( e['gmlid'] )
 
-			currentLayer = self.iface.activeLayer()
+			try:
+				for i in range(0, len(fs)):
+					sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+					sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
+					sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#%d#" % (fs[i]['flsnr'], 0 if i+1 == len(fs) else 1 ) )
+					sock.close()
 
-			self.iface.mapCanvas().refresh()
+				if win32:
+					s = QSettings( "norBIT", "EDBSgen/PRO" )
+					window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
+					win32gui.SetForegroundWindow( window )
 
-			for i in range(0, len(flsnrs)):
-				sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-				sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
-				sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#%d#" % (flsnrs[i], 0 if i+1 == len(flsnrs) else 1 ) )
-				sock.close()
-
-			if win32:
-				s = QSettings( "norBIT", "EDBSgen/PRO" )
-				window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
-				win32gui.SetForegroundWindow( window )
+			except:
+				QMessageBox.information( None, u"Fehler", u"Verbindung schlug fehl." )
 
 		self.rubberBand.reset( QGis.Polygon )
 
