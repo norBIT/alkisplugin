@@ -936,8 +936,14 @@ class alkisplugin:
 
 
 	def message(self, msg):
-		QMessageBox.warning( None, "ALKIS", u"Nachricht:%s" % msg )
-
+		if msg.startswith("ALKISDRAW"):
+			(prefix,hatch,window,qry) = msg.split(' ', 3)
+			if qry.startswith("ids:"):
+				self.highlight( "gml_id in (%s)" % qry[4:] )
+			elif qry.startswith("where:"):
+				self.highlight( qry[6:] )
+		else:
+			qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
 
 	def clearHighlight(self):
 		if not self.areaMarkerLayer:
