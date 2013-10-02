@@ -967,12 +967,17 @@ class alkisplugin:
 	def message(self, msg):
 		if msg.startswith("ALKISDRAW"):
 			(prefix,hatch,window,qry) = msg.split(' ', 3)
+#			qDebug( u"prefix:%s hatch:%s window:%s qry:%s" % (prefix,hatch,window,qry) )
 			if qry.startswith("ids:"):
-				self.highlight( "gml_id in (%s)" % qry[4:] )
+				self.highlight( "gml_id in (%s)" % qry[4:], True )
 			elif qry.startswith("where:"):
-				self.highlight( qry[6:] )
-		else:
-			qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
+				self.highlight( qry[6:], True )
+			elif qry.startswith("select "):
+				self.highlight( "gml_id in (%s)" % qry, True )
+#			else:
+#				qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
+#		else:
+#			qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
 
 	def clearHighlight(self):
 		if not self.areaMarkerLayer:
@@ -988,7 +993,7 @@ class alkisplugin:
 		currentLayer = self.iface.activeLayer()
 		self.iface.mapCanvas().refresh()
 
-	def highlight(self, where):
+	def highlight(self, where, zoomTo=False):
 		if self.areaMarkerLayer is None:
 			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
 			if ok:
@@ -1025,6 +1030,7 @@ class alkisplugin:
 		if len(fs)==0:
 			return fs
 
+
 		gmlids = []
 		for e in fs:
 			gmlids.append( e['gmlid'] )
@@ -1034,6 +1040,24 @@ class alkisplugin:
 		currentLayer = self.iface.activeLayer()
 
 		self.iface.mapCanvas().refresh()
+
+		if zoomTo and qry.exec_( u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
+			bb = qry.value(0)[4:-1]
+			(p0,p1) = bb.split(",")
+			(x0,y0) = p0.split(" ")
+			(x1,y1) = p1.split(" ")
+			qDebug( "x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
+			rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
+
+			r = self.iface.mapCanvas().mapRenderer()
+			if r.hasCrsTransformEnabled():
+				t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(25832), r.destinationCrs() )
+				rect = t.transform( rect )
+
+			qDebug( "rect:%s" % rect.toString() )
+
+			self.iface.mapCanvas().setExtent( rect )
+			self.iface.mapCanvas().refresh()
 
 		return fs
 
@@ -1277,21 +1301,21 @@ class ALKISOwnerInfo(QgsMapTool):
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Fl¤chenmarkierungslayer nicht gefunden!\n" )
                         return
 
-                QApplication.setOverrideCursor( Qt.WaitCursor )
-
-                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() ) )
-
-                if len(fs) == 0:
-                        QApplication.restoreOverrideCursor()
-                        QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
-                        return
-
 		try:
-			info = Info( self.getPage(fs) )
-			info.setWindowTitle( "Flurstücksnachweis" )
-			info.exec_()
+			QApplication.setOverrideCursor( Qt.WaitCursor )
+
+			fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() ) )
+
+			if len(fs) == 0:
+				QApplication.restoreOverrideCursor()
+				QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
+				return
 		finally:
 			QApplication.restoreOverrideCursor()
+
+		info = Info( self.getPage(fs) )
+		info.setWindowTitle( "Flurstücksnachweis" )
+		info.exec_()
 
 
 	def getPage(self,fs):
