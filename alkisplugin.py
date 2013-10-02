@@ -15,15 +15,17 @@ try:
 except:
 	win32 = False
 
-import conf, os, socket, resources
+import time, info, conf, os, socket, resources
 
 def qDebug(s):
 	QtCore.qDebug( s.encode('ascii', 'ignore') )
 
 class Conf(QDialog, conf.Ui_Dialog):
-	def __init__(self):
+	def __init__(self, plugin):
 		QDialog.__init__(self)
 		self.setupUi(self)
+
+		self.plugin = plugin
 
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
@@ -39,6 +41,7 @@ class Conf(QDialog, conf.Ui_Dialog):
 
 		self.bb.accepted.connect(self.accept)
 		self.bb.rejected.connect(self.reject)
+		self.pbEinbinden.clicked.connect(self.run)
 
 	def accept(self):
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
@@ -52,6 +55,16 @@ class Conf(QDialog, conf.Ui_Dialog):
 		s.setValue( "appport", self.leAPPPORT.text() )
 
 		QDialog.accept(self)
+
+	def run(self):
+		self.plugin.run()
+
+class Info(QDialog, info.Ui_Dialog):
+	def __init__(self, html):
+		QDialog.__init__(self)
+		self.setupUi(self)
+
+		self.wvEigner.setHtml( html )
 
 class alkisplugin:
 	themen = (
@@ -435,11 +448,6 @@ class alkisplugin:
 		self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
 		self.confAction.triggered.connect(self.conf)
 
-		self.insertAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Einbinden", self.iface.mainWindow())
-		self.insertAction.setWhatsThis("ALKIS-Layer einbinden")
-		self.insertAction.setStatusTip("ALKIS-Layer einbinden")
-		self.insertAction.triggered.connect(self.run)
-
 		self.searchAction = QAction(QIcon(":/plugins/alkis/find.png"), "Beschriftung suchen", self.iface.mainWindow())
 		self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
 		self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
@@ -448,11 +456,9 @@ class alkisplugin:
 
 		if hasattr(self.iface, "addPluginToDatabaseMenu"):
 			self.iface.addPluginToDatabaseMenu("&ALKIS", self.searchAction)
-			self.iface.addPluginToDatabaseMenu("&ALKIS", self.insertAction)
 			self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
 		else:
 			self.iface.addPluginToMenu("&ALKIS", self.searchAction)
-			self.iface.addPluginToMenu("&ALKIS", self.insertAction)
 			self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
 		self.pointInfoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
@@ -465,6 +471,11 @@ class alkisplugin:
 		self.iface.addToolBarIcon( self.polygonInfoAction )
 		self.polygonInfoTool = ALKISPolygonInfo( self )
 
+		self.queryOwnerAction = QAction(QIcon(":/plugins/alkis/eigner.png"), "Eigner abfragen", self.iface.mainWindow())
+		self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
+		self.iface.addToolBarIcon( self.queryOwnerAction )
+		self.queryOwnerInfoTool = ALKISOwnerInfo( self )
+
 		self.clearAction = QAction(QIcon(":/plugins/alkis/clear.png"), "Hervorhebungen entfernen", self.iface.mainWindow())
 		self.clearAction.setWhatsThis("Hervorhebungen entfernen")
 		self.clearAction.setStatusTip("Hervorhebungen entfernen")
@@ -475,29 +486,38 @@ class alkisplugin:
 			self.iface.mainWindow().initializationCompleted.connect( self.register )
 
 	def unload(self):
-		try:
+		#try:
 			self.iface.removeToolBarIcon( self.pointInfoAction )
 			self.iface.removeToolBarIcon( self.polygonInfoAction )
+			self.iface.removeToolBarIcon( self.queryOwnerAction )
 
-			self.confAction.deleteLater()
-			self.confAction = None
-			self.insertAction.deleteLater()
-			self.insertAction = None
-			self.searchAction.deleteLater()
-			self.searchAction = None
-			self.clearAction.deleteLater()
-			self.clearAction = None
+			if self.confAction:
+				self.confAction.deleteLater()
+				self.confAction = None
+			if self.searchAction:
+				self.searchAction.deleteLater()
+				self.searchAction = None
 
-			self.pointInfoTool.deleteLater()
-			self.pointInfoTool = None
+			if self.clearAction:
+				self.clearAction.deleteLater()
+				self.clearAction = None
 
-			self.polygonInfoTool.deleteLater()
-			self.polygonInfoTool = None
-		except:
-			pass
+			if self.pointInfoTool:
+				self.pointInfoTool.deleteLater()
+				self.pointInfoTool = None
+
+			if self.polygonInfoTool:
+				self.polygonInfoTool.deleteLater()
+				self.polygonInfoTool = None
+
+			if self.queryOwnerInfoTool:
+				self.queryOwnerInfoTool.deleteLater()
+				self.queryOwnerInfoTool = None
+		#except:
+		#	pass
 
 	def conf(self):
-		dlg = Conf()
+		dlg = Conf(self)
 		dlg.exec_()
 
 	def search(self):
@@ -551,41 +571,11 @@ class alkisplugin:
 			QApplication.restoreOverrideCursor()
 
 	def alkisimport(self):
-		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-
-		service = s.value( "service", "" )
-		host = s.value( "host", "" )
-		port = s.value( "port", "5432" )
-		dbname = s.value( "dbname", "" )
-		uid = s.value( "uid", "" )
-		pwd = s.value( "pwd", "" )
-
-		uri = QgsDataSourceURI()
-
-		if service == "":
-			uri.setConnection( host, port, dbname, uid, pwd )
-		else:
-			uri.setConnection( service, dbname, uid, pwd )
-
-		conninfo = uri.connectionInfo()
-
-		db = QSqlDatabase.addDatabase( "QPSQL" )
-		db.setConnectOptions( conninfo )
-
 		self.iface.mapCanvas().setRenderFlag( False )
 
-		if not db.open():
-			while not db.open():
-				(ok,uid,pwd) = QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() )
-				if not ok:
-					return
-
-				uri.setUsername(uid)
-				uri.setPassword(pwd)
-
-				db.setConnectOptions( uri.connectionInfo() )
-
-			QgsCredentials.instance().put( conninfo, uid, pwd )
+		db = self.opendb()
+		if db is None:
+			return
 
 		qry = QSqlQuery(db)
 
@@ -924,6 +914,9 @@ class alkisplugin:
 	def setPolygonInfoTool(self):
 		self.iface.mapCanvas().setMapTool( self.polygonInfoTool )
 
+	def setQueryOwnerTool(self):
+		self.iface.mapCanvas().setMapTool( self.queryOwnerInfoTool )
+
 	def register(self):
 		edbsgen = self.iface.mainWindow().findChild( QObject, "EDBSQuery" )
 		if edbsgen:
@@ -933,6 +926,42 @@ class alkisplugin:
 				qDebug( "not connected" )
 		else:
 			return False
+
+	def opendb(self):
+		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+
+		service = s.value( "service", "" )
+		host = s.value( "host", "" )
+		port = s.value( "port", "5432" )
+		dbname = s.value( "dbname", "" )
+		uid = s.value( "uid", "" )
+		pwd = s.value( "pwd", "" )
+
+		uri = QgsDataSourceURI()
+
+		if service == "":
+			uri.setConnection( host, port, dbname, uid, pwd )
+		else:
+			uri.setConnection( service, dbname, uid, pwd )
+
+		conninfo = uri.connectionInfo()
+
+		db = QSqlDatabase.addDatabase( "QPSQL" )
+		db.setConnectOptions( conninfo )
+
+		if not db.open():
+			while not db.open():
+				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
+					return None
+
+				uri.setUsername(uid)
+				uri.setPassword(pwd)
+
+				db.setConnectOptions( uri.connectionInfo() )
+
+			QgsCredentials.instance().put( conninfo, uid, pwd )
+
+		return db
 
 
 	def message(self, msg):
@@ -969,38 +998,9 @@ class alkisplugin:
 			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 			return
 
-		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-
-		service = s.value( "service", "" )
-		host = s.value( "host", "" )
-		port = s.value( "port", "5432" )
-		dbname = s.value( "dbname", "" )
-		uid = s.value( "uid", "" )
-		pwd = s.value( "pwd", "" )
-
-		uri = QgsDataSourceURI()
-
-		if service == "":
-			uri.setConnection( host, port, dbname, uid, pwd )
-		else:
-			uri.setConnection( service, dbname, uid, pwd )
-
-		conninfo = uri.connectionInfo()
-
-		db = QSqlDatabase.addDatabase( "QPSQL" )
-		db.setConnectOptions( conninfo )
-
-		if not db.open():
-			while not db.open():
-				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
-					return
-
-				uri.setUsername(uid)
-				uri.setPassword(pwd)
-
-				db.setConnectOptions( uri.connectionInfo() )
-
-			QgsCredentials.instance().put( conninfo, uid, pwd )
+		db = self.opendb()
+		if db is None:
+			return
 
 		qry = QSqlQuery(db)
 
@@ -1200,3 +1200,387 @@ class ALKISPolygonInfo(QgsMapTool):
 		self.rubberBand.reset( QGis.Polygon )
 
 		QApplication.restoreOverrideCursor()
+
+class ALKISOwnerInfo(QgsMapTool):
+	def __init__(self, plugin):
+		QgsMapTool.__init__(self, plugin.iface.mapCanvas())
+		self.plugin = plugin
+		self.iface = plugin.iface
+		self.cursor = QCursor( QPixmap( ["16 16 3 1",
+					"      c None",
+					".     c #FF0000",
+					"+     c #FFFFFF",
+					"                ",
+					"       +.+      ",
+					"      ++.++     ",
+					"     +.....+    ",
+					"    +.     .+   ",
+					"   +.   .   .+  ",
+					"  +.    .    .+ ",
+					" ++.    .    .++",
+					" ... ...+... ...",
+					" ++.    .    .++",
+					"  +.    .    .+ ",
+					"   +.   .   .+  ",
+					"   ++.     .+   ",
+					"    ++.....+    ",
+					"      ++.++     ",
+					"       +.+      "] ) )
+
+		self.crs = QgsCoordinateReferenceSystem(25832)
+		self.areaMarkerLayer = None
+
+	def canvasPressEvent(self,e):
+		pass
+
+	def canvasMoveEvent(self,e):
+		pass
+
+	def fetchall(self, db, sql):
+		rows = []
+
+		qry = QSqlQuery(db)
+
+		if qry.exec_(sql):
+			rec = qry.record()
+
+			while qry.next():
+				row = {}
+
+				for i in range(0, rec.count()):
+					v = "%s" % qry.value(i)
+					if v=="NULL":
+						v=''
+					row[ rec.fieldName(i) ] = v.strip()
+
+				rows.append( row )
+		else:
+			qDebug( "Exec failed: " + qry.lastError().text() )
+
+		return rows
+
+
+	def canvasReleaseEvent(self,e):
+                point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates( e.x(), e.y() )
+
+                r = self.iface.mapCanvas().mapRenderer()
+                if r.hasCrsTransformEnabled():
+                        t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
+                        point = t.transform( point )
+
+                if self.areaMarkerLayer is None:
+                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+                        if ok:
+                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+                if self.areaMarkerLayer is None:
+                        QMessageBox.warning( None, "ALKIS", u"Fehler: Fl¤chenmarkierungslayer nicht gefunden!\n" )
+                        return
+
+                QApplication.setOverrideCursor( Qt.WaitCursor )
+
+                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() ) )
+
+                if len(fs) == 0:
+                        QApplication.restoreOverrideCursor()
+                        QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
+                        return
+
+		try:
+			info = Info( self.getPage(fs) )
+			info.setWindowTitle( "Flurstücksnachweis" )
+			info.exec_()
+		finally:
+			QApplication.restoreOverrideCursor()
+
+
+	def getPage(self,fs):
+		db = self.plugin.opendb()
+		if db is None:
+			return
+
+		qry = QSqlQuery(db)
+		if qry.exec_("SELECT 1 FROM pg_attribute WHERE attrelid=(SELECT oid FROM pg_class WHERE relname='eignerart') AND attname='anteil'") and qry.next():
+			exists_ea_anteil = qry.value(0) == 1
+		else:
+			exists_ea_anteil = False
+
+		html=""
+		for i in range(0, len(fs)):
+			flsnr = fs[i]['flsnr']
+
+			best = self.fetchall( db, ("SELECT "
+				+ "ea.bvnr"
+				+ ",'' as pz"
+				+ ",(SELECT eignerart FROM eign_shl WHERE ea.b=b) as eignerart"
+				+ ",%s as anteil"
+				+ ",ea.ff_stand AS zhist"
+				+ ",b.bestdnr"
+				+ ",b.gbbz"
+				+ ",b.gbblnr"
+				+ ",b.bestfl"
+				+ ",b.ff_stand AS bhist"
+				+ " FROM eignerart ea"
+				+ " JOIN bestand b ON ea.bestdnr = b.bestdnr"
+				+ " WHERE ea.flsnr = '%s'"
+				+ " ORDER BY zhist,bhist,b") % ("ea.anteil" if exists_ea_anteil else "''", flsnr)
+				)
+
+			res = self.fetchall( db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr )
+			res = res[0]
+
+			res['datum'] = time.strftime( "%d. %B %Y" )
+			res['hist'] = 0
+
+			res['str']  = self.fetchall( db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0" % flsnr )
+			res['nutz'] = self.fetchall( db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr )
+			res['klas'] = self.fetchall( db, "SELECT kl.*, kls.klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0" % flsnr )
+			res['afst'] = self.fetchall( db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr )
+			res['best'] = self.fetchall( db, "SELECT ea.bvnr,'' as pz,(SELECT eignerart FROM eign_shl WHERE ea.b = b) as eignerart,%s as anteil,ea.ff_stand AS zhist,b.bestdnr,b.gbbz,b.gbblnr,b.bestfl,b.ff_stand AS bhist FROM eignerart ea JOIN bestand b ON ea.bestdnr = b.bestdnr WHERE ea.flsnr='%s' ORDER BY zhist,bhist,b" %
+								("ea.anteil" if exists_ea_anteil else "''", flsnr) )
+
+			for b in res['best']:
+				b['bse'] = self.fetchall( db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'] )
+
+			for k,v in res.iteritems():
+				qDebug( "%s:%s\n" % ( k, str(v) ) )
+
+			html = u"""
+<HTML xmlns="http://www.w3.org/1999/xhtml">
+  <HEAD>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  </HEAD>
+  <BODY>
+<style>
+.fls_tab{width:100%%;empty-cells:show}
+.fls_time{text-align:right;width:100%%}
+.fls_headline_col{background-color:#EEEEEE;width:100%%;height:30px;text-align:center;}
+.fls_headline{font-weight:bold;font-size:24px;}
+.fls_col_names{font-weight:bold;}
+.fls_col_values{vertical-align:top;}
+.fls_bst{width:100%%;empty-cells:show}
+.fls_hr{border:dotted 1px;color:#080808;}
+</style>
+
+<TABLE class="fls_tab" border="0">
+    <TR><TD>Flurst&uuml;cksnachweis</TD><TD class="fls_time" colspan="6"><span>%(datum)s</TD></TR>
+    <TR><TD colspan="7"><hr style="width:100%%"></TD></TR>
+    <TR class="fls_headline_col">
+        <TD colspan="7"><span class="fls_headline">Flurst&uuml;cksnachweis<span></TD>
+    </TR>
+    <TR><TD colspan="7">&nbsp;</TD></TR>
+    <TR>
+        <TD colspan="7"><h3>Flurst&uuml;ck<hr style="width:100%%"></h3></TD>
+    </TR>
+    <TR class="fls_col_names">
+        <TD width="15%%">Gemarkung</TD>
+        <TD width="6%%">Flur</TD>
+        <TD width="15%%">Flurst&uuml;ck</TD>
+        <TD width="20%%">Flurkarte</TD>
+        <TD width="17%%">Entstehung</TD>
+        <TD width="17%%">Fortf&uuml;hrung</TD>
+        <TD width="5%%">Fl&auml;che</TD>
+    </TR>
+    <TR class="fls_col_values">
+        <TD>%(gemashl)s<br>%(gemarkung)s</TD>
+        <TD>%(flr)s</TD>
+        <TD>%(flsnrk)s</TD>
+        <TD>%(flurknr)s</TD>
+        <TD>%(entst)s</TD>
+        <TD>%(fortf)s</TD>
+        <TD>%(flsfl)s m&sup2;</TD>
+    </TR>
+</TABLE>
+""" % res
+
+			if res['blbnr']:
+				html += """
+<TABLE border="0" class="fls_tab">
+    <TR class="fls_col_names">
+        <TD width="21%%"></TD>
+        <TD width="79%%">Baulastenblattnr.</TD>
+    </TR>
+    <TR class="fls_col_values">
+        <TD></TD>
+        <TD>%(blbnr)s</TD>
+    </TR>
+</TABLE>
+""" % res
+
+			if res['lagebez'] or res['anl_verm']:
+				html += """
+<TABLE border="0" class="fls_tab">
+    <TR class="fls_col_names">
+        <TD width="21%%"></TD>
+        <TD width="52%%">Lage</TD>
+        <TD width="27%%">Anliegervermerk</TD>
+    </TR>
+    <TR class="fls_col_values">
+        <TD></TD>
+        <TD>%(lagebez)s</TD>
+        <TD>%(anl_verm)s</TD>
+    </TR>
+</TABLE>
+""" % res
+
+			if res['str']:
+				html += """
+<TABLE border="0" class="fls_tab">
+    <TR class="fls_col_names">
+	<TD></TD><TD>Strasse</TD><TD>Hausnummer</TD>
+    </TR>
+"""
+
+				for strres in res['str']:
+					html += """
+    <TR class="fls_col_values">
+        <TD></TD><TD>%(strname)s</TD><TD>%(hausnr)s</TD></TR>
+    </TR>
+""" % strres
+
+				html += """
+</TABLE>
+"""
+
+			if res['nutz']:
+				html += """
+<TABLE border="0" class="fls_tab">
+	<TR class="fls_col_names"><TD width="21%%"></TD><TD width="69%%">Nutzung</TD><TD width="10%%">Fl&auml;che</TD></TR>
+"""
+
+				for nutz in res['nutz']:
+					html += """
+	<TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD>%(fl)s m&sup2;</TD></TR>
+""" % nutz
+
+				html += """
+</TABLE>
+"""
+			else:
+				html += """
+        <p>Keine Nutzungen.</p>
+"""
+
+			if res['klas']:
+				html += """
+<TABLE border="0" class="fls_tab">
+	<TR class="fls_col_names"><TD></TD><TD>Klassifizierung</TD><TD>Fl&auml;che</TD></TR>
+"""
+
+				for klas in res['klas']:
+					html += """
+	<TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD>%(fl)s m&sup2;</TD></TR>
+""" % klas
+
+				html += """
+</TABLE>
+"""
+			else:
+				html += """
+	<p>Keine Klassifizierungen.</p>
+"""
+
+			if res['afst']:
+				html += """
+<TABLE border="0" class="fls_tab">
+	<TR class="fls_col_names"><TD width="21%%"></TD><TD width="79%%">Ausf&uuml;hrende Stelle</TD></TR>
+"""
+
+				for afst in res['afst']:
+					html += """
+	<TR class="fls_col_values"><TD></TD><TD>%(afst_txt)s</TD></TR>
+""" % afst
+
+				html += """
+</TABLE>
+"""
+			else:
+				html += """
+        <p>Keine ausf&uuml;hrenden Stellen.</p>
+"""
+
+			if res['best']:
+				html += """
+<TABLE border="0" class="fls_bst">
+	<TR><TD colspan="6">&nbsp;<br>&nbsp;</TD></TR>
+	<TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%%"></h3></TD></TR>
+"""
+
+				for best in res['best']:
+					html += """
+	<TR class="fls_col_names">
+		<TD>Bestandsnummer</TD>
+		<TD>Grundbuchbezirk</TD>
+		<TD colspan="2">Grundbuchblattnr.</TD>
+		<TD>Anteil</TD>
+	</TR>
+	<TR class="fls_col_values">
+		<TD>%(bestdnr)s</TD>
+		<TD>%(gbbz)s</TD>
+		<TD colspan="2">%(gbblnr)s</TD>
+		<TD>%(anteil)s</TD>
+	</TR>
+        <TR class="fls_col_names">
+		<TD></TD>
+		<TD>Buchungskennz.</TD>
+		<TD>BVNR</TD>
+		<TD>PZ</TD>
+""" % best
+
+					if res['hist']:
+						html += """
+		<TD>Hist. Bestand</TD><TD>Hist. Zuordnung</TD>
+"""
+					else:
+						html += """
+		<TD></TD><TD></TD>
+"""
+
+					html += """
+	</TR>
+	<TR class="fls_col_values">
+		<TD></TD>
+		<TD>%(eignerart)s</TD>
+		<TD>%(bvnr)s</TD>
+		<TD>%(pz)s</TD>
+""" % best
+
+					html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['bhist'] else "")
+					html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['zhist'] else "")
+
+					html += """
+	</TR>
+"""
+
+				if best['bse']:
+					html += """
+	<TR class="fls_col_names"><TD>Anteil</TD><TD colspan="5">Namensinformation</TD></TR>
+"""
+
+					for bse in best['bse']:
+						html += """
+	<TR class="fls_col_values">
+		<TD>%(antverh)s</TD>
+		<TD colspan="5">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
+	</TR>
+""" % bse
+				else:
+					html += """
+	<p>Keine Eigner gefunden.</p>
+"""
+
+					html += """
+        <TR><TD colspan="6"><hr class="fls_hr"></TD></TR>
+"""
+
+			html += """
+        </TABLE>
+</BODY>
+</HTML>
+"""
+
+#		f = open("c:/cygwin/tmp/fs.html", "w")
+#		f.write(html.encode('utf8'))
+#		f.close()
+
+		return html

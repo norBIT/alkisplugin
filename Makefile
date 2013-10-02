@@ -1,4 +1,4 @@
-all: conf.py resources.py
+all: conf.py info.py resources.py
 
 resources.qrc: logo.png
 	touch -r logo.png resources.qrc
