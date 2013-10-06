@@ -1024,6 +1024,8 @@ class alkisplugin:
 			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
 			return fs
 
+		qDebug( qry.lastQuery() )
+
 		while qry.next():
 			fs.append( { 'gmlid': qry.value(0), 'flsnr':qry.value(1) } )
 
@@ -1186,15 +1188,18 @@ class ALKISPolygonInfo(QgsMapTool):
 			self.rubberBand.addPoint( point )
 			return
 
-		r = self.iface.mapCanvas().mapRenderer()
-		if r.hasCrsTransformEnabled():
-			t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
-			point = t.transform( point )
-
 		QApplication.setOverrideCursor( Qt.WaitCursor )
 
 		if self.rubberBand.numberOfVertices()>=3:
 			g = self.rubberBand.asGeometry()
+
+			r = self.iface.mapCanvas().mapRenderer()
+			if r.hasCrsTransformEnabled():
+				t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
+				g.transform( t )
+
+			self.rubberBand.reset( QGis.Polygon )
+
 			fs = self.plugin.highlight( "st_intersects(wkb_geometry,st_geomfromewkt('SRID=25832;POLYGON((%s))'::text))" % ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) ) )
 
 			if len(fs) == 0:
@@ -1207,6 +1212,7 @@ class ALKISPolygonInfo(QgsMapTool):
 				gmlids.append( e['gmlid'] )
 
 			try:
+				s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 				for i in range(0, len(fs)):
 					sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
 					sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
@@ -1220,8 +1226,8 @@ class ALKISPolygonInfo(QgsMapTool):
 
 			except:
 				QMessageBox.information( None, u"Fehler", u"Verbindung schlug fehl." )
-
-		self.rubberBand.reset( QGis.Polygon )
+		else:
+			self.rubberBand.reset( QGis.Polygon )
 
 		QApplication.restoreOverrideCursor()
 
