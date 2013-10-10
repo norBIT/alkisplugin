@@ -898,7 +898,7 @@ class alkisplugin:
 			sym.setSize( 20.0 )
 			sym.setOutputUnit( QgsSymbolV2.MM )
 			sym.setAlpha( 0.5 )
-			self.pointMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
+			self.areaMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
 			self.iface.legendInterface().moveLayer( self.areaMarkerLayer, markerGroup )
 
 			QgsProject.instance().writeEntry( "alkis", "/pointMarkerLayer", self.pointMarkerLayer.id() )
@@ -1304,7 +1304,7 @@ class ALKISOwnerInfo(QgsMapTool):
                                 self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
                 if self.areaMarkerLayer is None:
-                        QMessageBox.warning( None, "ALKIS", u"Fehler: Fl¤chenmarkierungslayer nicht gefunden!\n" )
+                        QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
                         return
 
 		try:
