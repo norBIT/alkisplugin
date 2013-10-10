@@ -571,11 +571,11 @@ class alkisplugin:
 			QApplication.restoreOverrideCursor()
 
 	def alkisimport(self):
-		self.iface.mapCanvas().setRenderFlag( False )
-
-		db = self.opendb()
+		(db,conninfo) = self.opendb()
 		if db is None:
 			return
+
+		self.iface.mapCanvas().setRenderFlag( False )
 
 		qry = QSqlQuery(db)
 
@@ -952,7 +952,7 @@ class alkisplugin:
 		if not db.open():
 			while not db.open():
 				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
-					return None
+					return (None,None)
 
 				uri.setUsername(uid)
 				uri.setPassword(pwd)
@@ -961,7 +961,7 @@ class alkisplugin:
 
 			QgsCredentials.instance().put( conninfo, uid, pwd )
 
-		return db
+		return (db,conninfo)
 
 
 	def message(self, msg):
@@ -1003,7 +1003,7 @@ class alkisplugin:
 			QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 			return
 
-		db = self.opendb()
+		(db,conninfo) = self.opendb()
 		if db is None:
 			return
 
@@ -1325,7 +1325,7 @@ class ALKISOwnerInfo(QgsMapTool):
 
 
 	def getPage(self,fs):
-		db = self.plugin.opendb()
+		(db,conninfo) = self.plugin.opendb()
 		if db is None:
 			return
 
