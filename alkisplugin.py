@@ -1373,7 +1373,7 @@ class ALKISOwnerInfo(QgsMapTool):
 				b['bse'] = self.fetchall( db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'] )
 
 			for k,v in res.iteritems():
-				qDebug( "%s:%s\n" % ( k, str(v) ) )
+				qDebug( "%s:%s\n" % ( k, unicode(v) ) )
 
 			html = u"""
 <HTML xmlns="http://www.w3.org/1999/xhtml">
