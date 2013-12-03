@@ -106,11 +106,11 @@ class alkisplugin:
                 },
                 {
                         'name'   : u"Rechtliche Festlegungen",
-                        'area'   : { 'min':None, 'max':None },
-                        'outline': { 'min':None, 'max':None },
-                        'line'   : { 'min':None, 'max':None },
-                        'point'  : { 'min':None, 'max':None },
-                        'label'  : { 'min':None, 'max':None },
+                        'area'   : { 'min':0, 'max':500000 },
+                        'outline': { 'min':0, 'max':25000 },
+                        'line'   : { 'min':0, 'max':25000 },
+                        'point'  : { 'min':0, 'max':25000 },
+                        'label'  : { 'min':0, 'max':25000 },
                         'classes': {
 				'1701': u'BAB/Bundesstraße',
 				'1702': u'Landes-/Staatsstraße',
@@ -122,11 +122,11 @@ class alkisplugin:
                 },
                 {
                         'name'   : u"Verkehr",
-                        'area'   : { 'min':None, 'max':None },
-                        'outline': { 'min':None, 'max':None },
-                        'line'   : { 'min':None, 'max':None },
-                        'point'  : { 'min':None, 'max':None },
-                        'label'  : { 'min':None, 'max':None },
+                        'area'   : { 'min':0, 'max':25000 },
+                        'outline': { 'min':0, 'max':5000 },
+                        'line'   : { 'min':0, 'max':5000 },
+                        'point'  : { 'min':0, 'max':5000 },
+                        'label'  : { 'min':0, 'max':5000 },
                         'classes': {
 				'2533': u'Widerlager',
 				'2515': u'Bahnverkehr',
@@ -136,47 +136,47 @@ class alkisplugin:
                 },
                 {
                         'name'   : u"Friedhöfe",
-                        'area'   : { 'min':None, 'max':None },
-                        'outline': { 'min':None, 'max':None },
-                        'line'   : { 'min':None, 'max':None },
-                        'point'  : { 'min':None, 'max':None },
-                        'label'  : { 'min':None, 'max':None },
+                        'area'   : { 'min':0, 'max':25000 },
+                        'outline': { 'min':0, 'max':5000 },
+                        'line'   : { 'min':0, 'max':5000 },
+                        'point'  : { 'min':0, 'max':5000 },
+                        'label'  : { 'min':0, 'max':5000 },
                         'classes': { },
                 },
                 {
                         'name'   : u"Vegetation",
-                        'area'   : { 'min':None, 'max':None },
-                        'outline': { 'min':None, 'max':None },
-                        'line'   : { 'min':None, 'max':None },
-                        'point'  : { 'min':None, 'max':None },
-                        'label'  : { 'min':None, 'max':None },
+                        'area'   : { 'min':0, 'max':25000 },
+                        'outline': { 'min':0, 'max':5000 },
+                        'line'   : { 'min':0, 'max':5000 },
+                        'point'  : { 'min':0, 'max':5000 },
+                        'label'  : { 'min':0, 'max':5000 },
                         'classes': { },
                 },
                 {
                         'name'   : u"Landwirtschaftliche Nutzung",
-                        'area'   : { 'min':None, 'max':None },
-                        'outline': { 'min':None, 'max':None },
-                        'line'   : { 'min':None, 'max':None },
-                        'point'  : { 'min':None, 'max':None },
-                        'label'  : { 'min':None, 'max':None },
+                        'area'   : { 'min':0, 'max':None },
+                        'outline': { 'min':0, 'max':None },
+                        'line'   : { 'min':0, 'max':None },
+                        'point'  : { 'min':0, 'max':None },
+                        'label'  : { 'min':0, 'max':None },
                         'classes': { },
                 },
                 {
                         'name'   : u"Gewässer",
-                        'area'   : { 'min':None, 'max':None, },
-                        'outline': { 'min':None, 'max':None, },
-                        'line'   : { 'min':None, 'max':None, },
-                        'point'  : { 'min':None, 'max':None, },
-                        'label'  : { 'min':None, 'max':None, },
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':5000, },
+                        'line'   : { 'min':0, 'max':5000, },
+                        'point'  : { 'min':0, 'max':5000, },
+                        'label'  : { 'min':0, 'max':5000, },
                         'classes': { },
                 },
                 {
                         'name'   : u"Politische Grenzen",
-                        'area'   : { 'min':None, 'max':None, },
-                        'outline': { 'min':None, 'max':None, },
-                        'line'   : { 'min':None, 'max':None, },
-                        'point'  : { 'min':None, 'max':None, },
-                        'label'  : { 'min':None, 'max':None, },
+                        'area'   : { 'min':0, 'max':5000, },
+                        'outline': { 'min':0, 'max':5000, },
+                        'line'   : { 'min':0, 'max':100000, },
+                        'point'  : { 'min':0, 'max':5000, },
+                        'label'  : { 'min':0, 'max':5000, },
                         'classes': {
                                         '2010': u'Landkreisgrenze',
                                         '2012': u'Flurgrenze',
@@ -190,29 +190,29 @@ class alkisplugin:
                 },
                 {
                         'name'   : u"Industrie und Gewerbe",
-                        'area'   : { 'min':None, 'max':None, },
-                        'outline': { 'min':None, 'max':None, },
-                        'line'   : { 'min':None, 'max':None, },
-                        'point'  : { 'min':None, 'max':None, },
-                        'label'  : { 'min':None, 'max':None, },
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':10000, },
+                        'line'   : { 'min':0, 'max':10000, },
+                        'point'  : { 'min':0, 'max':10000, },
+                        'label'  : { 'min':0, 'max':10000, },
                         'classes': { },
                 },
                 {
                         'name'   : u"Sport und Freizeit",
-                        'area'   : { 'min':None, 'max':None, },
-                        'outline': { 'min':None, 'max':None, },
-                        'line'   : { 'min':None, 'max':None, },
-                        'point'  : { 'min':None, 'max':None, },
-                        'label'  : { 'min':None, 'max':None, },
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':10000, },
+                        'line'   : { 'min':0, 'max':10000, },
+                        'point'  : { 'min':0, 'max':10000, },
+                        'label'  : { 'min':0, 'max':10000, },
                         'classes': { },
                 },
                 {
                         'name'   : u"Wohnbauflächen",
-                        'area'   : { 'min':None, 'max':None, },
-                        'outline': { 'min':None, 'max':None, },
-                        'line'   : { 'min':None, 'max':None, },
-                        'point'  : { 'min':None, 'max':None, },
-                        'label'  : { 'min':None, 'max':None, },
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':10000, },
+                        'line'   : { 'min':0, 'max':10000, },
+                        'point'  : { 'min':0, 'max':10000, },
+                        'label'  : { 'min':0, 'max':10000, },
                         'classes': { },
 		}
 		)
@@ -443,6 +443,8 @@ class alkisplugin:
 		self.alkisGroup = None
 
 	def initGui(self):
+		self.toolbar = self.iface.addToolBar( u"norGIS: ALKIS" );
+
 		self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
 		self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
 		self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
@@ -452,69 +454,62 @@ class alkisplugin:
 		self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
 		self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
 		self.searchAction.triggered.connect(self.search)
-		self.iface.addToolBarIcon( self.searchAction )
+		self.toolbar.addAction( self.searchAction )
 
 		if hasattr(self.iface, "addPluginToDatabaseMenu"):
-			self.iface.addPluginToDatabaseMenu("&ALKIS", self.searchAction)
 			self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
 		else:
-			self.iface.addPluginToMenu("&ALKIS", self.searchAction)
 			self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
 		self.pointInfoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
 		self.pointInfoAction.activated.connect( self.setPointInfoTool )
-		self.iface.addToolBarIcon( self.pointInfoAction )
+		self.toolbar.addAction( self.pointInfoAction )
 		self.pointInfoTool = ALKISPointInfo( self )
 
 		self.polygonInfoAction = QAction(QIcon(":/plugins/alkis/pinfo.png"), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
 		self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
-		self.iface.addToolBarIcon( self.polygonInfoAction )
+		self.toolbar.addAction( self.polygonInfoAction )
 		self.polygonInfoTool = ALKISPolygonInfo( self )
 
 		self.queryOwnerAction = QAction(QIcon(":/plugins/alkis/eigner.png"), "Eigner abfragen", self.iface.mainWindow())
 		self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
-		self.iface.addToolBarIcon( self.queryOwnerAction )
+		self.toolbar.addAction( self.queryOwnerAction )
 		self.queryOwnerInfoTool = ALKISOwnerInfo( self )
 
 		self.clearAction = QAction(QIcon(":/plugins/alkis/clear.png"), "Hervorhebungen entfernen", self.iface.mainWindow())
 		self.clearAction.setWhatsThis("Hervorhebungen entfernen")
 		self.clearAction.setStatusTip("Hervorhebungen entfernen")
 		self.clearAction.triggered.connect(self.clearHighlight)
-		self.iface.addToolBarIcon( self.clearAction )
+		self.toolbar.addAction( self.clearAction )
 
 		if not self.register():
 			self.iface.mainWindow().initializationCompleted.connect( self.register )
 
 	def unload(self):
-		#try:
-			self.iface.removeToolBarIcon( self.pointInfoAction )
-			self.iface.removeToolBarIcon( self.polygonInfoAction )
-			self.iface.removeToolBarIcon( self.queryOwnerAction )
+		del self.toolbar
 
-			if self.confAction:
-				self.confAction.deleteLater()
-				self.confAction = None
-			if self.searchAction:
-				self.searchAction.deleteLater()
-				self.searchAction = None
+		if self.confAction:
+			self.confAction.deleteLater()
+			self.confAction = None
+		if self.searchAction:
+			self.searchAction.deleteLater()
+			self.searchAction = None
 
-			if self.clearAction:
-				self.clearAction.deleteLater()
-				self.clearAction = None
+		if self.clearAction:
+			self.clearAction.deleteLater()
+			self.clearAction = None
 
-			if self.pointInfoTool:
-				self.pointInfoTool.deleteLater()
-				self.pointInfoTool = None
+		if self.pointInfoTool:
+			self.pointInfoTool.deleteLater()
+			self.pointInfoTool = None
 
-			if self.polygonInfoTool:
-				self.polygonInfoTool.deleteLater()
-				self.polygonInfoTool = None
+		if self.polygonInfoTool:
+			self.polygonInfoTool.deleteLater()
+			self.polygonInfoTool = None
 
-			if self.queryOwnerInfoTool:
-				self.queryOwnerInfoTool.deleteLater()
-				self.queryOwnerInfoTool = None
-		#except:
-		#	pass
+		if self.queryOwnerInfoTool:
+			self.queryOwnerInfoTool.deleteLater()
+			self.queryOwnerInfoTool = None
 
 	def conf(self):
 		dlg = Conf(self)
