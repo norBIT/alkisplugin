@@ -214,6 +214,15 @@ class alkisplugin:
                         'point'  : { 'min':0, 'max':10000, },
                         'label'  : { 'min':0, 'max':10000, },
                         'classes': { },
+		},
+                {
+                        'name'   : u"Topographie",
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':10000, },
+                        'line'   : { 'min':0, 'max':10000, },
+                        'point'  : { 'min':0, 'max':10000, },
+                        'label'  : { 'min':0, 'max':10000, },
+                        'classes': { },
 		}
 		)
 
@@ -946,13 +955,15 @@ class alkisplugin:
 
 		if not db.open():
 			while not db.open():
-				if not QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() ):
+				(ok, uid, pwd) = QgsCredentials.instance().get( conninfo, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text() )
+				if not ok:
 					return (None,None)
 
 				uri.setUsername(uid)
 				uri.setPassword(pwd)
+				conninfo = uri.connectionInfo()
 
-				db.setConnectOptions( uri.connectionInfo() )
+				db.setConnectOptions( conninfo )
 
 			QgsCredentials.instance().put( conninfo, uid, pwd )
 
