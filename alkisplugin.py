@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from PyQt4.QtCore import QObject, QSettings, Qt, QPointF
+from PyQt4.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
 from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
@@ -21,6 +21,9 @@ def qDebug(s):
 	QtCore.qDebug( s.encode('ascii', 'ignore') )
 
 class Conf(QDialog, conf.Ui_Dialog):
+	showProgress = pyqtSignal(int,int)
+	showStatusMessage = pyqtSignal(str)
+
 	def __init__(self, plugin):
 		QDialog.__init__(self)
 		self.setupUi(self)
@@ -43,6 +46,8 @@ class Conf(QDialog, conf.Ui_Dialog):
 		self.bb.rejected.connect(self.reject)
 		self.pbEinbinden.clicked.connect(self.run)
 
+		self.pbEignerLayer.clicked.connect(self.eignerlayer)
+
 	def accept(self):
 		s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 		s.setValue( "service", self.leSERVICE.text() )
@@ -57,7 +62,10 @@ class Conf(QDialog, conf.Ui_Dialog):
 		QDialog.accept(self)
 
 	def run(self):
-		self.plugin.run()
+		self.plugin.run(self)
+
+	def eignerlayer(self):
+		self.plugin.eignerlayer()
 
 class Info(QDialog, info.Ui_Dialog):
 	def __init__(self, html):
@@ -67,6 +75,7 @@ class Info(QDialog, info.Ui_Dialog):
 		self.wvEigner.setHtml( html )
 
 class alkisplugin:
+
 	themen = (
                 {
                         'name'   : u"Flurstücke",
@@ -91,9 +100,9 @@ class alkisplugin:
                         'point'  : { 'min':0, 'max':3500 },
                         'label'  : { 'min':0, 'max':3500 },
                         'classes': {
-				'1301': 'Wohngebäude',
-				'1309': 'Gebäude für öffentliche Zwecke',
-				'1501': 'Aussichtsturm',
+				'1301': u'Wohngebäude',
+				'1309': u'Gebäude für öffentliche Zwecke',
+				'1501': u'Aussichtsturm',
 			},
                 },
                 {
@@ -453,6 +462,7 @@ class alkisplugin:
 
 	def initGui(self):
 		self.toolbar = self.iface.addToolBar( u"norGIS: ALKIS" );
+		self.toolbar.setObjectName( "norGIS_ALKIS_Toolbar" )
 
 		self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
 		self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
@@ -567,17 +577,70 @@ class alkisplugin:
 		else:
 			return "(%s)" % sn
 
-	def run(self):
+	def run(self,conf):
 		QApplication.setOverrideCursor( Qt.WaitCursor )
 		try:
-			self.alkisimport()
+			self.alkisimport(conf)
 		finally:
 			QApplication.restoreOverrideCursor()
 
-	def alkisimport(self):
+	def eignerlayer(self):
+		QApplication.setOverrideCursor( Qt.WaitCursor )
+		try:
+			self.iface.mapCanvas().setRenderFlag( False )
+
+			(db,conninfo) = self.opendb()
+			if db is None:
+				return
+
+			layer = self.iface.addVectorLayer(
+				u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=\"(%s)\" (wkb_geometry) sql=" % (
+					conninfo,
+					u"SELECT f.ogc_fid"
+					+ ",f.gml_id"
+					+ ",f.wkb_geometry"
+					+ ",fs.flsnr"
+					+ ",gemarkung"
+					+ ",fs.flsfl"
+					+ ",fs.lagebez"
+					+ ",str_shl.strname"
+					+ ",s1.hausnr"
+#					+ ",(SELECT 'E' WHERE EXISTS (SELECT * FROM eignerart e WHERE e.flsnr=fs.flsnr AND e.b='2101'))"
+					+ ",e.bestdnr"
+					+ ",e.name1"
+					+ ",e.name3"
+					+ ",e.name4"
+					+ " FROM ax_flurstueck f"
+					+ " JOIN flurst fs ON fs.ff_stand=0 AND"
+					+  " to_char(f.land,'fm00') || to_char(f.gemarkungsnummer,'fm0000')"
+                                        +  " || '-' || to_char(f.flurnummer,'fm000')"
+                                        +  " || '-' || to_char(f.zaehler,'fm00000')"
+                                        +  " || '/' || to_char(coalesce(f.nenner,0),'fm000')=fs.flsnr"
+					+ " JOIN gema_shl ON gema_shl.gemashl=fs.gemashl"
+					+ " LEFT OUTER JOIN strassen s1 ON s1.pk=(SELECT MIN(pk) FROM strassen s2 WHERE s2.flsnr=fs.flsnr AND ff_stand=0)"
+					+ " LEFT OUTER JOIN str_shl ON str_shl.strshl=s1.strshl"
+					+ " LEFT OUTER JOIN eignerart ea ON (ea.flsnr||'#'||ea.bestdnr||'#'||ea.bvnr)="
+					+  "(SELECT MIN(flsnr||'#'||bestdnr||'#'||bvnr) FROM eignerart ea2 WHERE ea2.flsnr=fs.flsnr AND ea2.ff_stand=0)"
+					+ " LEFT OUTER JOIN eigner e ON e.pk=(SELECT MIN(pk) FROM eigner e2 WHERE ea.bestdnr=e2.bestdnr AND e2.ff_stand=0)"
+					+ " WHERE f.endet IS NULL"
+				),
+				u"Flurstücke mit Eignern",
+				"postgres" )
+
+		finally:
+			QApplication.restoreOverrideCursor()
+
+	def progress(self,i,m,s):
+		self.conf.showStatusMessage.emit( u"%s/%s" % (alkisplugin.themen[i]['name'],m) )
+		self.conf.showProgress.emit( i*5+s, len(alkisplugin.themen)*5 )
+		QCoreApplication.processEvents()
+
+	def alkisimport(self,conf):
 		(db,conninfo) = self.opendb()
 		if db is None:
 			return
+
+		self.conf = conf
 
 		self.iface.mapCanvas().setRenderFlag( False )
 
@@ -594,13 +657,20 @@ class alkisplugin:
 
 		markerGroup = self.iface.legendInterface().addGroup( "Markierungen", False, self.alkisGroup )
 
+		conf.showProgress.connect( self.iface.mainWindow().showProgress )
+		conf.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
+
 		nGroups = 0
+		iThema = -1
 		for d in alkisplugin.themen:
+			iThema += 1
 			t = d['name']
 			thisGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
 			nLayers = 0
 
-			qDebug( "Thema: %s" % t )
+			qDebug( u"Thema: %s" % t )
+
+			self.progress(iThema, u"Flächen", 0)
 
 			sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
 			       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
@@ -637,6 +707,8 @@ class alkisplugin:
 					del r
 			else:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+
+			self.progress(iThema, "Grenzen", 1)
 
 			sql = (u"SELECT"
 			       u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
@@ -678,6 +750,8 @@ class alkisplugin:
 			else:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 
+			self.progress(iThema, "Linien", 2)
+
 			sql = (u"SELECT"
 			       u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
 			       u" FROM alkis_linien"
@@ -717,6 +791,8 @@ class alkisplugin:
 					del r
 			else:
 				QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+
+			self.progress(iThema, "Punkte", 3)
 
 			sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE thema='%s'" % t
 			qDebug( "SQL: %s" % sql )
@@ -778,6 +854,8 @@ class alkisplugin:
 				if not qry.exec_( "SELECT count(*) FROM po_labels WHERE thema='%s' AND NOT %s IS NULL" % (t,geom) ):
 					QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
 					continue
+
+				self.progress(iThema, "Beschriftungen (%d)" % (i+1), 4+i)
 
 				if not qry.next() or int(qry.value(0))==0:
 					continue
