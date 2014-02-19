@@ -541,7 +541,7 @@ class alkisplugin:
 				self.pointMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
 		if self.pointMarkerLayer is None:
-			QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!\n" )
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!" )
 			return
 
 		(text,ok) = QInputDialog.getText( self.iface.mainWindow(), u"Beschriftung suchen", u"Suchbegriff" )
@@ -975,10 +975,8 @@ class alkisplugin:
 						u"Flächenmarkierung",
 						"postgres" )
 
-			sym = QgsMarkerSymbolV2()
+			sym = QgsFillSymbolV2()
 			sym.setColor( Qt.yellow )
-			sym.setSize( 20.0 )
-			sym.setOutputUnit( QgsSymbolV2.MM )
 			sym.setAlpha( 0.5 )
 			self.areaMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
 			self.iface.legendInterface().moveLayer( self.areaMarkerLayer, markerGroup )
@@ -1064,6 +1062,17 @@ class alkisplugin:
 #			qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
 
 	def clearHighlight(self):
+		if not self.pointMarkerLayer:
+			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/pointMarkerLayer" )
+			if ok:
+				self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+		if not self.pointMarkerLayer:
+			QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!\n" )
+			return
+
+		self.pointMarkerLayer.setSubsetString( "false" )
+
 		if not self.areaMarkerLayer:
 			(layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
 			if ok:
