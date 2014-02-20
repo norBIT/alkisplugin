@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>580</width>
-    <height>249</height>
+    <width>459</width>
+    <height>170</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>ALKIS-Import</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="6">
+   <item row="0" column="0" colspan="5">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Datenbankeinstellungen</string>
@@ -123,67 +123,21 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="3">
+   <item row="3" column="3">
     <widget class="QDialogButtonBox" name="bb">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="6">
-    <widget class="QGroupBox" name="groupBox_2">
-     <property name="title">
-      <string>norGIS-Verbindung</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="2">
-       <widget class="QLineEdit" name="leAPPHOST">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="4">
-       <widget class="QLineEdit" name="leAPPPORT">
-        <property name="inputMask">
-         <string>99999; </string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_9">
-        <property name="text">
-         <string>Host</string>
-        </property>
-        <property name="buddy">
-         <cstring>leDBNAME</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="3">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>Port</string>
-        </property>
-        <property name="buddy">
-         <cstring>leDBNAME</cstring>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="4" column="0">
+   <item row="3" column="0">
     <widget class="QPushButton" name="pbEinbinden">
      <property name="text">
       <string>Einbinden</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="2">
+   <item row="3" column="2">
     <spacer name="horizontalSpacer">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -196,10 +150,10 @@
      </property>
     </spacer>
    </item>
-   <item row="4" column="1">
+   <item row="3" column="1">
     <widget class="QPushButton" name="pbEignerLayer">
      <property name="text">
-      <string>Eignerlayer</string>
+      <string>Eigentümerlayer</string>
      </property>
     </widget>
    </item>
@@ -212,8 +166,6 @@
   <tabstop>leSERVICE</tabstop>
   <tabstop>leHOST</tabstop>
   <tabstop>lePORT</tabstop>
-  <tabstop>leAPPHOST</tabstop>
-  <tabstop>leAPPPORT</tabstop>
   <tabstop>bb</tabstop>
  </tabstops>
  <resources/>

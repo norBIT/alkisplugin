@@ -39,9 +39,6 @@ class Conf(QDialog, conf.Ui_Dialog):
 		self.leUID.setText( s.value( "uid", "" ) )
 		self.lePWD.setText( s.value( "pwd", "" ) )
 
-		self.leAPPHOST.setText( s.value( "apphost", "localhost" ) )
-		self.leAPPPORT.setText( s.value( "appport", "6102" ) )
-
 		self.bb.accepted.connect(self.accept)
 		self.bb.rejected.connect(self.reject)
 		self.pbEinbinden.clicked.connect(self.run)
@@ -56,8 +53,6 @@ class Conf(QDialog, conf.Ui_Dialog):
 		s.setValue( "dbname", self.leDBNAME.text() )
 		s.setValue( "uid", self.leUID.text() )
 		s.setValue( "pwd", self.lePWD.text() )
-		s.setValue( "apphost", self.leAPPHOST.text() )
-		s.setValue( "appport", self.leAPPPORT.text() )
 
 		QDialog.accept(self)
 
@@ -480,17 +475,7 @@ class alkisplugin:
 		else:
 			self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
-		self.pointInfoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
-		self.pointInfoAction.activated.connect( self.setPointInfoTool )
-		self.toolbar.addAction( self.pointInfoAction )
-		self.pointInfoTool = ALKISPointInfo( self )
-
-		self.polygonInfoAction = QAction(QIcon(":/plugins/alkis/pinfo.png"), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
-		self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
-		self.toolbar.addAction( self.polygonInfoAction )
-		self.polygonInfoTool = ALKISPolygonInfo( self )
-
-		self.queryOwnerAction = QAction(QIcon(":/plugins/alkis/eigner.png"), "Eigner abfragen", self.iface.mainWindow())
+		self.queryOwnerAction = QAction(QIcon(":/plugins/alkis/eigner.png"), u"Flurstücksnachweis", self.iface.mainWindow())
 		self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
 		self.toolbar.addAction( self.queryOwnerAction )
 		self.queryOwnerInfoTool = ALKISOwnerInfo( self )
@@ -500,6 +485,21 @@ class alkisplugin:
 		self.clearAction.setStatusTip("Hervorhebungen entfernen")
 		self.clearAction.triggered.connect(self.clearHighlight)
 		self.toolbar.addAction( self.clearAction )
+
+		ns = QSettings( "norBIT", "EDBSgen/PRO" )
+		if ns.contains( "norGISPort" ):
+			self.pointInfoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
+			self.pointInfoAction.activated.connect( self.setPointInfoTool )
+			self.toolbar.addAction( self.pointInfoAction )
+			self.pointInfoTool = ALKISPointInfo( self )
+
+			self.polygonInfoAction = QAction(QIcon(":/plugins/alkis/pinfo.png"), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
+			self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
+			self.toolbar.addAction( self.polygonInfoAction )
+			self.polygonInfoTool = ALKISPolygonInfo( self )
+		else:
+			self.pointInfoTool = None
+			self.polygonInfoTool = None
 
 		if not self.register():
 			self.iface.mainWindow().initializationCompleted.connect( self.register )
@@ -518,17 +518,18 @@ class alkisplugin:
 			self.clearAction.deleteLater()
 			self.clearAction = None
 
-		if self.pointInfoTool:
-			self.pointInfoTool.deleteLater()
-			self.pointInfoTool = None
-
-		if self.polygonInfoTool:
-			self.polygonInfoTool.deleteLater()
-			self.polygonInfoTool = None
-
 		if self.queryOwnerInfoTool:
 			self.queryOwnerInfoTool.deleteLater()
 			self.queryOwnerInfoTool = None
+
+		if not self.pointInfoTool is None:
+			self.pointInfoTool.deleteLater()
+			self.pointInfoTool = None
+
+		if not self.polygonInfoTool is None:
+			self.polygonInfoTool.deleteLater()
+			self.polygonInfoTool = None
+
 
 	def conf(self):
 		dlg = Conf(self)
@@ -1114,7 +1115,7 @@ class alkisplugin:
 			u" WHERE endet IS NULL"
 			u" AND (%s)" % where
 			):
-			QMessageBox.critical( None, u"Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
+			QMessageBox.critical( None, "Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % ( qry.lastQuery(), qry.lastError().text() ) )
 			return fs
 
 		qDebug( qry.lastQuery() )
@@ -1220,9 +1221,11 @@ class ALKISPointInfo(QgsMapTool):
 			return
 
 		try:
+			s = QSettings( "norBIT", "EDBSgen/PRO" )
+
 			s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 			sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-			sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
+			sock.connect( ( "localhost", int( s.value( "norGISPort", "6102" ) ) ) )
 			sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'] )
 			sock.close()
 
@@ -1305,15 +1308,14 @@ class ALKISPolygonInfo(QgsMapTool):
 				gmlids.append( e['gmlid'] )
 
 			try:
-				s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+				s = QSettings( "norBIT", "EDBSgen/PRO" )
 				for i in range(0, len(fs)):
 					sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-					sock.connect( ( s.value( "apphost", "localhost" ), int( s.value( "appport", "6102" ) ) ) )
+					sock.connect( ( "localhost", int( s.value( "norGISPort", "6102" ) ) ) )
 					sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#%d#" % (fs[i]['flsnr'], 0 if i+1 == len(fs) else 1 ) )
 					sock.close()
 
 				if win32:
-					s = QSettings( "norBIT", "EDBSgen/PRO" )
 					window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
 					win32gui.SetForegroundWindow( window )
 
@@ -1407,13 +1409,13 @@ class ALKISOwnerInfo(QgsMapTool):
 
 			if len(fs) == 0:
 				QApplication.restoreOverrideCursor()
-				QMessageBox.information( None, u"Fehler", u"Kein Flurstück gefunden." )
+				QMessageBox.information( None, "Fehler", u"Kein Flurstück gefunden." )
 				return
 		finally:
 			QApplication.restoreOverrideCursor()
 
 		info = Info( self.getPage(fs) )
-		info.setWindowTitle( "Flurstücksnachweis" )
+		info.setWindowTitle( u"Flurstücksnachweis" )
 		info.exec_()
 
 
