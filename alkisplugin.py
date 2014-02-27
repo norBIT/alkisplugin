@@ -1145,9 +1145,9 @@ class alkisplugin:
 			qDebug( "x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
 			rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
 
-			r = self.iface.mapCanvas().mapRenderer()
-			if r.hasCrsTransformEnabled():
-				t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(25832), r.destinationCrs() )
+			c = self.iface.mapCanvas()
+			if c.hasCrsTransformEnabled():
+				t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(25832), c.destinationCrs() )
 				rect = t.transform( rect )
 
 			qDebug( "rect:%s" % rect.toString() )
@@ -1197,9 +1197,9 @@ class ALKISPointInfo(QgsMapTool):
 	def canvasReleaseEvent(self,e):
 		point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates( e.x(), e.y() )
 
-		r = self.iface.mapCanvas().mapRenderer()
-		if r.hasCrsTransformEnabled():
-			t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
+		c = self.iface.mapCanvas()
+		if c.hasCrsTransformEnabled():
+			t = QgsCoordinateTransform( c.destinationCrs(), self.crs )
 			point = t.transform( point )
 
 		if self.areaMarkerLayer is None:
@@ -1289,9 +1289,9 @@ class ALKISPolygonInfo(QgsMapTool):
 		if self.rubberBand.numberOfVertices()>=3:
 			g = self.rubberBand.asGeometry()
 
-			r = self.iface.mapCanvas().mapRenderer()
-			if r.hasCrsTransformEnabled():
-				t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
+			c = self.iface.mapCanvas()
+			if c.hasCrsTransformEnabled():
+				t = QgsCoordinateTransform( c.destinationCrs(), self.crs )
 				g.transform( t )
 
 			self.rubberBand.reset( QGis.Polygon )
@@ -1388,9 +1388,9 @@ class ALKISOwnerInfo(QgsMapTool):
 	def canvasReleaseEvent(self,e):
                 point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates( e.x(), e.y() )
 
-                r = self.iface.mapCanvas().mapRenderer()
-                if r.hasCrsTransformEnabled():
-                        t = QgsCoordinateTransform( r.destinationCrs(), self.crs )
+                c = self.iface.mapCanvas()
+                if c.hasCrsTransformEnabled():
+                        t = QgsCoordinateTransform( c.destinationCrs(), self.crs )
                         point = t.transform( point )
 
                 if self.areaMarkerLayer is None:
