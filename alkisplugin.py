@@ -1067,7 +1067,7 @@ class alkisplugin:
                 if not self.pointMarkerLayer:
                         (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/pointMarkerLayer" )
                         if ok:
-                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+                                self.pointMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
                 if not self.pointMarkerLayer:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!\n" )
