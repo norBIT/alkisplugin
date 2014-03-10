@@ -2,13 +2,22 @@
 # -*- coding: utf8 -*-
 # vim: set expandtab :
 
+import sip
+for c in [ "QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant" ]:
+        sip.setapi(c,2)
+
 from PyQt4.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
-from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap
+from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap, QFileDialog
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
+from tempfile import NamedTemporaryFile
 
-from qgis.core import *
-from qgis.gui import *
+try:
+        from qgis.core import *
+        from qgis.gui import *
+        qgisAvailable = True
+except:
+        qgisAvailable = False
 
 try:
         import win32gui
@@ -16,15 +25,20 @@ try:
 except:
         win32 = False
 
+try:
+        import mapscript
+        from mapscript import fromstring
+        mapscriptAvailable = True
+        mapscript.MS_SYMBOL_CARTOLINE = -1
+except:
+        mapscriptAvailable = False
+
 import time, info, conf, os, socket, resources
 
 def qDebug(s):
         QtCore.qDebug( s.encode('ascii', 'ignore') )
 
 class Conf(QDialog, conf.Ui_Dialog):
-        showProgress = pyqtSignal(int,int)
-        showStatusMessage = pyqtSignal(str)
-
         def __init__(self, plugin):
                 QDialog.__init__(self)
                 self.setupUi(self)
@@ -42,9 +56,6 @@ class Conf(QDialog, conf.Ui_Dialog):
 
                 self.bb.accepted.connect(self.accept)
                 self.bb.rejected.connect(self.reject)
-                self.pbEinbinden.clicked.connect(self.run)
-
-                self.pbEignerLayer.clicked.connect(self.eignerlayer)
 
         def accept(self):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
@@ -57,12 +68,6 @@ class Conf(QDialog, conf.Ui_Dialog):
 
                 QDialog.accept(self)
 
-        def run(self):
-                self.plugin.run(self)
-
-        def eignerlayer(self):
-                self.plugin.eignerlayer()
-
 class Info(QDialog, info.Ui_Dialog):
         def __init__(self, html):
                 QDialog.__init__(self)
@@ -70,7 +75,9 @@ class Info(QDialog, info.Ui_Dialog):
 
                 self.wvEigner.setHtml( html )
 
-class alkisplugin:
+class alkisplugin(QObject):
+        showProgress = pyqtSignal(int,int)
+        showStatusMessage = pyqtSignal(str)
 
         themen = (
                 {
@@ -80,12 +87,20 @@ class alkisplugin:
                         'line'   : { 'min':0, 'max':5000 },
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
+                        'filter' : [
+                                { 'name': u"Flächen", 'filter': "NOT layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
+                                { 'name': "Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
+                        ],
                         'classes': {
                                 '2001': u'Bruchstriche',
                                 '2004': u'Zuordnungspfeil',
                                 '2005': u'Zuordnungspfeil, abweichender Rechtszustand',
                                 '2008': u'Flurstücksgrenze nicht feststellbar',
                                 '2028': u'Flurstücksgrenze',
+                                '2029': u'Flurstücksgrenze, abw. Rechtszustand',
+                                '3020': u'Abgemarkter Grenzpunkt',
+                                '3021': u'Abgemarkter Grenzpunkt, abw. Rechtszustand',
+                                '3024': u'Grenzpunkt ohne spezifizierte Abmarkung',
                         },
                 },
                 {
@@ -97,8 +112,12 @@ class alkisplugin:
                         'label'  : { 'min':0, 'max':3500 },
                         'classes': {
                                 '1301': u'Wohngebäude',
+                                '1304': u'Anderes Gebäude',
                                 '1309': u'Gebäude für öffentliche Zwecke',
                                 '1501': u'Aussichtsturm',
+				'2031': u'Anderes Gebäude',
+				'rn1501': u'Anderes Gebäude',
+				'2505': u'Öffentliches Gebäude',
                         },
                 },
                 {
@@ -117,9 +136,9 @@ class alkisplugin:
                         'point'  : { 'min':0, 'max':25000 },
                         'label'  : { 'min':0, 'max':25000 },
                         'classes': {
-                                '1701': u'BAB/Bundesstraße',
+                                '1701': u'Bundesautobahn/-straße',
                                 '1702': u'Landes-/Staatsstraße',
-                                'rn1701': u'BAB/Bundesstraße',
+                                'rn1701': u'Bundesautobahn/-straße',
                                 'rn1702': u'Landes-/Staatsstraße',
                                 'rn1703': u'Schutzgebiet',
                                 'rn1704': u'Bau-, Raum-, Bodenordnungsrecht',
@@ -450,31 +469,209 @@ class alkisplugin:
                 '3709': { 'minx':-1.6855,       'miny':-1.6904, 'maxx':1.6927,  'maxy':1.6822 },
         }
 
+        BLOCKS = {
+                # Flächen
+                'alkis1301': { 'symbol': "0" },
+                'alkis1304': { 'symbol': "0" },
+                'alkis1305': { 'symbol': "0" },
+                'alkis1306': { 'symbol': "0" },
+                'alkis1309': { 'symbol': "0" },
+                'alkis1401': { 'symbol': "0" },
+                'alkis1403': { 'symbol': "0" },
+                'alkis1404': { 'symbol': "0" },
+                'alkis1405': { 'symbol': "0" },
+                'alkis1406': { 'symbol': "0" },
+                'alkis1409': { 'symbol': "0" },
+                'alkis1410': { 'symbol': "0" },
+                'alkis1414': { 'symbol': "0" },
+                'alkis1501': { 'symbol': "0" },
+                'alkis1510': { 'symbol': "0" },
+                'alkis1519': { 'symbol': "0" },
+                'alkis1520': { 'symbol': "0" },
+                'alkis1521': { 'symbol': "0" },	# NRW
+                'alkis1522': { 'symbol': "0" },	# NRW
+                'alkis1523': { 'symbol': "0" }, # NRW
+                'alkis1525': { 'symbol': "0" },	# NRW
+                'alkis1526': { 'symbol': "0" },
+                'alkis1532': { 'symbol': "0" },	# NRW
+                'alkis1542': { 'symbol': "0" },	# NRW
+                'alkis1540': { 'symbol': "0" },
+                'alkis1701': { 'symbol': "0" },
+                'alkis1702': { 'symbol': "0" },
+                'alkis1808': { 'symbol': "0" },
+                'alkis1530': { 'symbol': "0" },
+
+                'alkis1502': { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 10, 5 ], },
+
+                'alkisrn1305': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1306': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1321': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1330': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color': [153,153,153], },
+                'alkisrn1501': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1510': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1519': [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 1, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 20, 10 ], 'filled': 1, },
+                        ],
+                'alkisrn1520': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1521': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color': [81,0,0], },
+                'alkisrn1524': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color': [153,153,153], },
+                'alkisrn1525': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1526': { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color': [0,204,204], },
+                'alkisrn1530': [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 1, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 20, 10 ], 'filled': 1, 'color': [81,0,0], },
+                        ],
+                'alkisrn1531': [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 2, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 10, 5 ], 'filled': 1, },
+                        ],
+                'alkisrn1535'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'size': 2, 'color':  [127,127,127], },
+                'alkisrn1540'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [153,153,153], },
+                'alkisrn1542'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [153,153,153], },
+                'alkisrn1548'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [153,153,153], },
+                'alkisrn1550'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [153,153,153], },
+                'alkisrn1551'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1560'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [0,255,0], },
+                'alkisrn1562'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [0,0,255], },
+                'alkisrn1701'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1702'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkisrn1703'  : [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 3, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color': [ 255,255,255 ], 'size': 3, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, 'gap':40, 'pattern': [ 10, 40 ], 'filled': 1, },
+                        ],
+                'alkisrn1704'  : [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 3, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'size': 3, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 40, 10 ], 'filled': 1, },
+                        ],
+                'alkisrn1705'  : [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 3, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'size': 3, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 40, 10 ], 'filled': 1, },
+                        ],
+                'alkisrn1740'  : [
+                                { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'size': 3, 'points': [1, 1], 'filled': 1, 'color': [ 255,255,255 ], },
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'size': 3, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 40, 10 ], 'filled': 1, },
+                        ],
+                'alkisrn1808'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'color':  [153,153,153], },
+
+                # Linien
+                'alkis2001'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2002'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2003'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },
+                'alkis2004'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, }, # Pfeilspitze wird in Ableitungsregeln behandelt.
+                'alkis2005'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 204, 204, 204 ], 'size': 2, 'linecap': mapscript.MS_CJC_TRIANGLE, }, # NRW
+                'alkis2006'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 6, 1 ], }, # NRW
+                'alkis2008'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 20, 10 ], },
+
+                'alkis2010'  : [
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 10, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND,  'pattern': [ 35, 25, ], },
+                                { 'character': "&#14;", 'color':  [ 242, 127, 255 ], 'size': 9, 'gap': 11, },
+                        ],
+
+                'alkis2012'  : [
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 5, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND,  'pattern': [ 25, 30, ], },
+                                { 'character': "&#14;", 'color':  [ 242, 127, 255 ], 'size': 5, 'gap': 10, },
+                        ],
+
+                'alkis2014'  : [
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 3, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND,  'pattern': [ 25, 30, ], },
+                                { 'character': "&#14;", 'color':  [ 242, 127, 255 ], 'size': 3, 'gap':8, },
+                        ],
+
+                'alkis2016'  : [ #2016
+                                { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 9, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND,  'pattern': [ 50, 90, ], },
+                                { 'character': "&#14;", 'color':  [ 242, 127, 255 ], 'size': 9, 'gap':25, },
+                        ],
+
+                'alkis2018': [ #2016
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 7, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, 'gap':900, 'pattern': [ 800, 350, 800, 900 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 7, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'pattern': [ 10, 2840 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 7, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'gap':450,  },
+                ],
+
+                #'alkis2020'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2020': [
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 6, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, 'gap':1200, 'pattern': [ 700, 300, 700, 1200 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 6, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'pattern': [ 10, 440, 10, 2440 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 6, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'gap':375,  },
+                ],
+
+                'alkis2022': [
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 4, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, 'gap':500, 'pattern': [ 500, 500 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 4, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'pattern': [ 10, 990 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 4, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'gap':250,  },
+                ],
+
+                'alkis2026': [
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 6, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, 'gap':1650, 'pattern': [ 700, 300, 700, 1650 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 6, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'pattern': [ 10, 440, 10, 440, 10, 2440 ],  },
+                        { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 242, 127, 255 ], 'size': 6, 'linecap': mapscript.MS_CJC_ROUND, 'linejoin': mapscript.MS_CJC_ROUND, 'gap':375,  },
+                ],
+
+                'alkis2028'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2029'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 204, 204, 204 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, }, # NRW
+                'alkis2030'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 10, 5 ], },
+                'alkis2031'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 10, 5 ], },
+                'alkis2032'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 1, 1 ], },
+                'alkis2305'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 10, 5 ], },
+                'alkis2505'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2506'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 153, 153, 153 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, 'pattern': [ 35, 35 ],  },
+                'alkis2507'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2512'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 1, 1 ], },
+                'alkis2513'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_ROUND, }, # NRW
+                'alkis2514'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, 'size': 2 },
+                'alkis2515'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2517'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2518'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2523'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 1, 1 ], },
+                'alkis2510'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, }, # NRW
+                'alkis2519'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 7, 1 ], }, # NRW
+                'alkis2520'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 4, 2 ],  }, # NRW
+                'alkis2524'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2525'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },
+                'alkis2527'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 153, 153, 153 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },
+                'alkis2530'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 127, 127, 127 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },
+                'alkis2533'  : { 'type': mapscript.MS_SYMBOL_ELLIPSE, 'points': [1, 1], 'filled': 1, },
+                'alkis2535'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 81, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 20, 32 ], }, # NRW
+                'alkis2560'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 35, 35 ], }, # NRW
+                'alkis2592'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, }, # NRW
+                'alkis2623'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },	# NRW
+        }
+
         def __init__(self, iface):
+                QObject.__init__(self)
                 self.iface = iface
                 self.pointMarkerLayer = None
                 self.areaMarkerLayer = None
                 self.alkisGroup = None
 
         def initGui(self):
-                self.toolbar = self.iface.addToolBar( u"norGIS: ALKIS" );
+                self.toolbar = self.iface.addToolBar( u"norGIS: ALKIS" )
                 self.toolbar.setObjectName( "norGIS_ALKIS_Toolbar" )
 
-                self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
-                self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
-                self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
-                self.confAction.triggered.connect(self.conf)
+                self.importAction = QAction(QIcon(":/plugins/alkis/logo.png"), "ALKIS-Layer einbinden", self.iface.mainWindow())
+                self.importAction.setWhatsThis("ALKIS-Layer einbinden")
+                self.importAction.setStatusTip("ALKIS-Layer einbinden")
+                self.importAction.triggered.connect( self.alkisimport )
+
+                self.eignerAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Eignerlayer einbinden", self.iface.mainWindow())
+                self.eignerAction.setWhatsThis("Eignerlayer einbinden")
+                self.eignerAction.setStatusTip("EignerLayer einbinden")
+                self.eignerAction.triggered.connect( self.eignerlayer )
+
+                if mapscriptAvailable:
+                        self.umnAction = QAction(QIcon(":/plugins/alkis/logo.png"), "UMN-Mapdatei erzeugen", self.iface.mainWindow())
+                        self.umnAction.setWhatsThis("UMN-Mapserver-Datei erzeugen")
+                        self.umnAction.setStatusTip("UMN-Mapserver-Datei erzeugen")
+                        self.umnAction.triggered.connect(self.mapfile)
+                else:
+                        self.umnAction = None
 
                 self.searchAction = QAction(QIcon(":/plugins/alkis/find.png"), "Beschriftung suchen", self.iface.mainWindow())
                 self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
                 self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
                 self.searchAction.triggered.connect(self.search)
                 self.toolbar.addAction( self.searchAction )
-
-                if hasattr(self.iface, "addPluginToDatabaseMenu"):
-                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
-                else:
-                        self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
                 self.queryOwnerAction = QAction(QIcon(":/plugins/alkis/eigner.png"), u"Flurstücksnachweis", self.iface.mainWindow())
                 self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
@@ -486,6 +683,21 @@ class alkisplugin:
                 self.clearAction.setStatusTip("Hervorhebungen entfernen")
                 self.clearAction.triggered.connect(self.clearHighlight)
                 self.toolbar.addAction( self.clearAction )
+
+                self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
+                self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
+                self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
+
+                if hasattr(self.iface, "addPluginToDatabaseMenu"):
+                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
+                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.eignerAction)
+                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
+                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
+                else:
+                        self.iface.addPluginToMenu("&ALKIS", self.importAction)
+                        self.iface.addPluginToMenu("&ALKIS", self.eignerAction)
+                        self.iface.addPluginToMenu("&ALKIS", self.umnAction)
+                        self.iface.addPluginToMenu("&ALKIS", self.confAction)
 
                 ns = QSettings( "norBIT", "EDBSgen/PRO" )
                 if ns.contains( "norGISPort" ):
@@ -508,12 +720,21 @@ class alkisplugin:
         def unload(self):
                 del self.toolbar
 
-                if self.confAction:
-                        self.confAction.deleteLater()
-                        self.confAction = None
                 if self.searchAction:
                         self.searchAction.deleteLater()
                         self.searchAction = None
+                if self.importAction:
+                        self.importAction.deleteLater()
+                        self.importAction = None
+                if self.eignerAction:
+                        self.eignerAction.deleteLater()
+                        self.eingerAction = None
+                if self.umnAction:
+                        self.umnAction.deleteLater()
+                        self.umnAction = None
+                if self.confAction:
+                        self.confAction.deleteLater()
+                        self.confAction = None
 
                 if self.clearAction:
                         self.clearAction.deleteLater()
@@ -530,7 +751,6 @@ class alkisplugin:
                 if not self.polygonInfoTool is None:
                         self.polygonInfoTool.deleteLater()
                         self.polygonInfoTool = None
-
 
         def conf(self):
                 dlg = Conf(self)
@@ -579,10 +799,10 @@ class alkisplugin:
                 else:
                         return "(%s)" % sn
 
-        def run(self,conf):
+        def run(self):
                 QApplication.setOverrideCursor( Qt.WaitCursor )
                 try:
-                        self.alkisimport(conf)
+                        self.alkisimport()
                 finally:
                         QApplication.restoreOverrideCursor()
 
@@ -633,11 +853,11 @@ class alkisplugin:
                         QApplication.restoreOverrideCursor()
 
         def progress(self,i,m,s):
-                self.conf.showStatusMessage.emit( u"%s/%s" % (alkisplugin.themen[i]['name'],m) )
-                self.conf.showProgress.emit( i*5+s, len(alkisplugin.themen)*5 )
+                self.showStatusMessage.emit( u"%s/%s" % (alkisplugin.themen[i]['name'],m) )
+                self.showProgress.emit( i*5+s, len(alkisplugin.themen)*5 )
                 QCoreApplication.processEvents()
 
-        def alkisimport(self,conf):
+        def alkisimport(self):
                 (db,conninfo) = self.opendb()
                 if db is None:
                         return
@@ -650,7 +870,7 @@ class alkisplugin:
 
                 qs = QSettings( "QGIS", "QGIS2" )
                 svgpaths = qs.value( "svg/searchPathsForSVG", "", type=str ).split("|")
-                svgpath = os.path.dirname(__file__) + "/svg"
+                svgpath = os.path.abspath( os.path.join( os.path.dirname(__file__), "svg" ) )
                 if not svgpath.upper() in map(unicode.upper, svgpaths):
                         svgpaths.append( svgpath )
                         qs.setValue( "svg/searchPathsForSVG", "|".join( svgpaths ) )
@@ -659,8 +879,8 @@ class alkisplugin:
 
                 markerGroup = self.iface.legendInterface().addGroup( "Markierungen", False, self.alkisGroup )
 
-                conf.showProgress.connect( self.iface.mainWindow().showProgress )
-                conf.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
+                self.showProgress.connect( self.iface.mainWindow().showProgress )
+                self.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
 
                 nGroups = 0
                 iThema = -1
@@ -905,7 +1125,7 @@ class alkisplugin:
                                 self.setScale( layer, d['label'] )
 
                                 sym = QgsMarkerSymbolV2()
-                                sym.setSize( 0.0 );
+                                sym.setSize( 0.0 )
                                 layer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
                                 self.iface.legendInterface().refreshLayerSymbology( layer )
                                 self.iface.legendInterface().moveLayer( layer, thisGroup )
@@ -1009,24 +1229,25 @@ class alkisplugin:
                 else:
                         return False
 
-        def opendb(self):
-                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+        def opendb(self,conninfo=None):
+                if not conninfo:
+                        s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
 
-                service = s.value( "service", "" )
-                host = s.value( "host", "" )
-                port = s.value( "port", "5432" )
-                dbname = s.value( "dbname", "" )
-                uid = s.value( "uid", "" )
-                pwd = s.value( "pwd", "" )
+                        service = s.value( "service", "" )
+                        host = s.value( "host", "" )
+                        port = s.value( "port", "5432" )
+                        dbname = s.value( "dbname", "" )
+                        uid = s.value( "uid", "" )
+                        pwd = s.value( "pwd", "" )
 
-                uri = QgsDataSourceURI()
+                        uri = QgsDataSourceURI()
 
-                if service == "":
-                        uri.setConnection( host, port, dbname, uid, pwd )
-                else:
-                        uri.setConnection( service, dbname, uid, pwd )
+                        if service == "":
+                                uri.setConnection( host, port, dbname, uid, pwd )
+                        else:
+                                uri.setConnection( service, dbname, uid, pwd )
 
-                conninfo = uri.connectionInfo()
+                        conninfo = uri.connectionInfo()
 
                 db = QSqlDatabase.addDatabase( "QPSQL" )
                 db.setConnectOptions( conninfo )
@@ -1161,6 +1382,664 @@ class alkisplugin:
 
                 return fs
 
+        def mapfile(self,conninfo=None,dstfile=None):
+                (db,conninfo) = self.opendb(conninfo)
+                if db is None:
+                        return
+
+                if dstfile is None:
+                        dstfile = QFileDialog.getSaveFileName( None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)" )
+                        if dstfile is None:
+                                return
+
+                if self.iface:
+                        self.showProgress.connect( self.iface.mainWindow().showProgress )
+                        self.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
+
+                mapobj = mapscript.mapObj()
+                mapobj.outputformat.driver = "GD/PNG"
+                mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
+                mapobj.setFontSet( os.path.abspath( os.path.join( os.path.dirname(__file__), "fonts", "fonts.txt" ) ) )
+
+                qry = QSqlQuery(db)
+
+                if qry.exec_( "SELECT st_extent(wkb_geometry) FROM ax_flurstueck" ) and qry.next():
+                        bb = qry.value(0)[4:-1]
+                        (p0,p1) = bb.split(",")
+                        (x0,y0) = p0.split(" ")
+                        (x1,y1) = p1.split(" ")
+                        mapobj.setProjection( "init=epsg:%d" % 25832 )
+                        mapobj.setExtent( float(x0), float(y0), float(x1), float(y1) )
+
+                qs = QSettings( "QGIS", "QGIS2" )
+                svgpaths = qs.value( "svg/searchPathsForSVG", "", type=str ).split("|")
+                svgpath = os.path.abspath( os.path.join( os.path.dirname(__file__), "svg" ) )
+                if not svgpath.upper() in map(unicode.upper, svgpaths):
+                        svgpaths.append( svgpath )
+                        qs.setValue( "svg/searchPathsForSVG", "|".join( svgpaths ) )
+
+                missing = {}
+
+                nGroups = 0
+                iThema = -1
+                iLayer = 0
+                for d in alkisplugin.themen:
+                        iThema += 1
+                        thema = d['name']
+
+                        if not d.has_key('filter'):
+                                d['filter'] = [ { 'name':None, 'filter': None } ]
+
+                        tgroup = []
+
+                        nLayers = 0
+
+                        qDebug( u"Thema: %s" % thema )
+
+                        for f in d['filter']:
+                                name = f.get('name', thema)
+                                tname = thema
+                                where = "thema='%s'" % thema
+
+                                if f.get('name',None):
+                                        tname += " / " + f['name']
+
+                                if f.get('filter',None):
+                                        where += " AND (%s)" % f['filter']
+
+                                self.progress(iThema, u"Flächen", 0)
+
+				# 1 Polylinien
+				# 1.1 Flächen
+				# 1.2 Randlinien
+				# 2 Linien
+				# 3 Punkte
+				# 4 Beschriftungen
+
+                                group = []
+                                layer = None
+                                sprio = None
+                                minprio = None
+                                maxprio = None
+                                nclasses = None
+
+				layer = mapscript.layerObj(mapobj)
+                                layer.name = "l%d" % iLayer
+                                iLayer += 1
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode("latin-1")
+                                layer.classitem = "signaturnummer"
+                                layer.setProjection( "init=epsg:%d" % 25832 )
+                                layer.connectiontype = mapscript.MS_POSTGIS
+                                layer.connection = conninfo
+                                layer.symbolscaledenom = 1000
+                                layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
+                                layer.type = mapscript.MS_LAYER_POLYGON
+                                layer.sizeunits = mapscript.MS_INCHES
+                                layer.status = mapscript.MS_DEFAULT
+                                layer.tileitem = None
+                                layer.setMetaData( u"norGIS_label", (u"ALKIS / %s / Flächen" % tname).encode("latin-1") )
+
+				sql = (u"SELECT"
+				       u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
+				       u" FROM alkis_flaechen"
+				       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
+				       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
+				       u" ORDER BY darstellungsprioritaet" ) % where
+                                qDebug( "SQL: %s" % sql )
+                                if qry.exec_( sql ):
+					sprio = 0
+					nclasses = 0
+					minprio = None
+					maxprio = None
+
+                                        while qry.next():
+                                                sn = qry.value( 0 )
+                                                color = qry.value( 1 )
+                                                prio = qry.value( 2 )
+                                                names = qry.value( 3 )
+
+                                                cl = mapscript.classObj(layer)
+                                                cl.setExpression( sn )
+                                                cl.name = d['classes'].get(sn, "(%s)" % sn).encode( "latin-1" )
+                                                cl.title = "1"
+
+                                                if not self.insertStylesFromBlock( layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
+                                                        layer.removeClass( layer.numclasses - 1 )
+                                                        missing["alkis%s" % sn] = 1
+                                                        continue
+
+                                                nclasses += 1
+                                                sprio += prio
+                                                if not minprio or prio < minprio:
+                                                        minprio = prio
+                                                if not maxprio or prio > maxprio:
+                                                        maxprio = prio
+
+                                else:
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+
+				if layer.numclasses > 0:
+					layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
+					layer.setMetaData( "norGIS_minprio", "%d" % minprio )
+					layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
+
+                                        group.append( layer.name )
+                                else:
+                                        mapobj.removeLayer( layer.index )
+
+
+                                self.progress(iThema, "Grenzen", 1)
+
+				#
+				# 1.2 Randlinien
+				#
+				layer = mapscript.layerObj(mapobj)
+                                layer.name = "l%d" % iLayer
+                                iLayer += 1
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode("latin-1")
+	                        layer.classitem = "signaturnummer"
+                                layer.setProjection( "init=epsg:%d" % 25832 )
+	                        layer.connection = conninfo
+                                layer.connectiontype = mapscript.MS_POSTGIS
+                                layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
+                                #layer.symbolscaledenom = 1000
+                                #layer.sizeunits = mapscript.MS_INCHES
+                                layer.type = mapscript.MS_LAYER_LINE
+                                layer.status = mapscript.MS_DEFAULT
+                                layer.tileitem = None
+                                layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Grenzen" % tname).encode("latin-1") )
+
+                                sql = (u"SELECT"
+				       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
+				       u" FROM alkis_linien"
+				       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+				       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
+				       u" ORDER BY darstellungsprioritaet" ) % where
+                                qDebug( "SQL: %s" % sql )
+                                if qry.exec_( sql ):
+					sprio = 0
+					nclasses = 0
+					minprio = None
+					maxprio = None
+
+                                        while qry.next():
+                                                sn = qry.value( 0 )
+                                                color  = qry.value( 1 )
+                                                prio = qry.value( 2 )
+                                                names = qry.value( 3 )
+
+                                                cl = mapscript.classObj( layer )
+                                                cl.setExpression( sn )
+                                                cl.name = d['classes'].get(sn, "(%s)" % sn).encode("latin-1")
+                                                cl.title = "1"
+
+                                                if not self.insertStylesFromBlock(layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
+							layer.removeClass( layer.numclasses-1 )
+
+						nclasses += 1
+						sprio += prio
+						if not minprio or prio < minprio:
+                                                        minprio = prio
+						if not maxprio or prio > maxprio:
+                                                        maxprio = prio
+
+                                else:
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+
+				if layer.numclasses > 0:
+					layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
+					layer.setMetaData( "norGIS_minprio", "%d" % minprio )
+					layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
+
+                                        group.append( layer.name )
+                                else:
+                                        mapobj.removeLayer( layer.index )
+
+
+                                self.progress(iThema, "Linien", 2)
+
+				#
+				# 2 Linien
+				#
+				layer = mapscript.layerObj(mapobj)
+                                layer.name = "l%d" % iLayer
+                                iLayer += 1
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode( "latin-1" )
+                                layer.classitem = "signaturnummer"
+                                layer.setProjection( "init=epsg:%d" % 25832 )
+                                layer.connection = conninfo
+                                layer.connectiontype = mapscript.MS_POSTGIS
+                                layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
+                                #layer.symbolscaledenom = 1000
+                                #layer.sizeunits = mapscript.MS_PIXELS
+                                layer.type = mapscript.MS_LAYER_LINE
+                                layer.status = mapscript.MS_DEFAULT
+                                layer.tileitem = None
+                                layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Linien" % tname).encode( "latin-1" ) )
+
+                                sql = (u"SELECT"
+				       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
+				       u" FROM alkis_linien"
+				       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+				       u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
+				       u" ORDER BY darstellungsprioritaet" ) % where
+                                qDebug( "SQL: %s" % sql )
+                                if qry.exec_( sql ):
+					sprio = 0
+					nclasses = 0
+					minprio = None
+					maxprio = None
+
+                                        while qry.next():
+                                                sn = qry.value( 0 )
+                                                color  = qry.value( 1 )
+                                                prio = qry.value( 2 )
+                                                names = qry.value( 3 )
+
+                                                cl = mapscript.classObj( layer )
+                                                cl.setExpression( sn )
+                                                cl.name = d['classes'].get(sn, "(%s)" % sn).encode("latin-1")
+                                                cl.title = "1"
+
+                                                if not self.insertStylesFromBlock(layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
+							layer.removeClass( layer.numclasses-1 )
+
+						nclasses += 1
+						sprio += prio;
+						if not minprio or prio < minprio:
+                                                        minprio = prio
+						if not maxprio or prio > maxprio:
+                                                        maxprio = prio
+
+                                else:
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+
+				if layer.numclasses > 0:
+					layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
+					layer.setMetaData( "norGIS_minprio", "%d" % minprio )
+					layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
+
+                                        group.append( layer.name )
+                                else:
+                                        n = mapobj.numlayers
+                                        mapobj.removeLayer( layer.index )
+                                        if n == mapobj.numlayers:
+                                                raise "No layer removed"
+
+                                #
+				# 3 Punkte (TODO: Darstellungspriorität)
+                                #
+
+				layer = mapscript.layerObj(mapobj)
+                                layer.name = "l%d" % iLayer
+                                iLayer += 1
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode( "latin-1" )
+	                        layer.classitem = "signaturnummer"
+				layer.setProjection( "init=epsg:%d" % 25832 )
+                                layer.connection = conninfo
+				layer.connectiontype = mapscript.MS_POSTGIS
+                                layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
+                                layer.symbolscaledenom = 1000
+                                layer.sizeunits = mapscript.MS_METERS
+                                layer.type = mapscript.MS_LAYER_POINT
+                                layer.status = mapscript.MS_DEFAULT
+                                layer.tileitem = None
+                                layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Punkte" % tname).encode("latin-1") )
+
+                                self.progress(iThema, "Punkte", 3)
+
+                                sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where
+                                qDebug( "SQL: %s" % sql )
+                                if qry.exec_( sql ):
+                                        while qry.next():
+                                                sn = qry.value(0)
+                                                if not sn:
+                                                        QgsMessageLog.logMessage( u"Leere Signaturnummer in po_points:%s" % thema )
+                                                        continue
+
+                                                cl = mapscript.classObj( layer )
+                                                cl.setExpression( sn )
+                                                cl.name = d['classes'].get(sn, "(%s)" % sn).encode("latin-1")
+                                                cl.title = "1"
+
+                                                if alkisplugin.exts.has_key(sn):
+                                                        x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
+                                                        y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
+                                                        w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
+                                                        h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
+                                                else:
+                                                        x, y, w, h = 0, 0, 1, 1
+
+                                                if mapobj.symbolset.index( "norGIS_alkis%s" % sn ):
+                                                        f = NamedTemporaryFile(delete=False)
+                                                        tempname = f.name
+                                                        f.write( "SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis%s\" IMAGE \"%s\" END END" % (
+                                                                        sn, os.path.abspath( os.path.join( os.path.dirname(__file__), "svg", "alkis%s.svg" % sn ) ) ) )
+                                                        f.close()
+
+                                                        tempsymbolset = mapscript.symbolSetObj( tempname )
+                                                        os.unlink( tempname )
+
+                                                        sym = tempsymbolset.getSymbolByName( "norGIS_alkis%s" % sn )
+                                                        sym.inmapfile = True
+                                                        if mapobj.symbolset.appendSymbol(sym) < 0:
+                                                                raise "symbol not added."
+
+                                                        del tempsymbolset
+
+                                                stylestring = "STYLE ANGLE [drehwinkel_grad] OFFSET %lf %lf SIZE %lf SYMBOL \"norGIS_alkis%s\" END" % (x, y, h, sn )
+                                                style = fromstring( stylestring )
+		                                cl.insertStyle( style )
+
+                                if layer.numclasses > 0:
+					group.append( layer.name )
+                                else:
+					mapobj.removeLayer( layer.index )
+
+                                #
+				# 4 Beschriftungen (TODO: Darstellungspriorität)
+                                #
+
+                                lgroup = []
+
+                                for j in range(2):
+                                        geom = "point" if j==0 else "line"
+
+                                        if not qry.exec_( "SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where,geom) ) or not qry.next() or qry.value(0) == 0:
+                                                continue
+
+                                        self.progress(iThema, "Beschriftungen (%d)" % (j+1), 4+j)
+
+                                        layer = mapscript.layerObj(mapobj)
+                                        layer.name = "l%d" % iLayer
+                                        iLayer += 1
+                                        layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Beschriftungen" % tname).encode("latin-1") )
+                                        layer.setMetaData( "norGIS_zindex", "999" )
+                                        layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,%s AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % (geom,where)).encode( "latin-1" )
+                                        layer.classitem = "alignment"
+                                        layer.labelitem = "text"
+                                        layer.setProjection( "init=epsg:%d" % 25832 )
+                                        layer.connection = conninfo
+                                        layer.connectiontype = mapscript.MS_POSTGIS
+                                        layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
+                                        layer.symbolscaledenom = 1000
+                                        #layer.labelminscaledenom = 0
+                                        #layer.labelmaxscaledenom = 2000
+                                        layer.sizeunits = mapscript.MS_INCHES
+                                        layer.type = mapscript.MS_LAYER_ANNOTATION
+                                        layer.status = mapscript.MS_DEFAULT
+                                        layer.tileitem = None
+
+                                        positions = {
+                                                        -1: mapscript.MS_AUTO,
+                                                        1: mapscript.MS_LR,
+                                                        2: mapscript.MS_LC,
+                                                        3: mapscript.MS_LL,
+                                                        4: mapscript.MS_CR,
+                                                        5: mapscript.MS_CC,
+                                                        6: mapscript.MS_CL,
+                                                        7: mapscript.MS_UR,
+                                                        8: mapscript.MS_UC,
+                                                        9: mapscript.MS_UL,
+                                                    }
+
+                                        for pos in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1 ]:
+                                                cl = mapscript.classObj( layer )
+                                                cl.title = "0"
+                                                if pos < 0:
+                                                        cl.name = u"Beschriftungen %s AUTO" % geom
+                                                else:
+                                                        cl.name = u"Beschriftungen %s %d" % (geom,pos)
+                                                        cl.setExpression( "%d" % pos )
+
+                                                label = mapscript.labelObj()
+                                                label.position = positions[ pos ]
+                                                label.type = mapscript.MS_TRUETYPE
+                                                label.setBinding( mapscript.MS_LABEL_BINDING_COLOR, "color_umn" )
+                                                label.setBinding( mapscript.MS_LABEL_BINDING_FONT, "font_umn" )
+                                                label.setBinding( mapscript.MS_LABEL_BINDING_ANGLE, "drehwinkel_grad" )
+                                                label.setBinding( mapscript.MS_LABEL_BINDING_SIZE, "size_umn" )
+                                                label.buffer = 2
+                                                label.force = mapscript.MS_TRUE
+                                                label.partials = mapscript.MS_TRUE
+                                                label.antialias = mapscript.MS_TRUE
+                                                label.outlinecolor.setRGB( 255, 255, 255 )
+                                                label.mindistance = -1
+                                                label.minfeaturesize = -1
+                                                label.shadowsizex = 0
+                                                label.shadowsizey = 0
+                                                #label.minsize = 4
+                                                #label.maxsize = 256
+                                                label.minfeaturesize = -1
+                                                label.priority = 10
+
+                                                cl.addLabel( label )
+
+					lgroup.append( layer.name )
+
+                self.reorderLayers( mapobj )
+
+                self.showProgress.emit( len(alkisplugin.themen)*5, len(alkisplugin.themen)*5 )
+
+                mapobj.save(dstfile)
+
+        def styleFromBlock(self,**kwargs):
+                mapobj = kwargs.get('map',None)
+                symbolset = kwargs.get('symbolset',None)
+                name = kwargs.get('name',None)
+                color0 = kwargs.get('color',None)
+                angle = kwargs.get('angle',None)
+                cl = kwargs.get('class',None)
+                minsize = kwargs.get('minsize',None)
+                size = kwargs.get('size',None)
+                maxsize = kwargs.get('maxsize',None)
+
+                if minsize: minsize = int(minsize)
+                if size: size = int(size)
+                if maxsize: maxsize = int(maxsize)
+
+                if not mapobj: raise "map undefined"
+                if not name: raise "name undefined"
+
+                symname0 = "norGIS_%s" % name
+                name = name.lower()
+
+                if not symbolset:
+                        symbolset = mapobj.symbolset
+                        inmapfile = True
+                else:
+                        inmapfile = False
+
+                blocks = []
+                styles = []
+
+                if not alkisplugin.BLOCKS.has_key(name):
+                        QgsMessageLog.logMessage( u"no data for block |%s| found" % name )
+                        return None
+
+                b = alkisplugin.BLOCKS[name]
+
+                if isinstance(b,list):
+                        blocks = b
+                else:
+                        blocks = [ b ]
+
+                i=0
+                for block in blocks:
+                        color = block.get('color', color0)
+
+                        style = mapscript.styleObj()
+
+                        if not block.has_key('symbol'):
+                                symname = symname0
+                                if i > 0: symname += "#%d" % i
+                                i += 1
+
+                                index = symbolset.index( symname )
+                                if index >= 0: symbolset.removeSymbol( index )
+
+                                symbol = mapscript.symbolObj( symname )
+                                symbol.inmapfile = inmapfile
+                                symbol.type = block.get('type', mapscript.MS_SYMBOL_TRUETYPE)
+
+                                if symbol.type == mapscript.MS_SYMBOL_TRUETYPE:
+                                        if not block.get('character',None): raise "character for %s not defined" % name
+
+                                        symbol.character = block['character']
+                                        symbol.antialias = block.get('antialias', mapscript.MS_TRUE)
+                                        symbol.filled = mapscript.MS_TRUE if block.get('filled',0) else mapscript.MS_FALSE
+                                        symbol.font = block.get('font', "webgis")
+
+                                        if block.has_key('position'):
+                                                raise u"symbol.position not supported in mapscript 6"
+
+                                elif symbol.type == mapscript.MS_SYMBOL_VECTOR or \
+                                      symbol.type == mapscript.MS_SYMBOL_ELLIPSE:
+
+                                        symbol.filled = mapscript.MS_TRUE if block.get('filled',0) else mapscript.MS_FALSE
+
+                                        if block.has_key('points'):
+                                                line = mapscript.lineObj()
+                                                p = mapscript.pointObj()
+
+                                                i = 0
+                                                while i+1 < len( block['points'] ):
+                                                        p.x = block['points'][i]
+                                                        p.y = block['points'][i+1]
+
+                                                        if line.add( p ) != mapscript.MS_SUCCESS:
+                                                                raise "failed to add point %d" % i
+
+                                                        i += 2
+
+                                                if symbol.setPoints( line ) != line.numpoints:
+                                                        raise "failed to add all %d points" % line.numpoints
+
+                                elif symbol.type == mapscript.MS_SYMBOL_CARTOLINE:
+
+                                        #  SYMBOL
+                                        #    NAME "schraff"
+                                        #    TYPE VECTOR
+                                        #    POINTS
+                                        #      0 1
+                                        #      1 0
+                                        #    END
+                                        #  END
+
+                                        if block.has_key('pattern'):
+                                                style.updateFromString( "STYLE PATTERN %s END END" % ( ' '.join( map( lambda x : str(x), block['pattern'] ) ) ) )
+
+                                elif symbol.type == mapscript.MS_SYMBOL_HATCH:
+                                        QgsMessageLog.logMessage( u"Hatch!" )
+                                        continue
+                                else:
+                                        QgsMessageLog.logMessage( u"symbol type %d not supported." % symbol.type )
+                                        continue
+
+                                if symbolset.appendSymbol(symbol) < 0:
+                                        raise "symbol not added."
+
+                        else:
+                                symname = block['symbol']
+
+                        if color:
+                                if isinstance(color,list):
+                                        r, g, b = color
+                                else:
+                                        r, g, b = color.split(" ")
+                                style.color.setRGB( int(r), int(g), int(b) )
+                        else:
+                                style.color.setRGB(0,0,0)
+
+                        if block.has_key('minsize'):
+                                style.minsize = block['minsize']
+                        elif minsize:
+                                style.minsize = minsize
+
+                        if block.has_key('maxsize'):
+                                style.maxsize = block['maxsize']
+                        elif maxsize:
+                                style.maxsize = maxsize
+
+                        if block.has_key('size') or size: style.size = block.get('size',size)
+                        style.offsetx = block.get('offsetx',0)
+                        style.offsety = block.get('offsety',0)
+                        if block.has_key('angle'): style.angle = block['angle']
+
+                        if block.has_key('linecap'): style.linecap = block['linecap']
+                        if block.has_key('linejoin'): style.linejoin = block['linejoin']
+                        if block.has_key('linejoinmaxsize'): style.linejoinmaxsize = block['linejoinmaxsize']
+
+                        style.opacity = block.get('opacity',100)
+
+                        if angle: style.setBinding( mapscript.MS_STYLE_BINDING_ANGLE, angle )
+
+                        if symname != "0":
+                                style.symbolname = symname
+
+                        styles.append( style )
+
+                return styles
+
+        def insertStylesFromBlock(self,**kwargs):
+	        cl = kwargs.get('layerclass', None)
+                if not cl:
+                        raise "layerclass undefined"
+
+	        del kwargs['layerclass']
+
+	        styles = self.styleFromBlock(**kwargs)
+
+                if not styles:
+	                return 0
+
+	        for style in styles:
+		        cl.insertStyle( style )
+
+	        return 1
+
+        def reorderLayers(self,mapobj):
+                layers = {}
+                idx = {}
+                for i in range(mapobj.numlayers):
+		        layer = mapobj.getLayer(i)
+		        layer.setMetaData( "norGIS_oldindex", "%d" % i )
+
+                        zindex = layer.metadata.get( "norGIS_zindex" ) or -1
+
+                        if not layers.has_key( layer.type ):
+                                layers[ layer.type ] = {}
+
+                        if not layers[ layer.type ].has_key( zindex ):
+                                layers[ layer.type ][ zindex ] = []
+
+                        layers[ layer.type ][ zindex ].append( i )
+                        idx[i] = i
+
+	        order = []
+                for t in [ mapscript.MS_LAYER_RASTER, mapscript.MS_LAYER_POLYGON, mapscript.MS_LAYER_LINE, mapscript.MS_LAYER_POINT, mapscript.MS_LAYER_ANNOTATION ]:
+                        if not layers.has_key( t ):
+                                continue
+
+                        keys = layers[t].keys()
+                        keys.sort()
+		        for z in keys:
+			        order.extend( layers[t][z] )
+
+                for i in range(mapobj.numlayers):
+                        oidx = order.pop(0)
+                        j = idx[oidx]
+                        del idx[oidx]
+
+		        l = mapobj.getLayer(j)
+		        mapobj.removeLayer(j)
+
+		        if mapobj.insertLayer( l, i if i<mapobj.numlayers else -1 ) < 0:
+			        raise u"Konnte Layer %d nicht wieder hinzufügen" % i
+
+                        for k in idx.keys():
+                                if idx[k]>=i and idx[k]<j:
+                                        idx[k] += 1
 
 class ALKISPointInfo(QgsMapTool):
         def __init__(self, plugin):
@@ -1722,4 +2601,12 @@ class ALKISOwnerInfo(QgsMapTool):
 #               f.close()
 
                 return html
+
+if __name__ == '__main__':
+        import sys
+        if len(sys.argv) == 3:
+                p = alkisplugin( QCoreApplication.instance() )
+                p.mapfile(sys.argv[1],sys.argv[2])
+        else:
+                print 'Fehler: alkisplugin.py "conninfo" "dstfile.map"'
 
