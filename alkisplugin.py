@@ -636,7 +636,7 @@ class alkisplugin(QObject):
                 'alkis2560'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 35, 35 ], }, # NRW
                 'alkis2592'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, }, # NRW
                 'alkis2623'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },	# NRW
-        }
+        } if mapscriptAvailable else {}
 
         def __init__(self, iface):
                 QObject.__init__(self)
@@ -687,6 +687,7 @@ class alkisplugin(QObject):
                 self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
                 self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
                 self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
+                self.confAction.triggered.connect(self.conf)
 
                 if hasattr(self.iface, "addPluginToDatabaseMenu"):
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
