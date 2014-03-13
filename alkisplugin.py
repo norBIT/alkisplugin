@@ -794,7 +794,7 @@ class alkisplugin(QObject):
                 layer.toggleScaleBasedVisibility(True)
 
         def categoryLabel(self, d, sn):
-                qDebug( "categories: %s" % d['classes'] )
+                qDebug( u"categories: %s" % d['classes'] )
                 if d['classes'].has_key(unicode(sn)):
                         return d['classes'][unicode(sn)]
                 else:
@@ -900,7 +900,7 @@ class alkisplugin(QObject):
                                u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'"
                                u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
                                u" ORDER BY darstellungsprioritaet") % t
-                        qDebug( "SQL: %s" % sql )
+                        qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
                                 r.deleteAllCategories()
@@ -940,7 +940,7 @@ class alkisplugin(QObject):
                                u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'"
                                u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
                                u" ORDER BY darstellungsprioritaet" ) % t
-                        qDebug( "SQL: %s" % sql )
+                        qDebug( u"SQL: %s" % sql )
                         if qry.exec_(sql):
                                 r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
                                 r.deleteAllCategories()
@@ -982,7 +982,7 @@ class alkisplugin(QObject):
                                u" WHERE EXISTS (SELECT * FROM po_lines WHERE thema='%s'"
                                u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
                                u" ORDER BY darstellungsprioritaet" ) % t
-                        qDebug( "SQL: %s" % sql )
+                        qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
                                 r.deleteAllCategories()
@@ -1018,7 +1018,7 @@ class alkisplugin(QObject):
                         self.progress(iThema, "Punkte", 3)
 
                         sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE thema='%s'" % t
-                        qDebug( "SQL: %s" % sql )
+                        qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
                                 r.deleteAllCategories()
@@ -1041,19 +1041,19 @@ class alkisplugin(QObject):
 
                                         symlayer = QgsSvgMarkerSymbolLayerV2( svg )
                                         symlayer.setOutputUnit( QgsSymbolV2.MapUnit )
-                                        qDebug( "symlayer.setSize %s:%f" % (sn, w) )
+                                        qDebug( u"symlayer.setSize %s:%f" % (sn, w) )
                                         symlayer.setSize( w )
                                         symlayer.setOffset( QPointF( -x, -y ) )
 
                                         sym = QgsMarkerSymbolV2( [symlayer] )
                                         sym.setOutputUnit( QgsSymbolV2.MapUnit )
-                                        qDebug( "sym.setSize %s:%f" % (sn, w) )
+                                        qDebug( u"sym.setSize %s:%f" % (sn, w) )
                                         sym.setSize( w )
 
                                         r.addCategory( QgsRendererCategoryV2( "%s" % sn, sym, self.categoryLabel(d, sn) ) )
                                         n += 1
 
-                                qDebug( "classes: %d" % n )
+                                qDebug( u"classes: %d" % n )
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
                                                         u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE thema='%s')\" (point) sql=" % (conninfo, t),
@@ -1115,7 +1115,7 @@ class alkisplugin(QObject):
                                     u" WHERE thema='%s'"
                                     u")\" (%s) sql=" ) % (geomtype,geom,t,geom)
 
-                                qDebug( "URI: %s" % uri )
+                                qDebug( u"URI: %s" % uri )
 
                                 layer = self.iface.addVectorLayer(
                                         uri,
@@ -1224,9 +1224,9 @@ class alkisplugin(QObject):
                 edbsgen = self.iface.mainWindow().findChild( QObject, "EDBSQuery" )
                 if edbsgen:
                         if edbsgen.received.connect( self.message ):
-                                qDebug( "connected" )
+                                qDebug( u"connected" )
                         else:
-                                qDebug( "not connected" )
+                                qDebug( u"not connected" )
                 else:
                         return False
 
@@ -1365,7 +1365,7 @@ class alkisplugin(QObject):
                         (p0,p1) = bb.split(",")
                         (x0,y0) = p0.split(" ")
                         (x1,y1) = p1.split(" ")
-                        qDebug( "x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
+                        qDebug( u"x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
                         rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
 
                         c = self.iface.mapCanvas()
@@ -1376,7 +1376,7 @@ class alkisplugin(QObject):
                                         t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(25832), c.mapRenderer().destinationCrs() )
                                 rect = t.transform( rect )
 
-                        qDebug( "rect:%s" % rect.toString() )
+                        qDebug( u"rect:%s" % rect.toString() )
 
                         self.iface.mapCanvas().setExtent( rect )
                         self.iface.mapCanvas().refresh()
@@ -2360,8 +2360,8 @@ class ALKISOwnerInfo(QgsMapTool):
                         for b in res['best']:
                                 b['bse'] = self.fetchall( db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'] )
 
-                        for k,v in res.iteritems():
-                                qDebug( "%s:%s\n" % ( k, unicode(v) ) )
+#                        for k,v in res.iteritems():
+#                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
 
                         html = u"""
 <HTML xmlns="http://www.w3.org/1999/xhtml">

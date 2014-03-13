@@ -1,0 +1,7 @@
+conf.py
+info.py
+resources.py
+*.pyc
+*.stackdump
+plugin.xml
+alkisplugin.zip
