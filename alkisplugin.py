@@ -2283,7 +2283,7 @@ class ALKISOwnerInfo(QgsMapTool):
                         try:
                                 t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.crs )
                         except:
-                                t = QgsCoordinateTransform( c.mapCanvas().destinationCrs(), self.crs )
+                                t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.crs )
                         point = t.transform( point )
 
                 if self.areaMarkerLayer is None:
