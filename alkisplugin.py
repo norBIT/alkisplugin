@@ -1,13 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
-# vim: set expandtab :
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 foldmethod=indent autoindent :
 
 import sip
 for c in [ "QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant" ]:
         sip.setapi(c,2)
 
 from PyQt4.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QDate
-from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap, QFileDialog
+from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QCursor, QPixmap, QFileDialog, QTableWidgetItem, QDialogButtonBox
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
 from tempfile import NamedTemporaryFile
@@ -33,7 +33,7 @@ try:
 except:
         mapscriptAvailable = False
 
-import time, info, conf, os, socket, resources
+import operator, time, info, conf, os, socket, resources
 
 def qDebug(s):
         QtCore.qDebug( s.encode('ascii', 'ignore') )
@@ -46,7 +46,6 @@ class Conf(QDialog, conf.Ui_Dialog):
                 self.plugin = plugin
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-
                 self.leSERVICE.setText( s.value( "service", "" ) )
                 self.leHOST.setText( s.value( "host", "" ) )
                 self.lePORT.setText( s.value( "port", "5432" ) )
@@ -54,8 +53,59 @@ class Conf(QDialog, conf.Ui_Dialog):
                 self.leUID.setText( s.value( "uid", "" ) )
                 self.lePWD.setText( s.value( "pwd", "" ) )
 
+                self.load(False)
+
                 self.bb.accepted.connect(self.accept)
                 self.bb.rejected.connect(self.reject)
+                self.bb.addButton( "Modelle laden", QDialogButtonBox.ActionRole ).clicked.connect( self.load )
+
+        def load(self, error=True):
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                s.setValue( "service", self.leSERVICE.text() )
+                s.setValue( "host", self.leHOST.text() )
+                s.setValue( "port", self.lePORT.text() )
+                s.setValue( "dbname", self.leDBNAME.text() )
+                s.setValue( "uid", self.leUID.text() )
+                s.setValue( "pwd", self.lePWD.text() )
+
+                modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
+                (db,conninfo) = self.plugin.opendb()
+                if db:
+                        qry = QSqlQuery(db)
+                        if qry.exec_( """
+SELECT modell,count(*)
+FROM (
+        SELECT unnest(modell) AS modell FROM po_points   UNION ALL
+        SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
+        SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
+        SELECT unnest(modell) AS modell from po_lines    UNION ALL
+        SELECT unnest(modell) AS modell from po_labels
+) AS foo
+GROUP BY modell
+ORDER BY count(*) DESC
+""" ):
+                                self.twModellarten.clearContents()
+                                res = {}
+                                while qry.next():
+                                        res[ qry.value(0) ] = qry.value(1)
+
+                                self.twModellarten.setRowCount( len(res) )
+                                i = 0
+                                for k,n in sorted(res.iteritems(), key=operator.itemgetter(1), reverse=True):
+                                        item = QTableWidgetItem( k )
+                                        item.setCheckState( Qt.Checked if (item.text() in modelle) else Qt.Unchecked )
+                                        self.twModellarten.setItem( i, 0, item )
+
+                                        item = QTableWidgetItem( str(n) )
+                                        self.twModellarten.setItem( i, 1, item )
+                                        i += 1
+                                self.twModellarten.resizeColumnsToContents()
+                        elif error:
+                                self.twModellarten.clearContents()
+                                self.twModellarten.setDisabled( True )
+                elif error:
+                        QMessageBox.critical( None, "ALKIS", u"Datenbankverbindung schlug fehl." )
+
 
         def accept(self):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
@@ -65,6 +115,14 @@ class Conf(QDialog, conf.Ui_Dialog):
                 s.setValue( "dbname", self.leDBNAME.text() )
                 s.setValue( "uid", self.leUID.text() )
                 s.setValue( "pwd", self.lePWD.text() )
+
+                modelle = []
+                for i in range( self.twModellarten.rowCount() ):
+                        item = self.twModellarten.item(i,0)
+                        if item.checkState() == Qt.Checked:
+                                modelle.append( item.text() )
+
+                s.setValue( "modellarten", modelle )
 
                 QDialog.accept(self)
 
@@ -89,7 +147,7 @@ class alkisplugin(QObject):
                         'label'  : { 'min':0, 'max':5000 },
                         'filter' : [
                                 { 'name': u"Flächen", 'filter': "NOT layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
-                                { 'name': "Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
+                                { 'name': u"Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
                         ],
                         'classes': {
                                 '2001': u'Bruchstriche',
@@ -115,9 +173,9 @@ class alkisplugin(QObject):
                                 '1304': u'Anderes Gebäude',
                                 '1309': u'Gebäude für öffentliche Zwecke',
                                 '1501': u'Aussichtsturm',
-				'2031': u'Anderes Gebäude',
-				'rn1501': u'Anderes Gebäude',
-				'2505': u'Öffentliches Gebäude',
+                                '2031': u'Anderes Gebäude',
+                                'rn1501': u'Anderes Gebäude',
+                                '2505': u'Öffentliches Gebäude',
                         },
                 },
                 {
@@ -488,13 +546,13 @@ class alkisplugin(QObject):
                 'alkis1510': { 'symbol': "0" },
                 'alkis1519': { 'symbol': "0" },
                 'alkis1520': { 'symbol': "0" },
-                'alkis1521': { 'symbol': "0" },	# NRW
-                'alkis1522': { 'symbol': "0" },	# NRW
+                'alkis1521': { 'symbol': "0" }, # NRW
+                'alkis1522': { 'symbol': "0" }, # NRW
                 'alkis1523': { 'symbol': "0" }, # NRW
-                'alkis1525': { 'symbol': "0" },	# NRW
+                'alkis1525': { 'symbol': "0" }, # NRW
                 'alkis1526': { 'symbol': "0" },
-                'alkis1532': { 'symbol': "0" },	# NRW
-                'alkis1542': { 'symbol': "0" },	# NRW
+                'alkis1532': { 'symbol': "0" }, # NRW
+                'alkis1542': { 'symbol': "0" }, # NRW
                 'alkis1540': { 'symbol': "0" },
                 'alkis1701': { 'symbol': "0" },
                 'alkis1702': { 'symbol': "0" },
@@ -635,7 +693,7 @@ class alkisplugin(QObject):
                 'alkis2535'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 81, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 20, 32 ], }, # NRW
                 'alkis2560'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER,  'pattern': [ 35, 35 ], }, # NRW
                 'alkis2592'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 204, 204 ], 'size': 1, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, }, # NRW
-                'alkis2623'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },	# NRW
+                'alkis2623'  : { 'type': mapscript.MS_SYMBOL_CARTOLINE, 'color':  [ 0, 0, 0 ], 'size': 2, 'linecap': mapscript.MS_CJC_BUTT, 'linejoin': mapscript.MS_CJC_MITER, },      # NRW
         } if mapscriptAvailable else {}
 
         def __init__(self, iface):
@@ -757,7 +815,7 @@ class alkisplugin(QObject):
                 dlg = Conf(self)
                 dlg.exec_()
 
-        def search(self):
+        def initLayers(self):
                 if self.pointMarkerLayer is None:
                         (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/pointMarkerLayer" )
                         if ok:
@@ -765,6 +823,12 @@ class alkisplugin(QObject):
 
                 if self.pointMarkerLayer is None:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!" )
+                        return False
+                else:
+                        return True
+
+        def search(self):
+                if not self.initLayers():
                         return
 
                 (text,ok) = QInputDialog.getText( self.iface.mainWindow(), u"Beschriftung suchen", u"Suchbegriff" )
@@ -793,6 +857,13 @@ class alkisplugin(QObject):
 
                 layer.toggleScaleBasedVisibility(True)
 
+        def setUMNScale(self, layer, d):
+                if d['min'] is None and d['max'] is None:
+                        return
+
+                if not d['min'] is None: layer.minscaledenom = d['min']
+                if not d['max'] is None: layer.maxscaledenom = d['max']
+
         def categoryLabel(self, d, sn):
                 qDebug( u"categories: %s" % d['classes'] )
                 if d['classes'].has_key(unicode(sn)):
@@ -808,6 +879,9 @@ class alkisplugin(QObject):
                         QApplication.restoreOverrideCursor()
 
         def eignerlayer(self):
+                if not self.initLayers():
+                        return
+
                 QApplication.setOverrideCursor( Qt.WaitCursor )
                 try:
                         self.iface.mapCanvas().setRenderFlag( False )
@@ -817,8 +891,9 @@ class alkisplugin(QObject):
                                 return
 
                         layer = self.iface.addVectorLayer(
-                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=\"(%s)\" (wkb_geometry) sql=" % (
+                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=\"(%s)\" (wkb_geometry) sql=" % (
                                         conninfo,
+                                        self.pointMarkerLayer.crs().postgisSrid(),
                                         u"SELECT f.ogc_fid"
                                         + ",f.gml_id"
                                         + ",f.wkb_geometry"
@@ -836,7 +911,7 @@ class alkisplugin(QObject):
                                         + " FROM ax_flurstueck f"
                                         + " JOIN flurst fs ON fs.ff_stand=0 AND"
                                         +  " to_char(f.land,'fm00') || to_char(f.gemarkungsnummer,'fm0000')"
-                                        +  " || '-' || to_char(f.flurnummer,'fm000')"
+                                        +  " || '-' || to_char(coalesce(f.flurnummer,0),'fm000')"
                                         +  " || '-' || to_char(f.zaehler,'fm00000')"
                                         +  " || '/' || to_char(coalesce(f.nenner,0),'fm000')=fs.flsnr"
                                         + " JOIN gema_shl ON gema_shl.gemashl=fs.gemashl"
@@ -865,6 +940,9 @@ class alkisplugin(QObject):
 
                 self.conf = conf
 
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
+
                 self.iface.mapCanvas().setRenderFlag( False )
 
                 qry = QSqlQuery(db)
@@ -883,6 +961,13 @@ class alkisplugin(QObject):
                 self.showProgress.connect( self.iface.mainWindow().showProgress )
                 self.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
 
+                sql = u"SELECT find_srid('','po_points', 'point')"
+                if qry.exec_( sql ) and qry.next():
+                        epsg = qry.value(0)
+                else:
+                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                        return
+
                 nGroups = 0
                 iThema = -1
                 for d in alkisplugin.themen:
@@ -893,13 +978,18 @@ class alkisplugin(QObject):
 
                         qDebug( u"Thema: %s" % t )
 
+                        where = "thema='%s'" % t
+
+                        if len(modelle)>0:
+                            where += " AND modell && ARRAY['%s']::varchar[]" % "','".join( modelle )
+
                         self.progress(iThema, u"Flächen", 0)
 
                         sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
                                u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                               u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'"
+                               u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
                                u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet") % t
+                               u" ORDER BY darstellungsprioritaet DESC") % where
                         qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
@@ -917,7 +1007,7 @@ class alkisplugin(QObject):
 
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
-                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=thema='%s'" % (conninfo, t),
+                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=%s" % (conninfo, epsg, where),
                                                 u"Flächen (%s)" % t,
                                                 "postgres" )
                                         layer.setReadOnly()
@@ -930,6 +1020,7 @@ class alkisplugin(QObject):
                                         del r
                         else:
                                 QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                break
 
                         self.progress(iThema, "Grenzen", 1)
 
@@ -937,9 +1028,9 @@ class alkisplugin(QObject):
                                u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
                                u" FROM alkis_linien"
                                u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                               u" WHERE EXISTS (SELECT * FROM po_polygons WHERE thema='%s'"
+                               u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
                                u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet" ) % t
+                               u" ORDER BY darstellungsprioritaet" ) % where
                         qDebug( u"SQL: %s" % sql )
                         if qry.exec_(sql):
                                 r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
@@ -947,10 +1038,10 @@ class alkisplugin(QObject):
 
                                 n = 0
                                 while qry.next():
-                                        sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
-
                                         sn = qry.value(0)
                                         c = QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) )
+
+                                        sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
                                         sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, float(qry.value(4)) ) )
                                         sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
@@ -959,7 +1050,7 @@ class alkisplugin(QObject):
 
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
-                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=thema='%s'" % (conninfo, t),
+                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=%s" % (conninfo, epsg, where),
                                                 u"Grenzen (%s)" % t,
                                                 "postgres" )
                                         layer.setReadOnly()
@@ -972,6 +1063,7 @@ class alkisplugin(QObject):
                                         del r
                         else:
                                 QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                break
 
                         self.progress(iThema, "Linien", 2)
 
@@ -979,9 +1071,9 @@ class alkisplugin(QObject):
                                u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
                                u" FROM alkis_linien"
                                u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                               u" WHERE EXISTS (SELECT * FROM po_lines WHERE thema='%s'"
+                               u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s"
                                u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet" ) % t
+                               u" ORDER BY darstellungsprioritaet DESC" ) % where
                         qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
@@ -1001,7 +1093,7 @@ class alkisplugin(QObject):
 
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
-                                                        u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=25832 table=po_lines (line) sql=thema='%s'" % (conninfo, t),
+                                                        u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=po_lines (line) sql=%s" % (conninfo, epsg, where),
                                                         u"Linien (%s)" % t,
                                                         "postgres" )
                                         layer.setReadOnly()
@@ -1014,10 +1106,11 @@ class alkisplugin(QObject):
                                         del r
                         else:
                                 QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                break
 
                         self.progress(iThema, "Punkte", 3)
 
-                        sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE thema='%s'" % t
+                        sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where
                         qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
@@ -1045,18 +1138,19 @@ class alkisplugin(QObject):
                                         symlayer.setSize( w )
                                         symlayer.setOffset( QPointF( -x, -y ) )
 
-                                        sym = QgsMarkerSymbolV2( [symlayer] )
+                                        sym = QgsSymbolV2.defaultSymbol( QGis.Point )
                                         sym.setOutputUnit( QgsSymbolV2.MapUnit )
                                         qDebug( u"sym.setSize %s:%f" % (sn, w) )
                                         sym.setSize( w )
 
+                                        sym.changeSymbolLayer( 0, symlayer )
                                         r.addCategory( QgsRendererCategoryV2( "%s" % sn, sym, self.categoryLabel(d, sn) ) )
                                         n += 1
 
                                 qDebug( u"classes: %d" % n )
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
-                                                        u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE thema='%s')\" (point) sql=" % (conninfo, t),
+                                                        u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE %s)\" (point) sql=" % (conninfo, epsg, where),
                                                         u"Punkte (%s)" % t,
                                                         "postgres" )
                                         layer.setReadOnly()
@@ -1067,6 +1161,9 @@ class alkisplugin(QObject):
                                         nLayers += 1
                                 else:
                                         del r
+                        else:
+                                QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                break
 
                         n = 0
                         labelGroup = -1
@@ -1074,7 +1171,7 @@ class alkisplugin(QObject):
                                 geom = "point" if i==0 else "line"
                                 geomtype = "MULTIPOINT" if i==0 else "MULTILINESTRING"
 
-                                if not qry.exec_( "SELECT count(*) FROM po_labels WHERE thema='%s' AND NOT %s IS NULL" % (t,geom) ):
+                                if not qry.exec_( "SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where,geom) ):
                                         QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
                                         continue
 
@@ -1087,46 +1184,49 @@ class alkisplugin(QObject):
                                         labelGroup = self.iface.legendInterface().addGroup( "Beschriftungen", False, thisGroup )
                                         self.iface.legendInterface().moveLayer( layer, labelGroup )
 
-                                uri = ( conninfo +
-                                    u" estimatedmetadata=true key='ogc_fid' type=%s srid=25832 table="
-                                    u"\"("
-                                    u"SELECT"
-                                    u" ogc_fid"
-                                    u",%s"
-                                    u",st_x(point) AS tx"
-                                    u",st_y(point) AS ty"
-                                    u",drehwinkel_grad AS tangle"
-                                    u",(size_umn*0.0254)::float8 AS tsize"
-                                    u",text"
-                                    u",CASE"
-                                    u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
-                                    u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
-                                    u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
-                                    u" END AS halign"
-                                    u",CASE"
-                                    u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
-                                    u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
-                                    u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
-                                    u" END AS valign"
-                                    u",'Arial'::text AS family"
-                                    u",CASE WHEN font_umn LIKE '%%italic%%' THEN 1 ELSE 0 END AS italic"
-                                    u",CASE WHEN font_umn LIKE '%%bold%%' THEN 1 ELSE 0 END AS bold"
-                                    u" FROM po_labels"
-                                    u" WHERE thema='%s'"
-                                    u")\" (%s) sql=" ) % (geomtype,geom,t,geom)
+                                uri = (
+                                        u"{0} estimatedmetadata=true key='ogc_fid' type={1} srid={2} table="
+                                        u"\"("
+                                        u"SELECT"
+                                        u" ogc_fid"
+                                        u",(size_umn*0.0254)::float8 AS tsize"
+                                        u",text"
+                                        u",CASE"
+                                        u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
+                                        u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
+                                        u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
+                                        u" END AS halign"
+                                        u",CASE"
+                                        u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
+                                        u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
+                                        u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
+                                        u" END AS valign"
+                                        u",'Arial'::text AS family"
+                                        u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
+                                        u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
+                                        u",{3}"
+                                        u",modell"
+                                        u" FROM po_labels"
+                                        u" WHERE {4}"
+                                        u")\" ({5}) sql="
+                                        ).format(
+                                            conninfo, geomtype, epsg,
+                                            u"point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom=="point" else "line",
+                                            where, geom
+                                        )
 
                                 qDebug( u"URI: %s" % uri )
 
-                                layer = self.iface.addVectorLayer(
-                                        uri,
-                                        u"Beschriftungen (%s)" % t,
-                                        "postgres" )
+                                layer = self.iface.addVectorLayer( uri, u"Beschriftungen (%s)" % t, "postgres" )
                                 layer.setReadOnly()
 
                                 self.setScale( layer, d['label'] )
 
-                                sym = QgsMarkerSymbolV2()
-                                sym.setSize( 0.0 )
+                                sym = QgsSymbolV2.defaultSymbol( QGis.Point if geom=="point" else QGis.Line )
+                                if geom=="point":
+                                    sym.setSize( 0.0 )
+                                else:
+                                    sym.changeSymbolLayer( 0, QgsSimpleLineSymbolLayerV2( Qt.black, 0.0, Qt.NoPen ) )
                                 layer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
                                 self.iface.legendInterface().refreshLayerSymbology( layer )
                                 self.iface.legendInterface().moveLayer( layer, thisGroup )
@@ -1140,26 +1240,36 @@ class alkisplugin(QObject):
                                 lyr.textFont.setFamily( "Arial" )
                                 lyr.bufferSizeInMapUnits = True
                                 lyr.bufferSize = 0.25
+                                lyr.displayAll = True
+                                lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
+                                lyr.scaleVisibility = True
+                                if geom == "point":
+                                    lyr.placement = QgsPalLayerSettings.AroundPoint
+                                else:
+                                    lyr.placement = QgsPalLayerSettings.Curved
+                                    lyr.placementFlags = QgsPalLayerSettings.AboveLine
                                 try:
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, True, False, "", "tsize" )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, True, False, "", "family" )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, True, False, "", "italic" )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
+                                        if geom == "point":
+                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
+                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
+                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
                                 except:
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, layer.dataProvider().fieldNameIndex("italic") )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, layer.dataProvider().fieldNameIndex("bold") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, layer.dataProvider().fieldNameIndex("halign") )
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, layer.dataProvider().fieldNameIndex("valign") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
+                                        if geom == "point":
+                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
+                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
+                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
                                 lyr.writeToLayer( layer )
 
                                 self.iface.legendInterface().refreshLayerSymbology( layer )
@@ -1181,7 +1291,7 @@ class alkisplugin(QObject):
                         self.iface.legendInterface().setGroupVisible( self.alkisGroup, False )
 
                         self.pointMarkerLayer = self.iface.addVectorLayer(
-                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=25832 table=po_labels (point) sql=false" % conninfo,
+                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=po_labels (point) sql=false" % (conninfo,epsg),
                                                 u"Punktmarkierung",
                                                 "postgres" )
 
@@ -1194,7 +1304,7 @@ class alkisplugin(QObject):
                         self.iface.legendInterface().moveLayer( self.pointMarkerLayer, markerGroup )
 
                         self.areaMarkerLayer = self.iface.addVectorLayer(
-                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=25832 table=po_polygons (polygon) sql=false" % conninfo,
+                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=false" % (conninfo,epsg),
                                                 u"Flächenmarkierung",
                                                 "postgres" )
 
@@ -1249,8 +1359,12 @@ class alkisplugin(QObject):
                                 uri.setConnection( service, dbname, uid, pwd )
 
                         conninfo = uri.connectionInfo()
+                else:                          
+                        uid = None
+                        pwd = None
 
-                db = QSqlDatabase.addDatabase( "QPSQL" )
+                QSqlDatabase.removeDatabase( "ALKIS" )
+                db = QSqlDatabase.addDatabase( "QPSQL", "ALKIS" )
                 db.setConnectOptions( conninfo )
 
                 if not db.open():
@@ -1332,7 +1446,7 @@ class alkisplugin(QObject):
                         u"SELECT "
                         u"gml_id"
                         u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
-                        u"'-' || to_char(flurnummer,'fm000') ||"
+                        u"'-' || to_char(coalesce(flurnummer,0),'fm000') ||"
                         u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
                         u" FROM ax_flurstueck"
                         u" WHERE endet IS NULL"
@@ -1360,20 +1474,21 @@ class alkisplugin(QObject):
 
                 self.iface.mapCanvas().refresh()
 
-                if zoomTo and qry.exec_( u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
+                if zoomTo and qry.exec_( u"SELECT st_extent(wkb_geometry),find_srid('','ax_flurstueck', 'wkb_geometry') FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
                         bb = qry.value(0)[4:-1]
                         (p0,p1) = bb.split(",")
                         (x0,y0) = p0.split(" ")
                         (x1,y1) = p1.split(" ")
+                        epsg = qry.value(1).toInt()
                         qDebug( u"x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
                         rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
 
                         c = self.iface.mapCanvas()
                         if c.hasCrsTransformEnabled():
                                 try:
-                                        t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(25832), c.mapSettings().destinationCrs() )
+                                        t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapSettings().destinationCrs() )
                                 except:
-                                        t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(25832), c.mapRenderer().destinationCrs() )
+                                        t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapRenderer().destinationCrs() )
                                 rect = t.transform( rect )
 
                         qDebug( u"rect:%s" % rect.toString() )
@@ -1400,24 +1515,26 @@ class alkisplugin(QObject):
                 mapobj = mapscript.mapObj()
                 mapobj.outputformat.driver = "GD/PNG"
                 mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
+                mapobj.shapepath = os.path.abspath( os.path.dirname(__file__) )
                 mapobj.setFontSet( os.path.abspath( os.path.join( os.path.dirname(__file__), "fonts", "fonts.txt" ) ) )
+
+                mapobj.maxsize = 20480;
+                mapobj.web.metadata.set( u"wms_enable_request", "*" )
+                mapobj.web.metadata.set( u"wms_title", "ALKIS" )
 
                 qry = QSqlQuery(db)
 
-                if qry.exec_( "SELECT st_extent(wkb_geometry) FROM ax_flurstueck" ) and qry.next():
+                if qry.exec_( "SELECT st_extent(wkb_geometry),find_srid('','ax_flurstueck','wkb_geometry') FROM ax_flurstueck" ) and qry.next():
                         bb = qry.value(0)[4:-1]
                         (p0,p1) = bb.split(",")
                         (x0,y0) = p0.split(" ")
                         (x1,y1) = p1.split(" ")
-                        mapobj.setProjection( "init=epsg:%d" % 25832 )
+                        epsg = qry.value(1)
+                        mapobj.setProjection( "init=epsg:%d" % epsg )
                         mapobj.setExtent( float(x0), float(y0), float(x1), float(y1) )
 
-                qs = QSettings( "QGIS", "QGIS2" )
-                svgpaths = qs.value( "svg/searchPathsForSVG", "", type=str ).split("|")
-                svgpath = os.path.abspath( os.path.join( os.path.dirname(__file__), "svg" ) )
-                if not svgpath.upper() in map(unicode.upper, svgpaths):
-                        svgpaths.append( svgpath )
-                        qs.setValue( "svg/searchPathsForSVG", "|".join( svgpaths ) )
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
 
                 missing = {}
 
@@ -1440,7 +1557,11 @@ class alkisplugin(QObject):
                         for f in d['filter']:
                                 name = f.get('name', thema)
                                 tname = thema
+
                                 where = "thema='%s'" % thema
+
+                                if len(modelle)>0:
+                                    where += " AND modell && ARRAY['%s']::varchar[]" % "','".join( modelle )
 
                                 if f.get('name',None):
                                         tname += " / " + f['name']
@@ -1450,12 +1571,12 @@ class alkisplugin(QObject):
 
                                 self.progress(iThema, u"Flächen", 0)
 
-				# 1 Polylinien
-				# 1.1 Flächen
-				# 1.2 Randlinien
-				# 2 Linien
-				# 3 Punkte
-				# 4 Beschriftungen
+                                # 1 Polylinien
+                                # 1.1 Flächen
+                                # 1.2 Randlinien
+                                # 2 Linien
+                                # 3 Punkte
+                                # 4 Beschriftungen
 
                                 group = []
                                 layer = None
@@ -1464,12 +1585,20 @@ class alkisplugin(QObject):
                                 maxprio = None
                                 nclasses = None
 
-				layer = mapscript.layerObj(mapobj)
+                                sql = u"SELECT find_srid('','po_points', 'point')"
+                                if qry.exec_( sql ) and qry.next():
+                                        epsg = qry.value(0)
+                                else:
+                                        print u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql )
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql) )
+                                        break
+
+                                layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
                                 iLayer += 1
-                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode("latin-1")
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg) ).encode("latin-1")
                                 layer.classitem = "signaturnummer"
-                                layer.setProjection( "init=epsg:%d" % 25832 )
+                                layer.setProjection( "init=epsg:%d" % epsg )
                                 layer.connectiontype = mapscript.MS_POSTGIS
                                 layer.connection = conninfo
                                 layer.symbolscaledenom = 1000
@@ -1479,6 +1608,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( u"norGIS_label", (u"ALKIS / %s / Flächen" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s/Flächen" % tname).encode("latin-1") )
+                                self.setUMNScale( layer, d['area'] )
 
 				sql = (u"SELECT"
 				       u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
@@ -1488,10 +1619,10 @@ class alkisplugin(QObject):
 				       u" ORDER BY darstellungsprioritaet" ) % where
                                 qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
-					sprio = 0
-					nclasses = 0
-					minprio = None
-					maxprio = None
+                                        sprio = 0
+                                        nclasses = 0
+                                        minprio = None
+                                        maxprio = None
 
                                         while qry.next():
                                                 sn = qry.value( 0 )
@@ -1518,11 +1649,12 @@ class alkisplugin(QObject):
 
                                 else:
                                         QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                        break
 
-				if layer.numclasses > 0:
-					layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
-					layer.setMetaData( "norGIS_minprio", "%d" % minprio )
-					layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
+                                if layer.numclasses > 0:
+                                        layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
+                                        layer.setMetaData( "norGIS_minprio", "%d" % minprio )
+                                        layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
 
                                         group.append( layer.name )
                                 else:
@@ -1531,16 +1663,16 @@ class alkisplugin(QObject):
 
                                 self.progress(iThema, "Grenzen", 1)
 
-				#
-				# 1.2 Randlinien
-				#
-				layer = mapscript.layerObj(mapobj)
+                                #
+                                # 1.2 Randlinien
+                                #
+                                layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
                                 iLayer += 1
-                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode("latin-1")
-	                        layer.classitem = "signaturnummer"
-                                layer.setProjection( "init=epsg:%d" % 25832 )
-	                        layer.connection = conninfo
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg) ).encode("latin-1")
+                                layer.classitem = "signaturnummer"
+                                layer.setProjection( "init=epsg:%d" % epsg )
+                                layer.connection = conninfo
                                 layer.connectiontype = mapscript.MS_POSTGIS
                                 layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
                                 #layer.symbolscaledenom = 1000
@@ -1549,6 +1681,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Grenzen" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s/Grenzen" % tname).encode("latin-1") )
+                                self.setUMNScale( layer, d['outline'] )
 
                                 sql = (u"SELECT"
 				       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
@@ -1558,10 +1692,10 @@ class alkisplugin(QObject):
 				       u" ORDER BY darstellungsprioritaet" ) % where
                                 qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
-					sprio = 0
-					nclasses = 0
-					minprio = None
-					maxprio = None
+                                        sprio = 0
+                                        nclasses = 0
+                                        minprio = None
+                                        maxprio = None
 
                                         while qry.next():
                                                 sn = qry.value( 0 )
@@ -1575,39 +1709,39 @@ class alkisplugin(QObject):
                                                 cl.title = "1"
 
                                                 if not self.insertStylesFromBlock(layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
-							layer.removeClass( layer.numclasses-1 )
+                                                        layer.removeClass( layer.numclasses-1 )
 
-						nclasses += 1
-						sprio += prio
-						if not minprio or prio < minprio:
+                                                nclasses += 1
+                                                sprio += prio
+                                                if not minprio or prio < minprio:
                                                         minprio = prio
-						if not maxprio or prio > maxprio:
+                                                if not maxprio or prio > maxprio:
                                                         maxprio = prio
 
                                 else:
                                         QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                        break
 
-				if layer.numclasses > 0:
-					layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
-					layer.setMetaData( "norGIS_minprio", "%d" % minprio )
-					layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
+                                if layer.numclasses > 0:
+                                        layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
+                                        layer.setMetaData( "norGIS_minprio", "%d" % minprio )
+                                        layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
 
                                         group.append( layer.name )
                                 else:
                                         mapobj.removeLayer( layer.index )
 
-
                                 self.progress(iThema, "Linien", 2)
 
-				#
-				# 2 Linien
-				#
-				layer = mapscript.layerObj(mapobj)
+                                #
+                                # 2 Linien
+                                #
+                                layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
                                 iLayer += 1
-                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode( "latin-1" )
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode( "latin-1" )
                                 layer.classitem = "signaturnummer"
-                                layer.setProjection( "init=epsg:%d" % 25832 )
+                                layer.setProjection( "init=epsg:%d" % epsg )
                                 layer.connection = conninfo
                                 layer.connectiontype = mapscript.MS_POSTGIS
                                 layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
@@ -1617,6 +1751,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Linien" % tname).encode( "latin-1" ) )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s/Linien" % tname).encode("latin-1") )
+                                self.setUMNScale( layer, d['line'] )
 
                                 sql = (u"SELECT"
 				       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
@@ -1626,10 +1762,10 @@ class alkisplugin(QObject):
 				       u" ORDER BY darstellungsprioritaet" ) % where
                                 qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
-					sprio = 0
-					nclasses = 0
-					minprio = None
-					maxprio = None
+                                        sprio = 0
+                                        nclasses = 0
+                                        minprio = None
+                                        maxprio = None
 
                                         while qry.next():
                                                 sn = qry.value( 0 )
@@ -1643,22 +1779,23 @@ class alkisplugin(QObject):
                                                 cl.title = "1"
 
                                                 if not self.insertStylesFromBlock(layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
-							layer.removeClass( layer.numclasses-1 )
+                                                        layer.removeClass( layer.numclasses-1 )
 
-						nclasses += 1
-						sprio += prio;
-						if not minprio or prio < minprio:
+                                                nclasses += 1
+                                                sprio += prio;
+                                                if not minprio or prio < minprio:
                                                         minprio = prio
-						if not maxprio or prio > maxprio:
+                                                if not maxprio or prio > maxprio:
                                                         maxprio = prio
 
                                 else:
                                         QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                        break
 
-				if layer.numclasses > 0:
-					layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
-					layer.setMetaData( "norGIS_minprio", "%d" % minprio )
-					layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
+                                if layer.numclasses > 0:
+                                        layer.setMetaData( "norGIS_zindex", "%d" % (sprio / nclasses) )
+                                        layer.setMetaData( "norGIS_minprio", "%d" % minprio )
+                                        layer.setMetaData( "norGIS_maxprio", "%d" % maxprio )
 
                                         group.append( layer.name )
                                 else:
@@ -1668,17 +1805,17 @@ class alkisplugin(QObject):
                                                 raise "No layer removed"
 
                                 #
-				# 3 Punkte (TODO: Darstellungspriorität)
+                                # 3 Punkte (TODO: Darstellungspriorität)
                                 #
 
-				layer = mapscript.layerObj(mapobj)
+                                layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
                                 iLayer += 1
-                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % where).encode( "latin-1" )
-	                        layer.classitem = "signaturnummer"
-				layer.setProjection( "init=epsg:%d" % 25832 )
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode( "latin-1" )
+                                layer.classitem = "signaturnummer"
+                                layer.setProjection( "init=epsg:%d" % epsg )
                                 layer.connection = conninfo
-				layer.connectiontype = mapscript.MS_POSTGIS
+                                layer.connectiontype = mapscript.MS_POSTGIS
                                 layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
                                 layer.symbolscaledenom = 1000
                                 layer.sizeunits = mapscript.MS_METERS
@@ -1686,6 +1823,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Punkte" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s/Punkte" % tname).encode("latin-1") )
+                                self.setUMNScale( layer, d['point'] )
 
                                 self.progress(iThema, "Punkte", 3)
 
@@ -1715,7 +1854,7 @@ class alkisplugin(QObject):
                                                         f = NamedTemporaryFile(delete=False)
                                                         tempname = f.name
                                                         f.write( "SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis%s\" IMAGE \"%s\" END END" % (
-                                                                        sn, os.path.abspath( os.path.join( os.path.dirname(__file__), "svg", "alkis%s.svg" % sn ) ) ) )
+                                                                        sn, os.path.join( "svg", "alkis%s.svg" % sn ) ) )
                                                         f.close()
 
                                                         tempsymbolset = mapscript.symbolSetObj( tempname )
@@ -1728,17 +1867,17 @@ class alkisplugin(QObject):
 
                                                         del tempsymbolset
 
-                                                stylestring = "STYLE ANGLE [drehwinkel_grad] OFFSET %lf %lf SIZE %lf SYMBOL \"norGIS_alkis%s\" END" % (x, y, h, sn )
+                                                stylestring = "STYLE ANGLE [drehwinkel_grad] OFFSET %lf %lf SIZE %lf SYMBOL \"norGIS_alkis%s\" MINSIZE 1 END" % (x, y, h, sn )
                                                 style = fromstring( stylestring )
-		                                cl.insertStyle( style )
+                                                cl.insertStyle( style )
 
                                 if layer.numclasses > 0:
-					group.append( layer.name )
+                                        group.append( layer.name )
                                 else:
-					mapobj.removeLayer( layer.index )
+                                        mapobj.removeLayer( layer.index )
 
                                 #
-				# 4 Beschriftungen (TODO: Darstellungspriorität)
+                                # 4 Beschriftungen (TODO: Darstellungspriorität)
                                 #
 
                                 lgroup = []
@@ -1755,11 +1894,13 @@ class alkisplugin(QObject):
                                         layer.name = "l%d" % iLayer
                                         iLayer += 1
                                         layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Beschriftungen" % tname).encode("latin-1") )
+                                        layer.setMetaData( u"wms_layer_group", (u"/%s/Beschriftungen" % tname).encode("latin-1") )
+                                        self.setUMNScale( layer, d['label'] )
                                         layer.setMetaData( "norGIS_zindex", "999" )
-                                        layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,%s AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=25832" % (geom,where)).encode( "latin-1" )
+                                        layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,%s AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (geom,where,epsg)).encode( "latin-1" )
                                         layer.classitem = "alignment"
                                         layer.labelitem = "text"
-                                        layer.setProjection( "init=epsg:%d" % 25832 )
+                                        layer.setProjection( "init=epsg:%d" % epsg )
                                         layer.connection = conninfo
                                         layer.connectiontype = mapscript.MS_POSTGIS
                                         layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
@@ -1773,15 +1914,15 @@ class alkisplugin(QObject):
 
                                         positions = {
                                                         -1: mapscript.MS_AUTO,
-                                                        1: mapscript.MS_LR,
-                                                        2: mapscript.MS_LC,
-                                                        3: mapscript.MS_LL,
-                                                        4: mapscript.MS_CR,
-                                                        5: mapscript.MS_CC,
-                                                        6: mapscript.MS_CL,
-                                                        7: mapscript.MS_UR,
-                                                        8: mapscript.MS_UC,
-                                                        9: mapscript.MS_UL,
+                                                         1: mapscript.MS_LR,
+                                                         2: mapscript.MS_LC,
+                                                         3: mapscript.MS_LL,
+                                                         4: mapscript.MS_CR,
+                                                         5: mapscript.MS_CC,
+                                                         6: mapscript.MS_CL,
+                                                         7: mapscript.MS_UR,
+                                                         8: mapscript.MS_UC,
+                                                         9: mapscript.MS_UL,
                                                     }
 
                                         for pos in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1 ]:
@@ -1816,7 +1957,7 @@ class alkisplugin(QObject):
 
                                                 cl.addLabel( label )
 
-					lgroup.append( layer.name )
+                                        lgroup.append( layer.name )
 
                 self.reorderLayers( mapobj )
 
@@ -1983,28 +2124,28 @@ class alkisplugin(QObject):
                 return styles
 
         def insertStylesFromBlock(self,**kwargs):
-	        cl = kwargs.get('layerclass', None)
+                cl = kwargs.get('layerclass', None)
                 if not cl:
                         raise "layerclass undefined"
 
-	        del kwargs['layerclass']
+                del kwargs['layerclass']
 
-	        styles = self.styleFromBlock(**kwargs)
+                styles = self.styleFromBlock(**kwargs)
 
                 if not styles:
-	                return 0
+                        return 0
 
-	        for style in styles:
-		        cl.insertStyle( style )
+                for style in styles:
+                        cl.insertStyle( style )
 
-	        return 1
+                return 1
 
         def reorderLayers(self,mapobj):
                 layers = {}
                 idx = {}
                 for i in range(mapobj.numlayers):
-		        layer = mapobj.getLayer(i)
-		        layer.setMetaData( "norGIS_oldindex", "%d" % i )
+                        layer = mapobj.getLayer(i)
+                        layer.setMetaData( "norGIS_oldindex", "%d" % i )
 
                         zindex = layer.metadata.get( "norGIS_zindex" ) or -1
 
@@ -2017,26 +2158,26 @@ class alkisplugin(QObject):
                         layers[ layer.type ][ zindex ].append( i )
                         idx[i] = i
 
-	        order = []
+                order = []
                 for t in [ mapscript.MS_LAYER_RASTER, mapscript.MS_LAYER_POLYGON, mapscript.MS_LAYER_LINE, mapscript.MS_LAYER_POINT, mapscript.MS_LAYER_ANNOTATION ]:
                         if not layers.has_key( t ):
                                 continue
 
                         keys = layers[t].keys()
                         keys.sort()
-		        for z in keys:
-			        order.extend( layers[t][z] )
+                        for z in keys:
+                                order.extend( layers[t][z] )
 
                 for i in range(mapobj.numlayers):
                         oidx = order.pop(0)
                         j = idx[oidx]
                         del idx[oidx]
 
-		        l = mapobj.getLayer(j)
-		        mapobj.removeLayer(j)
+                        l = mapobj.getLayer(j)
+                        mapobj.removeLayer(j)
 
-		        if mapobj.insertLayer( l, i if i<mapobj.numlayers else -1 ) < 0:
-			        raise u"Konnte Layer %d nicht wieder hinzufügen" % i
+                        if mapobj.insertLayer( l, i if i<mapobj.numlayers else -1 ) < 0:
+                                raise u"Konnte Layer %d nicht wieder hinzufügen" % i
 
                         for k in idx.keys():
                                 if idx[k]>=i and idx[k]<j:
@@ -2068,12 +2209,16 @@ class ALKISPointInfo(QgsMapTool):
                                         "      ++.++     ",
                                         "       +.+      "] ) )
 
-                self.crs = QgsCoordinateReferenceSystem(25832)
-
                 self.areaMarkerLayer = None
 
         def canvasPressEvent(self,event):
-                pass
+                if self.areaMarkerLayer is None:
+                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+                        if ok:
+                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+                if self.areaMarkerLayer is None:
+                        QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 
         def canvasMoveEvent(self,event):
                 pass
@@ -2084,23 +2229,17 @@ class ALKISPointInfo(QgsMapTool):
                 c = self.iface.mapCanvas()
                 if c.hasCrsTransformEnabled():
                         try:
-                                t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.crs )
+                                t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.areaMarkerLayer.crs() )
                         except:
-                                t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.crs )
+                                t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.areaMarkerLayer.crs() )
                         point = t.transform( point )
-
-                if self.areaMarkerLayer is None:
-                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
-                        if ok:
-                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
-
-                if self.areaMarkerLayer is None:
-                        QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
-                        return
 
                 QApplication.setOverrideCursor( Qt.WaitCursor )
 
-                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() ) )
+                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=%d;POINT(%.3lf %.3lf)'::text))" % (
+                                                        self.areaMarkerLayer.crs().postgisSrid(),
+                                                        ( point.x(), point.y() )
+                                        ) )
 
                 if len(fs) == 0:
                         QApplication.restoreOverrideCursor()
@@ -2124,8 +2263,6 @@ class ALKISPointInfo(QgsMapTool):
                         QMessageBox.information( None, u"Fehler", u"Verbindung schlug fehl." )
 
                 QApplication.restoreOverrideCursor()
-
-
 
 class ALKISPolygonInfo(QgsMapTool):
         def __init__(self, plugin):
@@ -2153,12 +2290,17 @@ class ALKISPolygonInfo(QgsMapTool):
                                         "      ++.++     ",
                                         "       +.+      "] ) )
 
-                self.crs = QgsCoordinateReferenceSystem(25832)
                 self.rubberBand = QgsRubberBand( self.iface.mapCanvas(), QGis.Polygon )
                 self.areaMarkerLayer = None
 
         def canvasPressEvent(self,e):
-                pass
+                if not self.areaMarkerLayer:
+                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+                        if ok:
+                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+                if self.areaMarkerLayer:
+                        QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 
         def canvasMoveEvent(self,e):
                 if self.rubberBand.numberOfVertices()>0:
@@ -2179,14 +2321,17 @@ class ALKISPolygonInfo(QgsMapTool):
                         c = self.iface.mapCanvas()
                         if c.hasCrsTransformEnabled():
                                 try:
-                                        t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.crs )
+                                        t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.areaMarkerLayer.crs() )
                                 except:
-                                        t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.crs )
+                                        t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.areaMarkerLayer.crs() )
                                 g.transform( t )
 
                         self.rubberBand.reset( QGis.Polygon )
 
-                        fs = self.plugin.highlight( "st_intersects(wkb_geometry,st_geomfromewkt('SRID=25832;POLYGON((%s))'::text))" % ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) ) )
+                        fs = self.plugin.highlight( u"st_intersects(wkb_geometry,st_geomfromewkt('SRID=%d;POLYGON((%s))'::text))" % (
+                                                        self.areaMarkerLayer.crs().postgisSrid(),
+                                                        ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) )
+                                                ) )
 
                         if len(fs) == 0:
                                 QApplication.restoreOverrideCursor()
@@ -2242,11 +2387,16 @@ class ALKISOwnerInfo(QgsMapTool):
                                         "      ++.++     ",
                                         "       +.+      "] ) )
 
-                self.crs = QgsCoordinateReferenceSystem(25832)
                 self.areaMarkerLayer = None
 
         def canvasPressEvent(self,e):
-                pass
+                if not self.areaMarkerLayer:
+                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
+                        if ok:
+                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+                if self.areaMarkerLayer:
+                        QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 
         def canvasMoveEvent(self,e):
                 pass
@@ -2281,24 +2431,18 @@ class ALKISOwnerInfo(QgsMapTool):
                 c = self.iface.mapCanvas()
                 if c.hasCrsTransformEnabled():
                         try:
-                                t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.crs )
+                                t = QgsCoordinateTransform( c.mapSettings().destinationCrs(), self.areaMarkerLayer.crs() )
                         except:
-                                t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.crs )
+                                t = QgsCoordinateTransform( c.mapRenderer().destinationCrs(), self.areaMarkerLayer.crs() )
                         point = t.transform( point )
-
-                if self.areaMarkerLayer is None:
-                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
-                        if ok:
-                                self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
-
-                if self.areaMarkerLayer is None:
-                        QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
-                        return
 
                 try:
                         QApplication.setOverrideCursor( Qt.WaitCursor )
 
-                        fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=25832;POINT(%.3lf %.3lf)'::text))" % ( point.x(), point.y() ) )
+                        fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=%d;POINT(%.3lf %.3lf)'::text))" % (
+                                                        self.areaMarkerLayer.crs().postgisSrid(),
+                                                        ( point.x(), point.y() )
+                                                ) )
 
                         if len(fs) == 0:
                                 QApplication.restoreOverrideCursor()
@@ -2345,7 +2489,11 @@ class ALKISOwnerInfo(QgsMapTool):
                                 )
 
                         res = self.fetchall( db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr )
-                        res = res[0]
+                        if len(res) == 1:
+                                res = res[0]
+                        else:
+                                QMessageBox.information( None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr,repr(fs)) )
+                                return
 
                         res['datum'] = QDate.currentDate().toString( "d. MMMM yyyy" )
                         res['hist'] = 0
@@ -2520,7 +2668,6 @@ class ALKISOwnerInfo(QgsMapTool):
                         if res['best']:
                                 html += """
 <TABLE border="0" class="fls_bst">
-        <TR><TD colspan="6">&nbsp;<br>&nbsp;</TD></TR>
         <TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%%"></h3></TD></TR>
 """
 
