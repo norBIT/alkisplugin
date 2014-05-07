@@ -20,7 +20,7 @@ update: all
 		--exclude "alkisplugin.zip" \
 		-v \
 		./ \
-		jef@zeus.intern.norbit.de:/shares/runtime/norBIT/QGIS/alkis/
+		jef@zeus.intern.norbit.de:/shares/runtime/norBIT/QGIS/alkis/unstable
 
 plugin.xml: metadata.txt
 	perl mkxml.pl
