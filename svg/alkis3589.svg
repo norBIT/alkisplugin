@@ -1,148 +1,33 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   viewBox="0 0 81.222294 350.20497"
    version="1.1"
-   xml:space="preserve"
-   id="svg7081"
-   inkscape:version="0.48.3.1 r9886"
    width="100%"
    height="100%"
-   sodipodi:docname="alkis3589.svg"
+   viewBox="0 0 81.222294 350.20497"
+   id="svg7081"
+   xml:space="preserve"
    style="fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round"><metadata
-   id="metadata7262"><rdf:RDF><cc:Work
-       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
-         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><sodipodi:namedview
-   pagecolor="#ffffff"
-   bordercolor="#666666"
-   borderopacity="1"
-   objecttolerance="10"
-   gridtolerance="10"
-   guidetolerance="10"
-   inkscape:pageopacity="0"
-   inkscape:pageshadow="2"
-   inkscape:window-width="1855"
-   inkscape:window-height="1025"
-   id="namedview7260"
-   showgrid="false"
-   inkscape:zoom="1.5733333"
-   inkscape:cx="-80.928785"
-   inkscape:cy="175.36122"
-   inkscape:window-x="0"
-   inkscape:window-y="33"
-   inkscape:window-maximized="1"
-   inkscape:current-layer="svg7081" />
-<defs
-   id="defs7083">
-<clipPath
-   id="clipId0">
-<path
-   d="M 0,600 800,600 800,0 0,0 z"
-   id="path7086"
-   inkscape:connector-curvature="0" />
-</clipPath>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-</defs>
-<g
-   clip-path="url(#clipId0)"
-   id="g7088"
-   style="fill:none;stroke:#000000;stroke-width:0.1"
-   transform="translate(-358.89489,-125.15625)" />
-
-
-<path
-   style="fill:#000000;fill-rule:nonzero;stroke:none"
-   d="m 23.386359,0 c 0,90.95833 0,181.91667 0,272.875 -19.7529,8.58253 -29.12727,34.22815 -19.68943,53.56046 8.35466,19.73983 33.68413,29.39471 53.09466,20.36238 19.76009,-7.99137 29.89299,-32.89321 21.42222,-52.43718 -3.78088,-9.3804 -11.19802,-17.29665 -20.4212,-21.48566 0,-90.95833 0,-181.91667 0,-272.875 -11.46875,0 -22.9375,0 -34.40625,0 z m 17.21875,281.375 c 16.40644,-0.43075 30.58795,15.63375 27.94164,31.86361 -1.61662,16.90655 -20.62711,28.96503 -36.6046,23.184 -16.09171,-4.63111 -24.55203,-24.96658 -16.46204,-39.64141 4.70763,-9.34024 14.67013,-15.42134 25.125,-15.4062 z"
-   id="path7258"
-   inkscape:connector-curvature="0" />
-</svg>
+     id="metadata7262"><rdf:RDF><cc:Work
+         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+     id="defs7083"><clipPath
+       id="clipId0"><path
+         d="M 0,600 800,600 800,0 0,0 z"
+         inkscape:connector-curvature="0"
+         id="path7086" /></clipPath></defs><g
+     transform="translate(-358.89489,-125.15625)"
+     clip-path="url(#clipId0)"
+     id="g7088"
+     style="fill:none;stroke:#000000;stroke-width:0.1" /><path
+     d="m 23.386359,0 c 0,90.95833 0,181.91667 0,272.875 -19.7529,8.58253 -29.12727,34.22815 -19.68943,53.56046 8.35466,19.73983 33.68413,29.39471 53.09466,20.36238 19.76009,-7.99137 29.89299,-32.89321 21.42222,-52.43718 -3.78088,-9.3804 -11.19802,-17.29665 -20.4212,-21.48566 0,-90.95833 0,-181.91667 0,-272.875 -11.46875,0 -22.9375,0 -34.40625,0 z m 17.21875,281.375 c 16.40644,-0.43075 30.58795,15.63375 27.94164,31.86361 -1.61662,16.90655 -20.62711,28.96503 -36.6046,23.184 -16.09171,-4.63111 -24.55203,-24.96658 -16.46204,-39.64141 4.70763,-9.34024 14.67013,-15.42134 25.125,-15.4062 z"
+     inkscape:connector-curvature="0"
+     id="path7258"
+     style="fill:#000000;fill-rule:nonzero;stroke:none" /></svg>

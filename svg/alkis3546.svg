@@ -1,83 +1,44 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   viewBox="0 0 572.15625 351.59259"
    version="1.1"
-   xml:space="preserve"
-   id="svg2"
-   inkscape:version="0.48.3.1 r9886"
    width="100%"
    height="100%"
-   sodipodi:docname="alkis3546.svg"
+   viewBox="0 0 572.15625 351.59259"
+   id="svg2"
+   xml:space="preserve"
    style="fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round"><metadata
-   id="metadata27"><rdf:RDF><cc:Work
-       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
-         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><sodipodi:namedview
-   pagecolor="#ffffff"
-   bordercolor="#666666"
-   borderopacity="1"
-   objecttolerance="10"
-   gridtolerance="10"
-   guidetolerance="10"
-   inkscape:pageopacity="0"
-   inkscape:pageshadow="2"
-   inkscape:window-width="1855"
-   inkscape:window-height="1025"
-   id="namedview25"
-   showgrid="false"
-   inkscape:zoom="1.1125147"
-   inkscape:cx="293.91373"
-   inkscape:cy="175.46759"
-   inkscape:window-x="0"
-   inkscape:window-y="33"
-   inkscape:window-maximized="1"
-   inkscape:current-layer="svg2" />
-<defs
-   id="defs4">
-<clipPath
-   id="clipId0">
-<path
-   d="M 0,600 800,600 800,0 0,0 z"
-   id="path7"
-   inkscape:connector-curvature="0" />
-</clipPath>
-</defs>
-<g
-   clip-path="url(#clipId0)"
-   id="g9"
-   style="fill:none;stroke:#000000;stroke-width:0.1"
-   transform="translate(-112.96875,-123.875)" />
-<g
-   clip-path="url(#clipId0)"
-   id="g11"
-   style="fill:#000000;stroke:none"
-   transform="translate(-112.96875,-123.875)">
-<path
-   d="m 112.96875,123.875 c 0.96431,123.05429 -0.0727,235.7476 0.49942,350.30115 190.38391,2.17049 381.16913,0.94885 571.65683,0.94885 l 0,-351.25 z m 19.90625,19.90625 532.34375,0 0,311.46875 -532.34375,0 z"
-   id="path13"
-   inkscape:connector-curvature="0"
-   sodipodi:nodetypes="cccccccccc" />
-
-
-
-</g>
-<g
-   clip-path="url(#clipId0)"
-   id="g21"
-   style="fill:#000000;stroke:none"
-   transform="translate(-112.96875,-123.875)">
-<text
-   transform="matrix(193.289,0,0,193.289,313.771,392.288)"
-   font-size="1.39636"
-   id="text23"
-   style="font-size:1.39636004px;font-family:'Arial,\'sans-serif\''">F</text>
-
-
-</g>
-</svg>
+     id="metadata27"><rdf:RDF><cc:Work
+         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+     id="defs4"><clipPath
+       id="clipId0"><path
+         d="M 0,600 800,600 800,0 0,0 z"
+         inkscape:connector-curvature="0"
+         id="path7" /></clipPath></defs><g
+     transform="translate(-112.96875,-123.875)"
+     clip-path="url(#clipId0)"
+     id="g9"
+     style="fill:none;stroke:#000000;stroke-width:0.1" /><g
+     transform="translate(-112.96875,-123.875)"
+     clip-path="url(#clipId0)"
+     id="g11"
+     style="fill:#000000;stroke:none"><path
+       d="m 112.96875,123.875 c 0.96431,123.05429 -0.0727,235.7476 0.49942,350.30115 190.38391,2.17049 381.16913,0.94885 571.65683,0.94885 l 0,-351.25 z m 19.90625,19.90625 532.34375,0 0,311.46875 -532.34375,0 z"
+       inkscape:connector-curvature="0"
+       id="path13" /></g><g
+     transform="translate(-112.96875,-123.875)"
+     clip-path="url(#clipId0)"
+     id="g21"
+     style="fill:#000000;stroke:none"><text
+       transform="matrix(193.289,0,0,193.289,313.771,392.288)"
+       id="text23"
+       style="font-size:1.39636004px;font-family:'Arial,\'sans-serif\''">F</text>
+</g></svg>

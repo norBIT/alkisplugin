@@ -1,144 +1,66 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   viewBox="0 0 436.995 436.9948"
    version="1.1"
-   xml:space="preserve"
-   id="svg6157"
-   inkscape:version="0.48.3.1 r9886"
    width="100%"
    height="100%"
-   sodipodi:docname="alkis3302.svg"
+   viewBox="0 0 436.995 436.9948"
+   id="svg6157"
+   xml:space="preserve"
    style="fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round"><metadata
-   id="metadata6258"><rdf:RDF><cc:Work
-       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
-         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><sodipodi:namedview
-   pagecolor="#ffffff"
-   bordercolor="#666666"
-   borderopacity="1"
-   objecttolerance="10"
-   gridtolerance="10"
-   guidetolerance="10"
-   inkscape:pageopacity="0"
-   inkscape:pageshadow="2"
-   inkscape:window-width="1855"
-   inkscape:window-height="1025"
-   id="namedview6256"
-   showgrid="false"
-   inkscape:zoom="1.5733333"
-   inkscape:cx="221.55924"
-   inkscape:cy="219.154"
-   inkscape:window-x="0"
-   inkscape:window-y="33"
-   inkscape:window-maximized="1"
-   inkscape:current-layer="svg6157" />
-<defs
-   id="defs6159">
-<clipPath
-   id="clipId0">
-<path
-   d="M 0,600 800,600 800,0 0,0 z"
-   id="path6162"
-   inkscape:connector-curvature="0" />
-</clipPath>
-</defs>
-<g
-   clip-path="url(#clipId0)"
-   id="g6164"
-   style="fill:none;stroke:#000000;stroke-width:0.1"
-   transform="translate(-181.882,-82.1592)" />
-<g
-   clip-path="url(#clipId0)"
-   id="g6166"
-   style="fill:#ffffff;stroke:none"
-   transform="translate(-181.882,-82.1592)">
-<path
-   id="path6168"
-   d="m 182,82.28125 0,436.75 436.75,0 0,-436.75 -436.75,0 z"
-   inkscape:connector-curvature="0" />
-
-</g>
-<g
-   clip-path="url(#clipId0)"
-   id="g6172"
-   style="fill:none;stroke:#000000;stroke-width:0.25"
-   transform="translate(-181.882,-82.1592)">
-<polyline
-   points="182.007,519.029 182.007,82.2842 618.752,82.2842 618.752,519.029 182.007,519.029 "
-   id="polyline6174" />
-</g>
-<g
-   clip-path="url(#clipId0)"
-   id="g6176"
-   transform="translate(-181.43257,-81.709768)"
-   style="fill:#000000;stroke:none">
-<path
-   d="m 243.59375,222.46875 0,157.25 30.5625,0 0,-28.40625 253.3125,0 0,28.40625 30.5625,0 0,-157.25 -30.5625,0 0,64.8125 -13.65625,-6.5 -14.96875,-5.75 -15.375,-4.53125 -15.71875,-3.34375 -15.90625,-2.09375 -16.03125,-0.84375 -16.03125,0.4375 -15.96875,1.6875 -15.78125,2.90625 -15.5,4.15625 -15.125,5.375 -8.8125,3.9375 -4.1875,-5.28125 -6.21875,-6.75 -6.75,-6.21875 -7.21875,-5.71875 -7.65625,-5.09375 -8,-4.5 -8.34375,-3.84375 -8.625,-3.1875 -8.84375,-2.46875 -8.59375,-1.71875 0,-15.46875 -30.5625,0 z m 30.5625,31.5 4.90625,0.96875 7.65625,2.15625 7.46875,2.75 7.21875,3.34375 6.9375,3.875 6.625,4.4375 6.25,4.90625 5.84375,5.40625 5.40625,5.84375 4.90625,6.25 4.4375,6.625 3.875,6.9375 3.34375,7.21875 2.21875,6.0625 -77.09375,0 0,-66.78125 z m 161.46875,26 14.78125,0.75 14.6875,1.9375 14.5,3.09375 14.1875,4.1875 13.84375,5.3125 13.375,6.375 6.46875,3.75 0,15.375 -159.75,0 -0.96875,-3.46875 -3.1875,-8.625 -3.84375,-8.34375 -2.40625,-4.3125 5.90625,-2.625 13.96875,-4.9375 14.3125,-3.84375 14.5625,-2.6875 14.75,-1.5625 14.8125,-0.375 z"
-   transform="translate(-0.44943228,-0.44943228)"
-   id="path6178"
-   inkscape:connector-curvature="0" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-</g>
-<g
-   clip-path="url(#clipId0)"
-   id="g6220"
-   style="fill:none;stroke:#000000;stroke-width:0.25"
-   transform="translate(-181.882,-82.1592)">
-<polyline
-   points="363.811,344.447 363.811,344.447 "
-   id="polyline6222" />
-</g>
-<g
-   clip-path="url(#clipId0)"
-   id="g6224"
-   style="fill:#000000;stroke:none"
-   transform="translate(-181.882,-82.1592)">
-
-
-
-
-
-
-
-
-
-
-
-
-
-</g>
-<g
-   clip-path="url(#clipId0)"
-   id="g6252"
-   style="fill:none;stroke:#000000;stroke-width:0.25"
-   transform="translate(-181.882,-82.1592)">
-<polyline
-   points="537.582,301.937 537.582,301.937 "
-   id="polyline6254" />
-</g>
-</svg>
+     id="metadata6258"><rdf:RDF><cc:Work
+         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+     id="defs6159"><clipPath
+       id="clipId0"><path
+         d="M 0,600 800,600 800,0 0,0 z"
+         inkscape:connector-curvature="0"
+         id="path6162" /></clipPath></defs><g
+     transform="translate(-181.882,-82.1592)"
+     clip-path="url(#clipId0)"
+     id="g6164"
+     style="fill:none;stroke:#000000;stroke-width:0.1" /><g
+     transform="translate(-181.882,-82.1592)"
+     clip-path="url(#clipId0)"
+     id="g6166"
+     style="fill:#ffffff;stroke:none"><path
+       d="m 182,82.28125 0,436.75 436.75,0 0,-436.75 -436.75,0 z"
+       inkscape:connector-curvature="0"
+       id="path6168" /></g><g
+     transform="translate(-181.882,-82.1592)"
+     clip-path="url(#clipId0)"
+     id="g6172"
+     style="fill:none;stroke:#000000;stroke-width:0.25"><polyline
+       points="182.007,519.029 182.007,82.2842 618.752,82.2842 618.752,519.029 182.007,519.029 "
+       id="polyline6174" /></g><g
+     transform="translate(-181.43257,-81.709768)"
+     clip-path="url(#clipId0)"
+     id="g6176"
+     style="fill:#000000;stroke:none"><path
+       d="m 243.59375,222.46875 0,157.25 30.5625,0 0,-28.40625 253.3125,0 0,28.40625 30.5625,0 0,-157.25 -30.5625,0 0,64.8125 -13.65625,-6.5 -14.96875,-5.75 -15.375,-4.53125 -15.71875,-3.34375 -15.90625,-2.09375 -16.03125,-0.84375 -16.03125,0.4375 -15.96875,1.6875 -15.78125,2.90625 -15.5,4.15625 -15.125,5.375 -8.8125,3.9375 -4.1875,-5.28125 -6.21875,-6.75 -6.75,-6.21875 -7.21875,-5.71875 -7.65625,-5.09375 -8,-4.5 -8.34375,-3.84375 -8.625,-3.1875 -8.84375,-2.46875 -8.59375,-1.71875 0,-15.46875 -30.5625,0 z m 30.5625,31.5 4.90625,0.96875 7.65625,2.15625 7.46875,2.75 7.21875,3.34375 6.9375,3.875 6.625,4.4375 6.25,4.90625 5.84375,5.40625 5.40625,5.84375 4.90625,6.25 4.4375,6.625 3.875,6.9375 3.34375,7.21875 2.21875,6.0625 -77.09375,0 0,-66.78125 z m 161.46875,26 14.78125,0.75 14.6875,1.9375 14.5,3.09375 14.1875,4.1875 13.84375,5.3125 13.375,6.375 6.46875,3.75 0,15.375 -159.75,0 -0.96875,-3.46875 -3.1875,-8.625 -3.84375,-8.34375 -2.40625,-4.3125 5.90625,-2.625 13.96875,-4.9375 14.3125,-3.84375 14.5625,-2.6875 14.75,-1.5625 14.8125,-0.375 z"
+       inkscape:connector-curvature="0"
+       transform="translate(-0.44943228,-0.44943228)"
+       id="path6178" /></g><g
+     transform="translate(-181.882,-82.1592)"
+     clip-path="url(#clipId0)"
+     id="g6220"
+     style="fill:none;stroke:#000000;stroke-width:0.25"><polyline
+       points="363.811,344.447 363.811,344.447 "
+       id="polyline6222" /></g><g
+     transform="translate(-181.882,-82.1592)"
+     clip-path="url(#clipId0)"
+     id="g6224"
+     style="fill:#000000;stroke:none" /><g
+     transform="translate(-181.882,-82.1592)"
+     clip-path="url(#clipId0)"
+     id="g6252"
+     style="fill:none;stroke:#000000;stroke-width:0.25"><polyline
+       points="537.582,301.937 537.582,301.937 "
+       id="polyline6254" /></g></svg>
