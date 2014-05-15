@@ -101,8 +101,11 @@ ORDER BY count(*) DESC
                                         i += 1
                                 self.twModellarten.resizeColumnsToContents()
                         elif error:
+                                modelle = []
                                 self.twModellarten.clearContents()
                                 self.twModellarten.setDisabled( True )
+                        else:
+                                modelle = []
                 elif error:
                         QMessageBox.critical( None, "ALKIS", u"Datenbankverbindung schlug fehl." )
 
@@ -1205,14 +1208,14 @@ class alkisplugin(QObject):
                                         u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
                                         u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
                                         u",{3}"
-                                        u",modell"
+                                        u"{6}"
                                         u" FROM po_labels"
                                         u" WHERE {4}"
                                         u")\" ({5}) sql="
                                         ).format(
                                             conninfo, geomtype, epsg,
                                             u"point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom=="point" else "line",
-                                            where, geom
+                                            where, geom, "" if len(modelle)==0 else ",modell"
                                         )
 
                                 qDebug( u"URI: %s" % uri )
@@ -1608,7 +1611,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( u"norGIS_label", (u"ALKIS / %s / Flächen" % tname).encode("latin-1") )
-                                layer.setMetaData( u"wms_layer_group", (u"/%s/Flächen" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_title", u"Flächen".encode("latin-1") )
                                 self.setUMNScale( layer, d['area'] )
 
 				sql = (u"SELECT"
@@ -1681,7 +1685,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Grenzen" % tname).encode("latin-1") )
-                                layer.setMetaData( u"wms_layer_group", (u"/%s/Grenzen" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_title", u"Grenzen" )
                                 self.setUMNScale( layer, d['outline'] )
 
                                 sql = (u"SELECT"
@@ -1751,7 +1756,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Linien" % tname).encode( "latin-1" ) )
-                                layer.setMetaData( u"wms_layer_group", (u"/%s/Linien" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_title", u"Linien" )
                                 self.setUMNScale( layer, d['line'] )
 
                                 sql = (u"SELECT"
@@ -1823,7 +1829,8 @@ class alkisplugin(QObject):
                                 layer.status = mapscript.MS_DEFAULT
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Punkte" % tname).encode("latin-1") )
-                                layer.setMetaData( u"wms_layer_group", (u"/%s/Punkte" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_layer_group", (u"/%s" % tname).encode("latin-1") )
+                                layer.setMetaData( u"wms_title", u"Punkte" )
                                 self.setUMNScale( layer, d['point'] )
 
                                 self.progress(iThema, "Punkte", 3)
@@ -1895,6 +1902,7 @@ class alkisplugin(QObject):
                                         iLayer += 1
                                         layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Beschriftungen" % tname).encode("latin-1") )
                                         layer.setMetaData( u"wms_layer_group", (u"/%s/Beschriftungen" % tname).encode("latin-1") )
+                                        layer.setMetaData( u"wms_title", u"Beschriftungen" )
                                         self.setUMNScale( layer, d['label'] )
                                         layer.setMetaData( "norGIS_zindex", "999" )
                                         layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,%s AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (geom,where,epsg)).encode( "latin-1" )
@@ -1928,11 +1936,13 @@ class alkisplugin(QObject):
                                         for pos in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1 ]:
                                                 cl = mapscript.classObj( layer )
                                                 cl.title = "0"
-                                                if pos < 0:
-                                                        cl.name = u"Beschriftungen %s AUTO" % geom
-                                                else:
-                                                        cl.name = u"Beschriftungen %s %d" % (geom,pos)
+
+                                                if pos >= 0:
                                                         cl.setExpression( "%d" % pos )
+                                                        #cl.name = u"Beschriftungen %s %d" % (geom,pos)
+                                                else:
+                                                        #cl.name = u"Beschriftungen %s AUTO" % geom
+                                                        pass
 
                                                 label = mapscript.labelObj()
                                                 label.position = positions[ pos ]
