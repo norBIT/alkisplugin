@@ -1298,7 +1298,7 @@ class alkisplugin(QObject):
                                                 u"Punktmarkierung",
                                                 "postgres" )
 
-                        sym = QgsMarkerSymbolV2()
+                        sym = QgsSymbolV2.defaultSymbol( QGis.Point )
                         sym.setColor( Qt.yellow )
                         sym.setSize( 20.0 )
                         sym.setOutputUnit( QgsSymbolV2.MM )
@@ -1311,7 +1311,7 @@ class alkisplugin(QObject):
                                                 u"Flächenmarkierung",
                                                 "postgres" )
 
-                        sym = QgsFillSymbolV2()
+                        sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
                         sym.setColor( Qt.yellow )
                         sym.setAlpha( 0.5 )
                         self.areaMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
@@ -1428,22 +1428,23 @@ class alkisplugin(QObject):
                 self.iface.mapCanvas().refresh()
 
         def highlight(self, where, zoomTo=False):
-                if self.areaMarkerLayer is None:
+                fs = []
+
+                if not self.areaMarkerLayer:
                         (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
                         if ok:
                                 self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
-                if self.areaMarkerLayer is None:
+                if not self.areaMarkerLayer:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
-                        return
+                        return fs
 
                 (db,conninfo) = self.opendb()
                 if db is None:
-                        return
+                        return fs
 
                 qry = QSqlQuery(db)
 
-                fs = []
 
                 if not qry.exec_(
                         u"SELECT "
@@ -2222,12 +2223,12 @@ class ALKISPointInfo(QgsMapTool):
                 self.areaMarkerLayer = None
 
         def canvasPressEvent(self,event):
-                if self.areaMarkerLayer is None:
+                if not self.areaMarkerLayer:
                         (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/areaMarkerLayer" )
                         if ok:
                                 self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
-                if self.areaMarkerLayer is None:
+                if not self.areaMarkerLayer:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 
         def canvasMoveEvent(self,event):
@@ -2246,9 +2247,8 @@ class ALKISPointInfo(QgsMapTool):
 
                 QApplication.setOverrideCursor( Qt.WaitCursor )
 
-                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=%d;POINT(%.3lf %.3lf)'::text))" % (
-                                                        self.areaMarkerLayer.crs().postgisSrid(),
-                                                        ( point.x(), point.y() )
+                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,find_srid('','ax_flurstueck','wkb_geometry')))" % (
+                                                        point.x(), point.y()
                                         ) )
 
                 if len(fs) == 0:
@@ -2309,7 +2309,7 @@ class ALKISPolygonInfo(QgsMapTool):
                         if ok:
                                 self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
-                if self.areaMarkerLayer:
+                if not self.areaMarkerLayer:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 
         def canvasMoveEvent(self,e):
@@ -2338,8 +2338,7 @@ class ALKISPolygonInfo(QgsMapTool):
 
                         self.rubberBand.reset( QGis.Polygon )
 
-                        fs = self.plugin.highlight( u"st_intersects(wkb_geometry,st_geomfromewkt('SRID=%d;POLYGON((%s))'::text))" % (
-                                                        self.areaMarkerLayer.crs().postgisSrid(),
+                        fs = self.plugin.highlight( u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,find_srid('','ax_flurstueck','wkb_geometry')))" % (
                                                         ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) )
                                                 ) )
 
@@ -2405,7 +2404,7 @@ class ALKISOwnerInfo(QgsMapTool):
                         if ok:
                                 self.areaMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
-                if self.areaMarkerLayer:
+                if not self.areaMarkerLayer:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n" )
 
         def canvasMoveEvent(self,e):
@@ -2449,9 +2448,8 @@ class ALKISOwnerInfo(QgsMapTool):
                 try:
                         QApplication.setOverrideCursor( Qt.WaitCursor )
 
-                        fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromewkt('SRID=%d;POINT(%.3lf %.3lf)'::text))" % (
-                                                        self.areaMarkerLayer.crs().postgisSrid(),
-                                                        ( point.x(), point.y() )
+                        fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,find_srid('','ax_flurstueck','wkb_geometry')))" % (
+                                                        point.x(), point.y()
                                                 ) )
 
                         if len(fs) == 0:
