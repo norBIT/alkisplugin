@@ -1393,7 +1393,6 @@ class alkisplugin(QObject):
 
                 return (db,conninfo)
 
-
         def message(self, msg):
                 if msg.startswith("ALKISDRAW"):
                         (prefix,hatch,window,qry) = msg.split(' ', 3)
@@ -1490,7 +1489,7 @@ class alkisplugin(QObject):
                         (p0,p1) = bb.split(",")
                         (x0,y0) = p0.split(" ")
                         (x1,y1) = p1.split(" ")
-                        epsg = qry.value(1).toInt()
+                        epsg = qry.value(1)
                         qDebug( u"x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
                         rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
 
