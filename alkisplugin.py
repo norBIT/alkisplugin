@@ -1655,7 +1655,6 @@ class alkisplugin(QObject):
                                                 cl = mapscript.classObj(layer)
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
-                                                cl.title = "1"
 
                                                 if not self.insertStylesFromBlock( layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
                                                         layer.removeClass( layer.numclasses - 1 )
@@ -1736,7 +1735,6 @@ class alkisplugin(QObject):
                                                 cl = mapscript.classObj( layer )
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
-                                                cl.title = "1"
 
                                                 if not self.insertStylesFromBlock(layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
                                                         layer.removeClass( layer.numclasses-1 )
@@ -1814,7 +1812,6 @@ class alkisplugin(QObject):
                                                 cl = mapscript.classObj( layer )
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
-                                                cl.title = "1"
 
                                                 if not self.insertStylesFromBlock(layerclass=cl, map=mapobj, name="alkis%s" % sn, color=color ):
                                                         layer.removeClass( layer.numclasses-1 )
@@ -1893,7 +1890,6 @@ class alkisplugin(QObject):
                                                 cl = mapscript.classObj( layer )
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
-                                                cl.title = "1"
 
                                                 if alkisplugin.exts.has_key(sn):
                                                         x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
@@ -1959,22 +1955,11 @@ class alkisplugin(QObject):
                                         layer.setMetaData( u"norGIS_zindex", "999" )
                                         self.setUMNScale( layer, d['label'] )
 
-                                        layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,%s AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (geom,where,epsg)).encode("utf-8")
-                                        layer.classitem = "alignment"
-                                        layer.labelitem = "text"
-                                        layer.setProjection( "init=epsg:%d" % epsg )
-                                        layer.connection = conninfo
-                                        layer.connectiontype = mapscript.MS_POSTGIS
-                                        layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
-                                        layer.symbolscaledenom = 1000
-                                        #layer.labelminscaledenom = 0
-                                        #layer.labelmaxscaledenom = 2000
-                                        layer.sizeunits = mapscript.MS_INCHES
-                                        layer.type = mapscript.MS_LAYER_ANNOTATION
-                                        layer.status = mapscript.MS_DEFAULT
-                                        layer.tileitem = None
+                                        if geom=="point":
+                                            layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,point AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
+                                            layer.classitem = "alignment"
 
-                                        positions = {
+                                            positions = {
                                                         -1: mapscript.MS_AUTO,
                                                          1: mapscript.MS_LR,
                                                          2: mapscript.MS_LC,
@@ -1987,9 +1972,8 @@ class alkisplugin(QObject):
                                                          9: mapscript.MS_UL,
                                                     }
 
-                                        for pos in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1 ]:
+                                            for pos in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1 ]:
                                                 cl = mapscript.classObj( layer )
-                                                cl.title = "0"
 
                                                 if pos >= 0:
                                                         cl.setExpression( "%d" % pos )
@@ -2020,6 +2004,45 @@ class alkisplugin(QObject):
                                                 label.priority = 10
 
                                                 cl.addLabel( label )
+                                        else:
+                                            layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,st_offsetcurve(line,size_umn*0.0127) AS geom,color_umn,font_umn,size_umn FROM po_labels l WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
+
+                                            cl = mapscript.classObj( layer )
+
+                                            label = mapscript.labelObj()
+                                            label.updateFromString( """
+     LABEL
+        ANGLE FOLLOW
+        ANTIALIAS TRUE
+        FONT [font_umn]
+        SIZE [size_umn]
+        BUFFER 2
+        COLOR [color_umn]
+        FORCE TRUE
+        OFFSET 0 0
+        OUTLINECOLOR 255 255 255
+        PRIORITY 10
+        SHADOWSIZE 0 0
+        TYPE TRUETYPE
+      END
+""" )
+
+                                            cl.addLabel( label )
+
+                                        layer.labelitem = "text"
+                                        layer.setProjection( "init=epsg:%d" % epsg )
+
+                                        layer.connection = conninfo
+                                        layer.connectiontype = mapscript.MS_POSTGIS
+                                        layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
+                                        layer.symbolscaledenom = 1000
+                                        #layer.labelminscaledenom = 0
+                                        #layer.labelmaxscaledenom = 2000
+                                        layer.sizeunits = mapscript.MS_INCHES
+                                        layer.type = mapscript.MS_LAYER_ANNOTATION
+                                        layer.status = mapscript.MS_DEFAULT
+                                        layer.tileitem = None
+
 
                                         lgroup.append( layer.name )
 
