@@ -1,10 +1,7 @@
-all: conf.py info.py resources.py plugin.xml
+all: resources_rc.py plugin.xml
 
 resources.qrc: logo.png
 	touch -r logo.png resources.qrc
-
-%.py: %.ui
-	pyuic4 -o $@ $^
 
 %.py: %.qrc
 	pyrcc4 -o $@ $^

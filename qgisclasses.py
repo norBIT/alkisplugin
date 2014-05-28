@@ -2,16 +2,113 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 foldmethod=indent autoindent :
 
 from PyQt4.QtCore import QSettings, Qt, QDate
-from PyQt4.QtGui import QApplication, QDialog, QMessageBox, QCursor, QPixmap
+from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem
 from PyQt4.QtSql import QSqlQuery
-from PyQt4 import QtCore
+from PyQt4 import QtCore, uic
 
 from qgis.core import *
 from qgis.gui import *
 
-import info, socket
+import socket, os, re, sys, operator
 
-class Info(QDialog, info.Ui_Dialog):
+d = os.path.dirname(__file__)
+sys.path.insert( 0, d )
+ConfBase = uic.loadUiType( os.path.join( d, 'conf.ui' ) )[0]
+InfoBase = uic.loadUiType( os.path.join( d, 'info.ui' ) )[0]
+ALKISSearchBase = uic.loadUiType( os.path.join( d, 'search.ui' ) )[0]
+sys.path.pop(0)
+
+class ALKISConf(QDialog, ConfBase):
+        def __init__(self, plugin):
+                QDialog.__init__(self)
+                self.setupUi(self)
+
+                self.plugin = plugin
+
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                self.leSERVICE.setText( s.value( "service", "" ) )
+                self.leHOST.setText( s.value( "host", "" ) )
+                self.lePORT.setText( s.value( "port", "5432" ) )
+                self.leDBNAME.setText( s.value( "dbname", "" ) )
+                self.leUID.setText( s.value( "uid", "" ) )
+                self.lePWD.setText( s.value( "pwd", "" ) )
+
+                self.load(False)
+
+                self.bb.accepted.connect(self.accept)
+                self.bb.rejected.connect(self.reject)
+                self.bb.addButton( "Modelle laden", QDialogButtonBox.ActionRole ).clicked.connect( self.load )
+
+        def load(self, error=True):
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                s.setValue( "service", self.leSERVICE.text() )
+                s.setValue( "host", self.leHOST.text() )
+                s.setValue( "port", self.lePORT.text() )
+                s.setValue( "dbname", self.leDBNAME.text() )
+                s.setValue( "uid", self.leUID.text() )
+                s.setValue( "pwd", self.lePWD.text() )
+
+                modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
+                (db,conninfo) = self.plugin.opendb()
+                if db:
+                        qry = QSqlQuery(db)
+                        if qry.exec_( """
+SELECT modell,count(*)
+FROM (
+        SELECT unnest(modell) AS modell FROM po_points   UNION ALL
+        SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
+        SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
+        SELECT unnest(modell) AS modell from po_lines    UNION ALL
+        SELECT unnest(modell) AS modell from po_labels
+) AS foo
+GROUP BY modell
+ORDER BY count(*) DESC
+""" ):
+                                self.twModellarten.clearContents()
+                                res = {}
+                                while qry.next():
+                                        res[ qry.value(0) ] = qry.value(1)
+
+                                self.twModellarten.setRowCount( len(res) )
+                                i = 0
+                                for k,n in sorted(res.iteritems(), key=operator.itemgetter(1), reverse=True):
+                                        item = QTableWidgetItem( k )
+                                        item.setCheckState( Qt.Checked if (item.text() in modelle) else Qt.Unchecked )
+                                        self.twModellarten.setItem( i, 0, item )
+
+                                        item = QTableWidgetItem( str(n) )
+                                        self.twModellarten.setItem( i, 1, item )
+                                        i += 1
+                                self.twModellarten.resizeColumnsToContents()
+                        elif error:
+                                modelle = []
+                                self.twModellarten.clearContents()
+                                self.twModellarten.setDisabled( True )
+                        else:
+                                modelle = []
+                elif error:
+                        QMessageBox.critical( None, "ALKIS", u"Datenbankverbindung schlug fehl." )
+
+        def accept(self):
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                s.setValue( "service", self.leSERVICE.text() )
+                s.setValue( "host", self.leHOST.text() )
+                s.setValue( "port", self.lePORT.text() )
+                s.setValue( "dbname", self.leDBNAME.text() )
+                s.setValue( "uid", self.leUID.text() )
+                s.setValue( "pwd", self.lePWD.text() )
+
+                modelle = []
+                for i in range( self.twModellarten.rowCount() ):
+                        item = self.twModellarten.item(i,0)
+                        if item.checkState() == Qt.Checked:
+                                modelle.append( item.text() )
+
+                s.setValue( "modellarten", modelle )
+
+                QDialog.accept(self)
+
+class Info( QDialog, InfoBase ):
         def __init__(self, html):
                 QDialog.__init__(self)
                 self.setupUi(self)
@@ -81,9 +178,7 @@ class ALKISPointInfo(QgsMapTool):
                         return
 
                 try:
-                        s = QSettings( "norBIT", "EDBSgen/PRO" )
-
-                        s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+			s = QSettings( "norBIT", "EDBSgen/PRO" )
                         sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
                         sock.connect( ( "localhost", int( s.value( "norGISPort", "6102" ) ) ) )
                         sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'] )
@@ -94,7 +189,7 @@ class ALKISPointInfo(QgsMapTool):
                                 window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
                                 win32gui.SetForegroundWindow( window )
                 except:
-                        QMessageBox.information( None, u"Fehler", u"Verbindung schlug fehl." )
+                        QMessageBox.information( None, u"Fehler", u"Verbindung zu norGIS schlug fehl." )
 
                 QApplication.restoreOverrideCursor()
 
@@ -188,11 +283,83 @@ class ALKISPolygonInfo(QgsMapTool):
                                         win32gui.SetForegroundWindow( window )
 
                         except:
-                                QMessageBox.information( None, u"Fehler", u"Verbindung schlug fehl." )
+                                QMessageBox.information( None, u"Fehler", u"Verbindung zu norGIS schlug fehl." )
                 else:
                         self.rubberBand.reset( QGis.Polygon )
 
                 QApplication.restoreOverrideCursor()
+
+class ALKISSearch(QDialog, ALKISSearchBase ):
+        def __init__(self, plugin):
+                QDialog.__init__(self)
+                self.setupUi(self)
+                self.plugin = plugin
+
+        def accept(self):
+                if not self.plugin.initLayers():
+                        return
+
+                text = self.leSuchbegriff.text()
+
+                if self.cbxSuchmodus.currentIndex() < 2:
+                        if text <> "":
+                            text = text.replace("'", "''")
+                            if self.cbxSuchmodus.currentIndex() == 0:
+                                # Teiltreffer
+                                text = u"text LIKE '%%%s%%'" % text
+                            else:
+                                # Exakter Treffer
+                                text = u"text='%s'" % text
+
+                            (db,conninfo) = self.plugin.opendb()
+                            if db is None:
+                                return
+
+                            qry = QSqlQuery(db)
+
+                            if qry.exec_( u"SELECT find_srid('','po_labels', 'point')" ) and qry.next():
+                                crs = qry.value(0)
+
+                                sql = u"SELECT count(*),st_extent( coalesce(point,line) ) FROM po_labels WHERE {0}".format( text )
+                                if qry.exec_( sql ) and qry.next() and qry.value(0)>0:
+                                    self.plugin.zoomToExtent( qry.value(1), crs )
+                                else:
+                                    QMessageBox.information( None, "ALKIS", u"Keine Treffer gefunden." )
+                                    return
+                        else:
+                            text = "false"
+
+                        self.plugin.pointMarkerLayer.setSubsetString( text )
+                        self.plugin.lineMarkerLayer.setSubsetString( text )
+
+                elif self.cbxSuchmodus.currentIndex() == 2:  # Flurstücksnummer
+                        m = re.search( "(\\d+)(-\\d+)?-(\\d+)(/\\d+)?", text )
+                        if m:
+                                g, f, z, n = int( m.group(1) ), m.group(2), int( m.group(3) ), m.group(4)
+                                f = int( f[1:] ) if f else 0
+                                n = int( n[1:] ) if n else 0
+
+                                flsnr  = "%06d" % g
+                                flsnr += "%03d" % f if f>0 else "___"
+                                flsnr += "%05d" % z
+                                flsnr += "%04d" % n if n>0 else "____"
+                                flsnr += "__"
+
+                                fs = self.plugin.highlight( u"flurstueckskennzeichen='%s'" % flsnr, True )
+                                if len(fs)==0:
+                                        QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s gefunden." % flsnr )
+                                        return
+
+                elif self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
+                        m = re.search( "^(.*)\s+(\d+[a-zA-Z]?)$", text )
+                        if m:
+                                strasse, ha = m.group(1), m.group(2)
+                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE '{0}%' AND h.hausnummer='{1}')".format( strasse, ha.upper() ) )
+                                if len(fs)==0:
+                                    QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha) )
+                                    return
+
+                QDialog.accept(self)
 
 class ALKISOwnerInfo(QgsMapTool):
         def __init__(self, plugin):

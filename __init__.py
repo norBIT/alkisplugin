@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import resources
-
 def name():
   return u"ALKIS-Einbindung"
 

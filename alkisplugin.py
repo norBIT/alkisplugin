@@ -7,20 +7,22 @@ for c in [ "QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVa
         sip.setapi(c,2)
 
 from PyQt4.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
-from PyQt4.QtGui import QApplication, QDialog, QIcon, QMessageBox, QAction, QColor, QInputDialog, QFileDialog, QTableWidgetItem, QDialogButtonBox
+from PyQt4.QtGui import QApplication, QIcon, QMessageBox, QAction, QColor, QFileDialog
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
 
 from tempfile import NamedTemporaryFile
-import operator, conf, os, resources
+import os, resources_rc
 
 try:
         from qgis.core import *
         from qgis.gui import *
-        from qgisclasses import Info, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo
         qgisAvailable = True
 except:
         qgisAvailable = False
+
+if qgisAvailable:
+        from qgisclasses import Info, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
 try:
         import win32gui
@@ -44,96 +46,6 @@ def logMessage(s):
         QgsMessageLog.logMessage( s )
     else:
         QtCore.qWarning( s.encode( "utf-8" ) )
-
-class Conf(QDialog, conf.Ui_Dialog):
-        def __init__(self, plugin):
-                QDialog.__init__(self)
-                self.setupUi(self)
-
-                self.plugin = plugin
-
-                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-                self.leSERVICE.setText( s.value( "service", "" ) )
-                self.leHOST.setText( s.value( "host", "" ) )
-                self.lePORT.setText( s.value( "port", "5432" ) )
-                self.leDBNAME.setText( s.value( "dbname", "" ) )
-                self.leUID.setText( s.value( "uid", "" ) )
-                self.lePWD.setText( s.value( "pwd", "" ) )
-
-                self.load(False)
-
-                self.bb.accepted.connect(self.accept)
-                self.bb.rejected.connect(self.reject)
-                self.bb.addButton( "Modelle laden", QDialogButtonBox.ActionRole ).clicked.connect( self.load )
-
-        def load(self, error=True):
-                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-                s.setValue( "service", self.leSERVICE.text() )
-                s.setValue( "host", self.leHOST.text() )
-                s.setValue( "port", self.lePORT.text() )
-                s.setValue( "dbname", self.leDBNAME.text() )
-                s.setValue( "uid", self.leUID.text() )
-                s.setValue( "pwd", self.lePWD.text() )
-
-                modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
-                (db,conninfo) = self.plugin.opendb()
-                if db:
-                        qry = QSqlQuery(db)
-                        if qry.exec_( """
-SELECT modell,count(*)
-FROM (
-        SELECT unnest(modell) AS modell FROM po_points   UNION ALL
-        SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
-        SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
-        SELECT unnest(modell) AS modell from po_lines    UNION ALL
-        SELECT unnest(modell) AS modell from po_labels
-) AS foo
-GROUP BY modell
-ORDER BY count(*) DESC
-""" ):
-                                self.twModellarten.clearContents()
-                                res = {}
-                                while qry.next():
-                                        res[ qry.value(0) ] = qry.value(1)
-
-                                self.twModellarten.setRowCount( len(res) )
-                                i = 0
-                                for k,n in sorted(res.iteritems(), key=operator.itemgetter(1), reverse=True):
-                                        item = QTableWidgetItem( k )
-                                        item.setCheckState( Qt.Checked if (item.text() in modelle) else Qt.Unchecked )
-                                        self.twModellarten.setItem( i, 0, item )
-
-                                        item = QTableWidgetItem( str(n) )
-                                        self.twModellarten.setItem( i, 1, item )
-                                        i += 1
-                                self.twModellarten.resizeColumnsToContents()
-                        elif error:
-                                modelle = []
-                                self.twModellarten.clearContents()
-                                self.twModellarten.setDisabled( True )
-                        else:
-                                modelle = []
-                elif error:
-                        QMessageBox.critical( None, "ALKIS", u"Datenbankverbindung schlug fehl." )
-
-        def accept(self):
-                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-                s.setValue( "service", self.leSERVICE.text() )
-                s.setValue( "host", self.leHOST.text() )
-                s.setValue( "port", self.lePORT.text() )
-                s.setValue( "dbname", self.leDBNAME.text() )
-                s.setValue( "uid", self.leUID.text() )
-                s.setValue( "pwd", self.lePWD.text() )
-
-                modelle = []
-                for i in range( self.twModellarten.rowCount() ):
-                        item = self.twModellarten.item(i,0)
-                        if item.checkState() == Qt.Checked:
-                                modelle.append( item.text() )
-
-                s.setValue( "modellarten", modelle )
-
-                QDialog.accept(self)
 
 class alkisplugin(QObject):
         showProgress = pyqtSignal(int,int)
@@ -704,6 +616,7 @@ class alkisplugin(QObject):
                 QObject.__init__(self)
                 self.iface = iface
                 self.pointMarkerLayer = None
+                self.lineMarkerLayer = None
                 self.areaMarkerLayer = None
                 self.alkisGroup = None
 
@@ -816,41 +729,33 @@ class alkisplugin(QObject):
                         self.polygonInfoTool = None
 
         def conf(self):
-                dlg = Conf(self)
+                dlg = ALKISConf(self)
                 dlg.exec_()
 
         def initLayers(self):
-                if self.pointMarkerLayer is None:
+                if not self.pointMarkerLayer:
                         (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/pointMarkerLayer" )
                         if ok:
                                 self.pointMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
 
-                if self.pointMarkerLayer is None:
+                if not self.pointMarkerLayer:
                         QMessageBox.warning( None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!" )
                         return False
-                else:
-                        return True
+
+                if not self.lineMarkerLayer:
+                        (layerId,ok) = QgsProject.instance().readEntry( "alkis", "/lineMarkerLayer" )
+                        if ok:
+                                self.lineMarkerLayer = QgsMapLayerRegistry.instance().mapLayer( layerId )
+
+                if not self.lineMarkerLayer:
+                        QMessageBox.warning( None, "ALKIS", u"Fehler: Linienmarkierungslayer nicht gefunden!" )
+                        return False
+
+                return True
 
         def search(self):
-                if not self.initLayers():
-                        return
-
-                (text,ok) = QInputDialog.getText( self.iface.mainWindow(), u"Beschriftung suchen", u"Suchbegriff" )
-                if not ok:
-                        return
-
-                if text == "":
-                        text = "false"
-                else:
-                        text = u"text LIKE '%%%s%%'" % text.replace("'", "''")
-
-                self.pointMarkerLayer.setSubsetString( text )
-
-                currentLayer = self.iface.activeLayer()
-
-                self.iface.setActiveLayer( self.pointMarkerLayer )
-                self.iface.zoomToActiveLayer()
-                self.iface.setActiveLayer( currentLayer )
+                dlg = ALKISSearch(self)
+                dlg.exec_()
 
         def setScale(self, layer, d):
                 if d['min'] is None and d['max'] is None:
@@ -941,8 +846,6 @@ class alkisplugin(QObject):
                 (db,conninfo) = self.opendb()
                 if db is None:
                         return
-
-                self.conf = conf
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
@@ -1307,6 +1210,18 @@ class alkisplugin(QObject):
                         self.pointMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
                         self.iface.legendInterface().moveLayer( self.pointMarkerLayer, markerGroup )
 
+                        self.lineMarkerLayer = self.iface.addVectorLayer(
+                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=po_labels (line) sql=false" % (conninfo,epsg),
+                                                u"Linienmarkierung",
+                                                "postgres" )
+
+                        sym = QgsLineSymbolV2()
+                        sym.setColor( Qt.yellow )
+                        sym.setAlpha( 0.5 )
+                        sym.setWidth( 2 )
+                        self.lineMarkerLayer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
+                        self.iface.legendInterface().moveLayer( self.lineMarkerLayer, markerGroup )
+
                         self.areaMarkerLayer = self.iface.addVectorLayer(
                                                 u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=false" % (conninfo,epsg),
                                                 u"Flächenmarkierung",
@@ -1319,6 +1234,7 @@ class alkisplugin(QObject):
                         self.iface.legendInterface().moveLayer( self.areaMarkerLayer, markerGroup )
 
                         QgsProject.instance().writeEntry( "alkis", "/pointMarkerLayer", self.pointMarkerLayer.id() )
+                        QgsProject.instance().writeEntry( "alkis", "/lineMarkerLayer", self.lineMarkerLayer.id() )
                         QgsProject.instance().writeEntry( "alkis", "/areaMarkerLayer", self.areaMarkerLayer.id() )
                 else:
                         self.iface.legendInterface().removeGroup( self.alkisGroup )
@@ -1362,7 +1278,7 @@ class alkisplugin(QObject):
                                 uri.setConnection( host, port, dbname, uid, pwd )
 
                         conninfo0 = uri.connectionInfo()
-                else:                          
+                else:
                         uid = None
                         pwd = None
 
@@ -1484,29 +1400,35 @@ class alkisplugin(QObject):
 
                 self.iface.mapCanvas().refresh()
 
-                if zoomTo and qry.exec_( u"SELECT st_extent(wkb_geometry),find_srid('','ax_flurstueck', 'wkb_geometry') FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
-                        bb = qry.value(0)[4:-1]
-                        (p0,p1) = bb.split(",")
-                        (x0,y0) = p0.split(" ")
-                        (x1,y1) = p1.split(" ")
-                        epsg = qry.value(1)
-                        qDebug( u"x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
-                        rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
+                if zoomTo and qry.exec_( u"SELECT find_srid('','ax_flurstueck', 'wkb_geometry')" ) and qry.next():
+                    crs = qry.value(0)
 
-                        c = self.iface.mapCanvas()
-                        if c.hasCrsTransformEnabled():
-                                try:
-                                        t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapSettings().destinationCrs() )
-                                except:
-                                        t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapRenderer().destinationCrs() )
-                                rect = t.transform( rect )
-
-                        qDebug( u"rect:%s" % rect.toString() )
-
-                        self.iface.mapCanvas().setExtent( rect )
-                        self.iface.mapCanvas().refresh()
+                    if qry.exec_( u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
+                        self.zoomToExtent( qry.value(0), crs )
 
                 return fs
+
+        def zoomToExtent( self, bb, epsg ):
+                bb = bb[4:-1]
+                (p0,p1) = bb.split(",")
+                (x0,y0) = p0.split(" ")
+                (x1,y1) = p1.split(" ")
+                qDebug( u"x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1) )
+                rect = QgsRectangle( float(x0), float(y0), float(x1), float(y1) )
+
+                c = self.iface.mapCanvas()
+                if c.hasCrsTransformEnabled():
+                    try:
+                      t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapSettings().destinationCrs() )
+                    except:
+                      t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapRenderer().destinationCrs() )
+                    rect = t.transform( rect )
+
+                    qDebug( u"rect:%s" % rect.toString() )
+
+                    self.iface.mapCanvas().setExtent( rect )
+                    self.iface.mapCanvas().refresh()
+
 
         def mapfile(self,conninfo=None,dstfile=None):
                 (db,conninfo) = self.opendb(conninfo)
