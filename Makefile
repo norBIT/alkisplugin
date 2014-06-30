@@ -15,7 +15,6 @@ update: all
 		--exclude "mkxml.pl" \
 		--exclude "plugin.xml" \
 		--exclude "alkisplugin.zip" \
-		-v \
 		./ \
 		jef@zeus.intern.norbit.de:/shares/runtime/norBIT/QGIS/alkis/unstable
 

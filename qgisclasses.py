@@ -360,7 +360,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                         m = re.search( "^(.*)\s+(\d+[a-zA-Z]?)$", text )
                         if m:
                                 strasse, ha = m.group(1), m.group(2)
-                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE '{0}%' AND h.hausnummer='{1}')".format( strasse, ha.upper() ) )
+                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE '{0}%' AND h.hausnummer='{1}')".format( strasse, ha.upper() ), True )
                                 if len(fs)==0:
                                     QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha) )
                                     return

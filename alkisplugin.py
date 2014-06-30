@@ -1580,10 +1580,10 @@ class alkisplugin(QObject):
                       t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapRenderer().destinationCrs() )
                     rect = t.transform( rect )
 
-                    qDebug( u"rect:%s" % rect.toString() )
+                qDebug( u"rect:%s" % rect.toString() )
 
-                    self.iface.mapCanvas().setExtent( rect )
-                    self.iface.mapCanvas().refresh()
+                self.iface.mapCanvas().setExtent( rect )
+                self.iface.mapCanvas().refresh()
 
 
         def mapfile(self,conninfo=None,dstfile=None):
