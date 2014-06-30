@@ -11,6 +11,12 @@ from qgis.gui import *
 
 import socket, os, re, sys, operator
 
+try:
+        import win32gui
+        win32 = True
+except:
+        win32 = False
+
 d = os.path.dirname(__file__)
 sys.path.insert( 0, d )
 ConfBase = uic.loadUiType( os.path.join( d, 'conf.ui' ) )[0]
