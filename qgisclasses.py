@@ -1,7 +1,25 @@
 # -*- coding: utf8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 foldmethod=indent autoindent :
 
-from PyQt4.QtCore import QSettings, Qt, QDate
+"""
+***************************************************************************
+    qgisclasses.py
+    ---------------------
+    Date                 : May 2014
+    Copyright            : (C) 2014 by Jürgen Fischer
+    Email                : jef at norbit dot de
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+
+from PyQt4.QtCore import QSettings, Qt, QDate, QDir
 from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem
 from PyQt4.QtSql import QSqlQuery
 from PyQt4 import QtCore, uic
@@ -18,11 +36,11 @@ except:
         win32 = False
 
 d = os.path.dirname(__file__)
-sys.path.insert( 0, d )
+QDir.addSearchPath( "alkis", d )
 ConfBase = uic.loadUiType( os.path.join( d, 'conf.ui' ) )[0]
 InfoBase = uic.loadUiType( os.path.join( d, 'info.ui' ) )[0]
+AboutBase = uic.loadUiType( os.path.join( d, 'about.ui' ) )[0]
 ALKISSearchBase = uic.loadUiType( os.path.join( d, 'search.ui' ) )[0]
-sys.path.pop(0)
 
 class ALKISConf(QDialog, ConfBase):
         def __init__(self, plugin):
@@ -121,6 +139,11 @@ class Info( QDialog, InfoBase ):
 
                 self.wvEigner.setHtml( html )
 
+class About( QDialog, AboutBase ):
+        def __init__(self):
+                QDialog.__init__(self)
+                self.setupUi(self)
+
 class ALKISPointInfo(QgsMapTool):
         def __init__(self, plugin):
                 QgsMapTool.__init__(self, plugin.iface.mapCanvas())
@@ -191,7 +214,6 @@ class ALKISPointInfo(QgsMapTool):
                         sock.close()
 
                         if win32:
-                                s = QSettings( "norBIT", "EDBSgen/PRO" )
                                 window = win32gui.FindWindow( None, s.value( "albWin", "norGIS" ) )
                                 win32gui.SetForegroundWindow( window )
                 except:

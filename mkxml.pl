@@ -17,11 +17,12 @@ while( <I> ) {
 		#$v{$s}{$1} = $2;
 		$v{$k} = $v;
 
-		if( $k eq "version" ) {
+		if( grep("-r", @ARGV) && $k eq "version" ) {
 			my($major,$minor,$patch) = split /\./, $v;
 			$patch++;
 			$v{version} = "$major.$minor.$patch";
 			$_ = "version=$v{version}\n";
+			print STDERR "New version:" . $v{version} . "\n";
 		}
 	}
 
@@ -44,16 +45,16 @@ print F <<EOF;
         <qgis_minimum_version>$v{qgisMinimumVersion}</qgis_minimum_version>
         <qgis_maximum_version>2.99.0</qgis_maximum_version>
         <homepage>http://www.norbit.de</homepage>
-	<icon>logo.png</icon>
-        <file_name>alkisplugin.zip</file_name>
+	<icon>./logo.svg</icon>
+        <file_name>alkisplugin-$v{version}.zip</file_name>
         <author_name><![CDATA[$v{author}]]></author_name>
-        <download_url>http://buten.norbit.de/~jef/qgis/alkisplugin.zip</download_url>
+        <download_url>http://buten.norbit.de/~jef/qgis/alkisplugin-$v{version}.zip</download_url>
         <uploaded_by><![CDATA[$v{author}]]></uploaded_by>
         <create_date>2012-09-19T23:49:07.0</create_date>
         <update_date>$date</update_date>
-        <experimental>True</experimental>
+        <experimental>False</experimental>
         <deprecated>False</deprecated>
-        <tags><![CDATA[ALKIS,Liegensschaftsbuch,GDAL,OGR]]></tags>
+        <tags><![CDATA[ALKIS,Liegenschaftskarte,Liegensschaftsbuch,GDAL,OGR,NAS,Normbasierte Austauschschnittstelle]]></tags>
     </pyqgis_plugin>
 </plugins>
 EOF

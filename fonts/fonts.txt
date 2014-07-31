@@ -1,13 +1,5 @@
-webgis			webgis.ttf
-
-arial			Arial.ttf
-arial-black		Arial_Black.ttf
-arial-bold		Arial_Bold.ttf
-arial-bold-italic	Arial_Bold_Italic.ttf
-arial-italic		Arial_Italic.ttf
-arial-slim		Arial_Slim.ttf
-arial_dul		Arial_ul.ttf
-arial-spaced-10		Arial.ttf
-
-sc			DejaVuSansCondensed.ttf
-scb			DejaVuSansCondensed-Bold.ttf
+arial			FreeSans.ttf
+arial-bold		FreeSansBold.ttf
+arial-bold-italic	FreeSansBoldOblique.ttf
+arial-italic		FreeSansOblique.ttf
+arial-spaced-10		FreeSans.ttf

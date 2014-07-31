@@ -1,34 +1,20 @@
-all: resources_rc.py plugin.xml
+VERSION = $(shell sed -ne "s/^version=//p" metadata.txt)
 
-resources.qrc: logo.png
-	touch -r logo.png resources.qrc
+all:
 
 %.py: %.qrc
 	pyrcc4 -o $@ $^
 
-update: all
-	rsync \
-		-avpP \
-		--exclude ".git" \
-		--exclude "*.pyc" \
-		--exclude ".gitignore" \
-		--exclude "mkxml.pl" \
-		--exclude "plugin.xml" \
-		--exclude "alkisplugin.zip" \
-		./ \
-		jef@zeus.intern.norbit.de:/shares/runtime/norBIT/QGIS/alkis/unstable
-
 plugin.xml: metadata.txt
 	perl mkxml.pl
 
-alkisplugin.zip: plugin.xml
-	cd ..; zip -pr alkisplugin/alkisplugin.zip alkisplugin \
-			-x "alkisplugin/.git/*" \
-			-x "alkisplugin/*.pyc" \
-			-x "alkisplugin/.gitignore" \
-			-x "alkisplugin/Makefile" \
-			-x "alkisplugin/mkxml.pl" \
-			-x "alkisplugin/plugin.xml"
+zip: alkisplugin-$(VERSION).zip
 
-upload: plugin.xml alkisplugin.zip
-	rsync -apvP alkisplugin.zip plugin.xml logo.png jef@buten.intern.norbit.de:~jef/public_html/qgis/
+alkisplugin-$(VERSION).zip: plugin.xml
+	git archive --format=zip --prefix=alkisplugin/ HEAD >alkisplugin-$(VERSION).zip
+
+upload: plugin.xml alkisplugin-$(VERSION).zip
+	rsync -apvP alkisplugin-$(VERSION).zip plugin.xml logo.svg jef@buten.intern.norbit.de:~jef/public_html/qgis/
+
+release:
+	@perl mkxml.pl -r

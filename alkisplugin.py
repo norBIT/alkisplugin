@@ -2,6 +2,24 @@
 # -*- coding: utf8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 foldmethod=indent autoindent :
 
+"""
+***************************************************************************
+    alkisplugin.py
+    ---------------------
+    Date                 : September 2012
+    Copyright            : (C) 2012-2014 by Jürgen Fischer
+    Email                : jef at norbit dot de
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+
 import sip
 for c in [ "QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant" ]:
         sip.setapi(c,2)
@@ -12,7 +30,7 @@ from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
 
 from tempfile import NamedTemporaryFile
-import os, resources_rc
+import os
 
 try:
         from qgis.core import *
@@ -22,7 +40,7 @@ except:
         qgisAvailable = False
 
 if qgisAvailable:
-        from qgisclasses import Info, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
+        from qgisclasses import Info, About, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
 try:
         import mapscript
@@ -780,65 +798,73 @@ class alkisplugin(QObject):
                 self.toolbar = self.iface.addToolBar( u"norGIS: ALKIS" )
                 self.toolbar.setObjectName( "norGIS_ALKIS_Toolbar" )
 
-                self.importAction = QAction(QIcon(":/plugins/alkis/logo.png"), "ALKIS-Layer einbinden", self.iface.mainWindow())
+                d = os.path.dirname(__file__)
+                self.importAction = QAction( QIcon( "alkis:logo.svg" ), "ALKIS-Layer einbinden", self.iface.mainWindow())
                 self.importAction.setWhatsThis("ALKIS-Layer einbinden")
                 self.importAction.setStatusTip("ALKIS-Layer einbinden")
                 self.importAction.triggered.connect( self.alkisimport )
 
-                self.eignerAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Eignerlayer einbinden", self.iface.mainWindow())
+                self.eignerAction = QAction( QIcon( "alkis:logo.svg" ), "Eignerlayer einbinden", self.iface.mainWindow())
                 self.eignerAction.setWhatsThis("Eignerlayer einbinden")
                 self.eignerAction.setStatusTip("EignerLayer einbinden")
                 self.eignerAction.triggered.connect( self.eignerlayer )
 
                 if mapscriptAvailable:
-                        self.umnAction = QAction(QIcon(":/plugins/alkis/logo.png"), "UMN-Mapdatei erzeugen", self.iface.mainWindow())
+                        self.umnAction = QAction( QIcon( "alkis:logo.svg" ), "UMN-Mapdatei erzeugen...", self.iface.mainWindow())
                         self.umnAction.setWhatsThis("UMN-Mapserver-Datei erzeugen")
                         self.umnAction.setStatusTip("UMN-Mapserver-Datei erzeugen")
                         self.umnAction.triggered.connect(self.mapfile)
                 else:
                         self.umnAction = None
 
-                self.searchAction = QAction(QIcon(":/plugins/alkis/find.png"), "Beschriftung suchen", self.iface.mainWindow())
+                self.searchAction = QAction( QIcon( "alkis:find.png" ), "Beschriftung suchen", self.iface.mainWindow())
                 self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
                 self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
                 self.searchAction.triggered.connect(self.search)
                 self.toolbar.addAction( self.searchAction )
 
-                self.queryOwnerAction = QAction(QIcon(":/plugins/alkis/eigner.png"), u"Flurstücksnachweis", self.iface.mainWindow())
+                self.queryOwnerAction = QAction( QIcon( "alkis:eigner.png" ), u"Flurstücksnachweis", self.iface.mainWindow())
                 self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
                 self.toolbar.addAction( self.queryOwnerAction )
                 self.queryOwnerInfoTool = ALKISOwnerInfo( self )
 
-                self.clearAction = QAction(QIcon(":/plugins/alkis/clear.png"), "Hervorhebungen entfernen", self.iface.mainWindow())
+                self.clearAction = QAction( QIcon( "alkis:clear.png" ), "Hervorhebungen entfernen", self.iface.mainWindow())
                 self.clearAction.setWhatsThis("Hervorhebungen entfernen")
                 self.clearAction.setStatusTip("Hervorhebungen entfernen")
                 self.clearAction.triggered.connect(self.clearHighlight)
                 self.toolbar.addAction( self.clearAction )
 
-                self.confAction = QAction(QIcon(":/plugins/alkis/logo.png"), "Konfiguration", self.iface.mainWindow())
+                self.confAction = QAction( QIcon("alkis:logo.svg" ), "Konfiguration...", self.iface.mainWindow())
                 self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
                 self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
                 self.confAction.triggered.connect(self.conf)
+
+                self.aboutAction = QAction( QIcon("alkis:logo.svg" ), u"Über...", self.iface.mainWindow())
+                self.aboutAction.setWhatsThis(u"Über die Erweiterung")
+                self.aboutAction.setStatusTip(u"Über die Erweiterung")
+                self.aboutAction.triggered.connect(self.about)
 
                 if hasattr(self.iface, "addPluginToDatabaseMenu"):
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.eignerAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
+                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
                 else:
                         self.iface.addPluginToMenu("&ALKIS", self.importAction)
                         self.iface.addPluginToMenu("&ALKIS", self.eignerAction)
                         self.iface.addPluginToMenu("&ALKIS", self.umnAction)
                         self.iface.addPluginToMenu("&ALKIS", self.confAction)
+                        self.iface.addPluginToMenu("&ALKIS", self.aboutAction)
 
                 ns = QSettings( "norBIT", "EDBSgen/PRO" )
                 if ns.contains( "norGISPort" ):
-                        self.pointInfoAction = QAction(QIcon(":/plugins/alkis/info.png"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
+                        self.pointInfoAction = QAction( QIcon( "alkis:info.png" ), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
                         self.pointInfoAction.activated.connect( self.setPointInfoTool )
                         self.toolbar.addAction( self.pointInfoAction )
                         self.pointInfoTool = ALKISPointInfo( self )
 
-                        self.polygonInfoAction = QAction(QIcon(":/plugins/alkis/pinfo.png"), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
+                        self.polygonInfoAction = QAction( QIcon( "alkis:pinfo.png" ), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
                         self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
                         self.toolbar.addAction( self.polygonInfoAction )
                         self.polygonInfoTool = ALKISPolygonInfo( self )
@@ -867,6 +893,9 @@ class alkisplugin(QObject):
                 if self.confAction:
                         self.confAction.deleteLater()
                         self.confAction = None
+                if self.aboutAction:
+                        self.aboutAction.deleteLater()
+                        self.aboutAction = None
 
                 if self.clearAction:
                         self.clearAction.deleteLater()
@@ -886,6 +915,10 @@ class alkisplugin(QObject):
 
         def conf(self):
                 dlg = ALKISConf(self)
+                dlg.exec_()
+
+        def about(self):
+                dlg = About()
                 dlg.exec_()
 
         def initLayers(self):
