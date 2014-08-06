@@ -10,4 +10,4 @@ Funktion:
 * Flurstückseigentümerabfrage
 * Anbindung an [norGIS Liegenschaftbuchfachschale](http://www.norbit.de/78/) (proprietär)
 
-Lizenz: [GPLv2](http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html), [Homepage](http://www.norbit.de/75/)
+[Homepage](http://www.norbit.de/75/), Lizenz: [GPLv2](http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)

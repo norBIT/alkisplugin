@@ -32,22 +32,19 @@
      <property name="text">
       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;br&gt;
-&lt;p&gt;Funktion:&lt;/p&gt;
-&lt;ul &gt;
-&lt;li &gt;Einbinden von durch &lt;a href=&quot;http://www.norbit.de/68/&quot;&gt;norGIS ALKIS-Import&lt;/a&gt; vorbereitete Datenbanken.&lt;/li&gt;
-&lt;li&gt;Einbinden in QGIS&lt;/li&gt;
-&lt;li&gt;Export von UMN-Mapfiles (optional, erfordert python-mapscript)&lt;/li&gt;
-&lt;li&gt;Signaturierung nach &lt;a href=&quot;http://www.adv-online.de/AAA-Modell/Dokumente-der-GeoInfoDok/&quot;&gt;GeoInfoDok&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;Eignerabfrage (Einzelabfragen)&lt;/li&gt;
-&lt;li&gt;Client für &lt;a href=&quot;http://www.norbit.de/78/&quot;&gt;norGIS Liegenschaftsbuch&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;li&gt;&lt;a href=&quot;http://www.norbit.de/76/&quot;&gt;ALKIS-Erweiterung für AutoCAD/BricsCAD&lt;/span&gt;&lt;/a&gt; (proprietär) &lt;/li&gt;&lt;/ul&gt;
-&lt;p&gt;Lizenz: &lt;a href=&quot;http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html&quot;&gt;GPLv2&lt;/a&gt;, &lt;a href=&quot;http://www.norbit.de/75/&quot;&gt;Homepage&lt;/a&gt;, &lt;a href=&quot;https://github.com/norBIT/alkisplugin&quot;&gt;Code-Repository&lt;/a&gt;&lt;/p&gt;
-&lt;br&gt;
-&lt;/body&gt;
-&lt;/html&gt;</string>
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;Funktion:&lt;/span&gt;&lt;/p&gt;
+&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; font-size:8pt;&quot; style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Einbinden von durch &lt;a href=&quot;http://www.norbit.de/68/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;norGIS ALKIS-Import&lt;/span&gt;&lt;/a&gt; vorbereitete Datenbanken.&lt;/li&gt;
+&lt;li style=&quot; font-size:8pt;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Einbinden in QGIS&lt;/li&gt;
+&lt;li style=&quot; font-size:8pt;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Export von UMN-Mapfiles (optional, erfordert python-mapscript)&lt;/li&gt;
+&lt;li style=&quot; font-size:8pt;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Signaturierung nach &lt;a href=&quot;http://www.adv-online.de/AAA-Modell/Dokumente-der-GeoInfoDok/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;GeoInfoDok&lt;/span&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;li style=&quot; font-size:8pt;&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Eignerabfrage (Einzelabfragen)&lt;/li&gt;
+&lt;li style=&quot; font-size:8pt;&quot; style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Client für &lt;a href=&quot;http://www.norbit.de/78/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;norGIS Liegenschaftsbuch&lt;/span&gt;&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://www.norbit.de/76/&quot;&gt;&lt;span style=&quot; font-size:8pt; text-decoration: underline; color:#0000ff;&quot;&gt;ALKIS-Erweiterung für AutoCAD/BricsCAD&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt; (proprietär) &lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://www.norbit.de/75/&quot;&gt;&lt;span style=&quot; font-size:8pt; text-decoration: underline; color:#0000ff;&quot;&gt;Homepage&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;, &lt;/span&gt;&lt;a href=&quot;https://github.com/norBIT/alkisplugin&quot;&gt;&lt;span style=&quot; font-size:8pt; text-decoration: underline; color:#0000ff;&quot;&gt;Code-Repository&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;, Lizenz: &lt;/span&gt;&lt;a href=&quot;http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html&quot;&gt;&lt;span style=&quot; font-size:8pt; text-decoration: underline; color:#0000ff;&quot;&gt;GPLv2&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="openExternalLinks">
       <bool>true</bool>

@@ -72,21 +72,22 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
                         'filter' : [
-                                { 'name': u"Flächen", 'filter': "NOT layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
-                                { 'name': u"Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
+                            { 'name': u"Flächen", 'filter': "NOT layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
+                            { 'name': u"Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')" },
                         ],
                         'classes': {
-                                '2001': u'Bruchstriche',
-                                '2004': u'Zuordnungspfeil',
-                                '2005': u'Zuordnungspfeil, abweichender Rechtszustand',
-                                '2008': u'Flurstücksgrenze nicht feststellbar',
-                                '2028': u'Flurstücksgrenze',
-                                '2029': u'Flurstücksgrenze, abw. Rechtszustand',
-                                '3010': u'Flurstücks-Überhaken',
-                                '3020': u'Abgemarkter Grenzpunkt',
-                                '3021': u'Abgemarkter Grenzpunkt, abw. Rechtszustand',
-                                '3022': u'Grenzpunkt, Abmarkung zeitweilig ausgesetzt',
-                                '3024': u'Grenzpunkt ohne spezifizierte Abmarkung',
+                            '2001': u'Bruchstriche',
+                            '2004': u'Zuordnungspfeil',
+                            '2005': u'Zuordnungspfeil, abweichender Rechtszustand',
+                            '2006': u'Strittige Grenze',
+                            '2008': u'Flurstücksgrenze nicht feststellbar',
+                            '2028': u'Flurstücksgrenze',
+                            '2029': u'Flurstücksgrenze, abw. Rechtszustand',
+                            '3010': u'Flurstücks-Überhaken',
+                            '3020': u'Abgemarkter Grenzpunkt',
+                            '3021': u'Abgemarkter Grenzpunkt, abw. Rechtszustand',
+                            '3022': u'Grenzpunkt, Abmarkung zeitweilig ausgesetzt',
+                            '3024': u'Grenzpunkt ohne spezifizierte Abmarkung',
                         },
                 },
                 {
@@ -97,47 +98,55 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':3500 },
                         'label'  : { 'min':0, 'max':3500 },
                         'classes': {
-                                '1301': u'Wohngebäude',
-                                '1304': u'Anderes Gebäude',
-                                '1309': u'Gebäude für öffentliche Zwecke',
-                                '1501': u'Aussichtsturm',
-                                '2031': u'Anderes Gebäude',
-                                'rn1501': u'Anderes Gebäude',
-                                '2505': u'Öffentliches Gebäude',
-                                '3300': u'Bank',
-                                '3302': u'Hotel',
-                                '3303': u'Jugendherberge',
-                                '3305': u'Gaststätte',
-                                '3306': u'Kino',
-                                '3308': u'Spielcasino',
-                                '3309': u'Parkhaus',
-                                '3311': u'Toilette',
-                                '3312': u'Post',
-                                '3314': u'Theater',
-                                '3315': u'Bibliothek',
-                                '3316': u'Kirche',
-                                '3317': u'Synagoge',
-                                '3318': u'Kapelle',
-                                '3319': u'Moschee',
-                                '3321': u'Krankenhaus',
-                                '3323': u'Kindergarten',
-                                '3324': u'Polizei',
-                                '3326': u'Feuerwehr',
-                                '3327': u'Grabhügel (Hügelgrab)',
-                                '3332': u'Gebäude zum Busbahnhof',
-                                '3532': u'Denkmal',
-                                '3334': u'Hallenbad',
-                                '3336': u'Tiefgarage',
-                                '3338': u'Apotheke',
-                                '3521': u'Umformer',
-                                '3526': u'Großsteingrab (Dolmen), Hünenbett',
-                                '3529': u'Brunnen / Gasquelle, Mofette / Heilquelle',
-                                '3534': u'Bildstock',
-                                '3535': u'Gipfel-/Wegekreuz',
-                                '3536': u'Meilenstein, historischer Grenzstein',
-                                '3537': u'Brunnen (Trinkwasserversorgung)',
-                                '3539': u'Springbrunnen, Zierbrunnen',
-                                '3540': u'Ziehbrunnen',
+                            '1301': u'Wohngebäude',
+                            '1304': u'Anderes Gebäude',
+                            '1305': u'[1305]',
+                            '1309': u'Gebäude für öffentliche Zwecke',
+                            '1501': u'Aussichtsturm',
+                            'rn1501': u'Anderes Gebäude',
+                            '1525': u'Brunnen',
+                            '2031': u'Anderes Gebäude',
+                            '2032': u'Gebäude unter der Erdoberfläche',
+                            '2305': u'Offene Gebäudelinie',
+                            '2505': u'Öffentliches Gebäude',
+                            '2513': u'Schornstein im Gebäude',
+                            '2514': u'Turm im Gebäude',
+                            '2515': u'Brunnen',
+                            '2519': u'Kanal, Im Bau',
+                            '3300': u'Bank',
+                            '3302': u'Hotel',
+                            '3303': u'Jugendherberge',
+                            '3305': u'Gaststätte',
+                            '3306': u'Kino',
+                            '3308': u'Spielcasino',
+                            '3309': u'Parkhaus',
+                            '3311': u'Toilette',
+                            '3312': u'Post',
+                            '3314': u'Theater',
+                            '3315': u'Bibliothek',
+                            '3316': u'Kirche',
+                            '3317': u'Synagoge',
+                            '3318': u'Kapelle',
+                            '3319': u'Moschee',
+                            '3321': u'Krankenhaus',
+                            '3323': u'Kindergarten',
+                            '3324': u'Polizei',
+                            '3326': u'Feuerwehr',
+                            '3327': u'Grabhügel (Hügelgrab)',
+                            '3332': u'Gebäude zum Busbahnhof',
+                            '3532': u'Denkmal',
+                            '3334': u'Hallenbad',
+                            '3336': u'Tiefgarage',
+                            '3338': u'Apotheke',
+                            '3521': u'Umformer',
+                            '3526': u'Großsteingrab (Dolmen), Hünenbett',
+                            '3529': u'Brunnen / Gasquelle, Mofette / Heilquelle',
+                            '3534': u'Bildstock',
+                            '3535': u'Gipfel-/Wegekreuz',
+                            '3536': u'Meilenstein, historischer Grenzstein',
+                            '3537': u'Brunnen (Trinkwasserversorgung)',
+                            '3539': u'Springbrunnen, Zierbrunnen',
+                            '3540': u'Ziehbrunnen',
                         },
                 },
                 {
@@ -156,12 +165,12 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':25000 },
                         'label'  : { 'min':0, 'max':25000 },
                         'classes': {
-                                '1701': u'Bundesautobahn/-straße',
-                                '1702': u'Landes-/Staatsstraße',
-                                'rn1701': u'Bundesautobahn/-straße',
-                                'rn1702': u'Landes-/Staatsstraße',
-                                'rn1703': u'Schutzgebiet',
-                                'rn1704': u'Bau-, Raum-, Bodenordnungsrecht',
+                            '1701': u'Bundesautobahn/-straße',
+                            '1702': u'Landes-/Staatsstraße',
+                            'rn1701': u'Bundesautobahn/-straße',
+                            'rn1702': u'Landes-/Staatsstraße',
+                            'rn1703': u'Schutzgebiet',
+                            'rn1704': u'Bau-, Raum-, Bodenordnungsrecht',
                         },
                 },
                 {
@@ -172,46 +181,58 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
                         'classes': {
-                                '2533': u'Widerlager',
-                                '2515': u'Bahnverkehr',
-                                '1530': u'Brücke, Hochbahn/-straße',
-                                'rn1530': u'Brücke, Hochbahn/-straße',
-                                '3330': u'S-Bahnhof',
-                                '3424': u'Fußweg',
-                                '3426': u'Radweg',
-                                '3428': u'Rad- und Fußweg',
-                                '3430': u'Reitweg',
-                                '3432': u'Parkplatz',
-                                '3434': u'Rastplatz',
-                                '3439': u'Segelfluggelände',
-                                '3541': u'Kommunikationseinrichtung',
-                                '3542': u'Fernsprechhäuschen',
-                                '3544': u'Briefkasten',
-                                '3546': u'Feuermelder',
-                                '3547': u'Polizeirufsäule',
-                                '3548': u'Kabelkasten, Schaltkasten',
-                                '3550': u'Verkehrsampel',
-                                '3551': u'Freistehende Hinweistafel, -zeichen',
-                                '3552': u'Wegweiser von besonderer Bedeutung',
-                                '3553': u'Freistehende Warntafel',
-                                '3554': u'Haltestelle',
-                                '3556': u'Kilometerstein',
-                                '3558': u'Gaslaterne',
-                                '3559': u'Laterne, elektrisch',
-                                '3563': u'Säule, Werbefläche',
-                                '3564': u'Leuchtsäule',
-                                '3565': u'Fahnenmast',
-                                '3566': u'Straßensinkkasten',
-                                '3567': u'Müllbox',
-                                '3568': u'Kehrichtgrube',
-                                '3569': u'Uhr',
-                                '3571': u'Flutlichtmast',
-                                '3578': u'Haltepunkt',
-                                '3588': u'Hubschrauberlandeplatz',
-                                '3590': u'Leuchtfeuer',
-                                '3645': u'Materialseilbahn',
-                                '3646': u'Straßenbahngleis',
-                                },
+                            '1406': u'[1406]',
+                            '1530': u'Brücke, Hochbahn/-straße',
+                            'rn1530': u'Brücke, Hochbahn/-straße',
+                            'rn1533': u'Tunnel, Unterführung',
+                            '1542': u'Weg',
+                            'rn1542': u'Weg',
+                            '1543': u'Wattenweg',
+                            '1544': u'Anleger',
+                            'rn1544': u'Anleger',
+                            '1540': u'Fahrbahn',
+                            'rn1540': u'Fahrbahn',
+                            '1808': u'Landeplatz, -bahn, Vorfeld, Rollbahn',
+                            'rn1808': u'Landeplatz, -bahn, Vorfeld, Rollbahn',
+                            '2305': u'Durchfahrt, Bauwerk',
+                            '2533': u'Widerlager',
+                            '2515': u'Bahnverkehr',
+                            '3330': u'S-Bahnhof',
+                            '3424': u'Fußweg',
+                            '3426': u'Radweg',
+                            '3428': u'Rad- und Fußweg',
+                            '3430': u'Reitweg',
+                            '3432': u'Parkplatz',
+                            '3434': u'Rastplatz',
+                            '3439': u'Segelfluggelände',
+                            '3541': u'Kommunikationseinrichtung',
+                            '3542': u'Fernsprechhäuschen',
+                            '3544': u'Briefkasten',
+                            '3546': u'Feuermelder',
+                            '3547': u'Polizeirufsäule',
+                            '3548': u'Kabelkasten, Schaltkasten',
+                            '3550': u'Verkehrsampel',
+                            '3551': u'Freistehende Hinweistafel, -zeichen',
+                            '3552': u'Wegweiser von besonderer Bedeutung',
+                            '3553': u'Freistehende Warntafel',
+                            '3554': u'Haltestelle',
+                            '3556': u'Kilometerstein',
+                            '3558': u'Gaslaterne',
+                            '3559': u'Laterne, elektrisch',
+                            '3563': u'Säule, Werbefläche',
+                            '3564': u'Leuchtsäule',
+                            '3565': u'Fahnenmast',
+                            '3566': u'Straßensinkkasten',
+                            '3567': u'Müllbox',
+                            '3568': u'Kehrichtgrube',
+                            '3569': u'Uhr',
+                            '3571': u'Flutlichtmast',
+                            '3578': u'Haltepunkt',
+                            '3588': u'Hubschrauberlandeplatz',
+                            '3590': u'Leuchtfeuer',
+                            '3645': u'Materialseilbahn',
+                            '3646': u'Straßenbahngleis',
+                        },
                 },
                 {
                         'name'   : u"Friedhöfe",
@@ -220,77 +241,91 @@ class alkisplugin(QObject):
                         'line'   : { 'min':0, 'max':5000 },
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
-                        'classes': { },
+                        'classes': {
+                            '1405': u'[1405]',
+                            '2515': u'[2515]',
+                        },
                 },
                 {
-                    'name'   : u"Vegetation",
-                    'area'   : { 'min':0, 'max':25000 },
-                    'outline': { 'min':0, 'max':5000 },
-                    'line'   : { 'min':0, 'max':5000 },
-                    'point'  : { 'min':0, 'max':5000 },
-                    'label'  : { 'min':0, 'max':5000 },
-                    'classes': {
-                        '3413': u'Gras',
-                        '3415': u'Park',
-                        '3421': u'Garten',
-                        '3440': u'Streuobstacker',
-                        '3441': u'Streuobstwiese',
-                        '3444': u'Spargel',
-                        '3446': u'Baumschule',
-                        '3448': u'Weingarten',
-                        '3450': u'Obstplantage',
-                        '3452': u'Obstbaumplantage',
-                        '3454': u'Obststrauchplantage',
-                        '3456': u'Wald',
-                        '3457': u'Nadelbaum',
-                        '3458': u'Laubwald',
-                        '3460': u'Nadelwald',
-                        '3462': u'Mischwald',
-                        '3470': u'Mischwald',
-                        '3474': u'Heide',
-                        '3476': u'Moor',
-                        '3478': u'Sumpf',
-                        '3480': u'Unland',
-                        '3481': u'Fels',
-                        '3482': u'Steine, Schotter / Wellenbrecher, Buhne',
-                        '3484': u'Düne, Sand',
-                        '3597': u'Nadelbaum',
-                        '3599': u'Laubbaum',
-                        '3601': u'Busch, Hecke, Knick',
-                        '3603': u'Röhricht, Schilf',
-                        '3605': u'Zierfläche',
-                        '3607': u'Korbweide',
-                        '3613': u'Quelle',
-                    },
+                        'name'   : u"Vegetation",
+                        'area'   : { 'min':0, 'max':25000 },
+                        'outline': { 'min':0, 'max':5000 },
+                        'line'   : { 'min':0, 'max':5000 },
+                        'point'  : { 'min':0, 'max':5000 },
+                        'label'  : { 'min':0, 'max':5000 },
+                        'classes': {
+                            '1404': u'Brachland, Heide, Moor, Sumpf, Torf',
+                            '1406': u'Garten',
+                            '1414': u'Wald',
+                            '2515': u'[2515]',
+                            '2517': u'Wald',
+                            '3413': u'Gras',
+                            '3415': u'Park',
+                            '3421': u'Garten',
+                            '3440': u'Streuobstacker',
+                            '3441': u'Streuobstwiese',
+                            '3444': u'Spargel',
+                            '3446': u'Baumschule',
+                            '3448': u'Weingarten',
+                            '3450': u'Obstplantage',
+                            '3452': u'Obstbaumplantage',
+                            '3454': u'Obststrauchplantage',
+                            '3456': u'Wald',
+                            '3457': u'Nadelbaum',
+                            '3458': u'Laubwald',
+                            '3460': u'Nadelwald',
+                            '3462': u'Mischwald',
+                            '3470': u'Mischwald',
+                            '3474': u'Heide',
+                            '3476': u'Moor',
+                            '3478': u'Sumpf',
+                            '3480': u'Unland',
+                            '3481': u'Fels',
+                            '3482': u'Steine, Schotter / Wellenbrecher, Buhne',
+                            '3484': u'Düne, Sand',
+                            '3597': u'Nadelbaum',
+                            '3599': u'Laubbaum',
+                            '3601': u'Busch, Hecke, Knick',
+                            '3603': u'Röhricht, Schilf',
+                            '3605': u'Zierfläche',
+                            '3607': u'Korbweide',
+                            '3613': u'Quelle',
+                        },
                 },
                 {
-                    'name'   : u"Landwirtschaftliche Nutzung",
-                    'area'   : { 'min':0, 'max':None },
-                    'outline': { 'min':0, 'max':None },
-                    'line'   : { 'min':0, 'max':None },
-                    'point'  : { 'min':0, 'max':None },
-                    'label'  : { 'min':0, 'max':None },
-                    'classes': { },
+                        'name'   : u"Landwirtschaftliche Nutzung",
+                        'area'   : { 'min':0, 'max':None },
+                        'outline': { 'min':0, 'max':None },
+                        'line'   : { 'min':0, 'max':None },
+                        'point'  : { 'min':0, 'max':None },
+                        'label'  : { 'min':0, 'max':None },
+                        'classes': {
+                        },
                 },
                 {
-                    'name'   : u"Gewässer",
-                    'area'   : { 'min':0, 'max':500000, },
-                    'outline': { 'min':0, 'max':5000, },
-                    'line'   : { 'min':0, 'max':5000, },
-                    'point'  : { 'min':0, 'max':5000, },
-                    'label'  : { 'min':0, 'max':5000, },
-                    'classes': {
-                        '3484': u'Düne, Sand',
-                        '3488': u'Fließgewässer',
-                        '3490': u'Gewässer',
-                        '3529': u'Brunnen / Gasquelle, Mofette / Heilquelle',
-                        '3594': u'Schöpfwerk',
-                        '3613': u'Quelle',
-                        '3617': u'Stromschnelle',
-                        '3619': u'Unterirdisches Fließgewässer',
-                        '3621': u'Fließgewässer, nicht ständig Wasser führend',
-                        '3623': u'Höhe des Wasserspiegels',
-                    },
+                        'name'   : u"Gewässer",
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':5000, },
+                        'line'   : { 'min':0, 'max':5000, },
+                        'point'  : { 'min':0, 'max':5000, },
+                        'label'  : { 'min':0, 'max':5000, },
+                        'classes': {
+                            '1410': u'Gewässer',
+                            '2518': u'Gewässer',
+                            '3484': u'Düne, Sand',
+                            '3488': u'Fließgewässer',
+                            '3490': u'Gewässer',
+                            '3529': u'Brunnen / Gasquelle, Mofette / Heilquelle',
+                            '3594': u'Schöpfwerk',
+                            '3613': u'Quelle',
+                            '3617': u'Stromschnelle',
+                            '3619': u'Unterirdisches Fließgewässer',
+                            '3621': u'Fließgewässer, nicht ständig Wasser führend',
+                            '3623': u'Höhe des Wasserspiegels',
+                            '3653': u'[3653]',
+                            'rn1548': u'Fischtreppe, Sicherheitstor, Sperrwerk',
+                            'rn1550': u'Unterirdisches Gewässer',
+                        },
                 },
                 {
                         'name'   : u"Politische Grenzen",
@@ -300,14 +335,14 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':5000, },
                         'label'  : { 'min':0, 'max':5000, },
                         'classes': {
-                                        '2010': u'Landkreisgrenze',
-                                        '2012': u'Flurgrenze',
-                                        '2014': u'Gemarkungsgrenze',
-                                        '2016': u'Staatsgrenze',
-                                        '2018': u'Landesgrenze',
-                                        '2020': u'Regierungsbezirksgrenze',
-                                        '2022': u'Gemeindegrenze',
-                                        '2026': u'Verwaltungsbezirksgrenze',
+                            '2010': u'Landkreisgrenze',
+                            '2012': u'Flurgrenze',
+                            '2014': u'Gemarkungsgrenze',
+                            '2016': u'Staatsgrenze',
+                            '2018': u'Landesgrenze',
+                            '2020': u'Regierungsbezirksgrenze',
+                            '2022': u'Gemeindegrenze',
+                            '2026': u'Verwaltungsbezirksgrenze',
                         },
                 },
                 {
@@ -318,32 +353,48 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':10000, },
                         'label'  : { 'min':0, 'max':10000, },
                         'classes': {
-                                '3401': u'Tankstelle',
-                                '3403': u'Kraftwerk',
-                                '3404': u'Umspannstation',
-                                '3406': u'Stillgelegter Bergbaubetrieb',
-                                '3407': u'Torf',
-                                '3501': u'Windrad',
-                                '3502': u'Solarzellen',
-                                '3504': u'Mast',
-                                '3506': u'Antenne / Funkmast',
-                                '3507': u'Radioteleskop',
-                                '3508': u'Schornstein, Schlot, Esse',
-                                '3509': u'Stollenmundloch',
-                                '3510': u'Schachtöffnung',
-                                '3511': u'Kran',
-                                '3512': u'Drehkran',
-                                '3513': u'Portalkran',
-                                '3514': u'Laufkran, Brückenlaufkran',
-                                '3515': u'Portalkran',
-                                '3517': u'Oberflurhydrant',
-                                '3518': u'Unterflurhydrant',
-                                '3519': u'Schieberkappe',
-                                '3520': u'Einsteigeschacht',
-                                '3521': u'Umformer',
-                                '3522': u'Vorratsbehälter',
-                                '3523': u'Pumpe',
-                                '3653': u'Wehr',
+                            '1305': u'[1305]',
+                            'rn1305': u'[rn1305]',
+                            '1306': u'Mast',
+                            'rn1306': u'Mast',
+                            'rn1321': u'Vorratsbehälter, Speicherbauwerk unterirdisch',
+                            'rn1501': u'[rn1501]',
+                            'rn1510': u'Klärbecken',
+                            '1304': u'Vorratsbehälter, aufgeständert',
+                            '1401': u'[1401]',
+                            '1403': u'[1403]',
+                            '1404': u'[1404]',
+                            '1501': u'[1501]',
+                            '1510': u'[1510]',
+                            '2031': u'[2031]',
+                            '2515': u'[2515]',
+                            '2524': u'[2524]',
+                            '3401': u'Tankstelle',
+                            '3403': u'Kraftwerk',
+                            '3404': u'Umspannstation',
+                            '3406': u'Stillgelegter Bergbaubetrieb',
+                            '3407': u'Torf',
+                            '3501': u'Windrad',
+                            '3502': u'Solarzellen',
+                            '3504': u'Mast',
+                            '3506': u'Antenne / Funkmast',
+                            '3507': u'Radioteleskop',
+                            '3508': u'Schornstein, Schlot, Esse',
+                            '3509': u'Stollenmundloch',
+                            '3510': u'Schachtöffnung',
+                            '3511': u'Kran',
+                            '3512': u'Drehkran',
+                            '3513': u'Portalkran',
+                            '3514': u'Laufkran, Brückenlaufkran',
+                            '3515': u'Portalkran',
+                            '3517': u'Oberflurhydrant',
+                            '3518': u'Unterflurhydrant',
+                            '3519': u'Schieberkappe',
+                            '3520': u'Einsteigeschacht',
+                            '3521': u'Umformer',
+                            '3522': u'Vorratsbehälter',
+                            '3523': u'Pumpe',
+                            '3653': u'Wehr',
                         },
                 },
                 {
@@ -354,18 +405,32 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':10000, },
                         'label'  : { 'min':0, 'max':10000, },
                         'classes': {
-                                '3409': u'Skating',
-                                '3410': u'Zoo',
-                                '3411': u'Safaripark, Wildpark',
-                                '3412': u'Campingplatz',
-                                '3413': u'Rasen',
-                                '3417': u'Botanischer Garten',
-                                '3419': u'Kleingarten',
-                                '3421': u'Garten',
-                                '3423': u'Spielplatz, Bolzplatz',
-                                '3424': u'Fußweg',
-                                '3524': u'Schießanlage',
-                                '3525': u'Gradierwerk',
+                            '1405': u'[1405]',
+                            '1519': u'Überdachte Tribüne',
+                            'rn1519': u'Überdachte Tribüne',
+                            '1520': u'Hart-, Rasenplatz, Spielfeld',
+                            'rn1520': u'Hart-, Rasenplatz, Spielfeld',
+                            '1521': u'Rennbahn, Laufbahn, Geläuf',
+                            'rn1521': u'Rennbahn, Laufbahn, Geläuf',
+                            '1522': u'Stadion',
+                            'rn1522': u'Stadion',
+                            'rn1524': u'[1524]',
+                            '1526': u'Schwimmbecken',
+                            'rn1526': u'Schwimmbecken',
+                            '2515': u'[2515]',
+                            '3409': u'Skating',
+                            '3410': u'Zoo',
+                            '3411': u'Safaripark, Wildpark',
+                            '3412': u'Campingplatz',
+                            '3413': u'Rasen',
+                            '3415': u'Park',
+                            '3417': u'Botanischer Garten',
+                            '3419': u'Kleingarten',
+                            '3421': u'Garten',
+                            '3423': u'Spielplatz, Bolzplatz',
+                            '3424': u'Fußweg',
+                            '3524': u'Schießanlage',
+                            '3525': u'Gradierwerk',
                         },
                 },
                 {
@@ -375,7 +440,10 @@ class alkisplugin(QObject):
                         'line'   : { 'min':0, 'max':10000, },
                         'point'  : { 'min':0, 'max':10000, },
                         'label'  : { 'min':0, 'max':10000, },
-                        'classes': { },
+                        'classes': {
+                            '1401': u'Wohnbaufläche',
+                            '2515': u'[2515]',
+                        },
                 },
                 {
                         'name'   : u"Topographie",
@@ -385,13 +453,14 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':10000, },
                         'label'  : { 'min':0, 'max':10000, },
                         'classes': {
-                                '3484': u'Düne, Sand',
-                                '3601': u'Busch, Hecke, Knick',
-                                '3625': u'Höhleneingang',
-                                '3627': u'Felsen, Felsblock, Felsnadel',
-                                '3629': u'Besonderer topographischer Punkt',
-                                '3632': u'Busch, Hecke, Knick',
-                                '3634': u'Felsen, Felsblock, Felsnadel',
+                            '2620': u'Damm, Wall, Deich, Graben, Knick, Wallkante',
+                            '3484': u'Düne, Sand',
+                            '3601': u'Busch, Hecke, Knick',
+                            '3625': u'Höhleneingang',
+                            '3627': u'Felsen, Felsblock, Felsnadel',
+                            '3629': u'Besonderer topographischer Punkt',
+                            '3632': u'Busch, Hecke, Knick',
+                            '3634': u'Felsen, Felsblock, Felsnadel',
                         },
                 }
         )
@@ -1031,6 +1100,102 @@ class alkisplugin(QObject):
                 self.showProgress.emit( i*5+s, len(alkisplugin.themen)*5 )
                 QCoreApplication.processEvents()
 
+        def setStricharten(self, db, sym, sn, c):
+                lqry = QSqlQuery(db)
+
+                if lqry.exec_( "SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand"
+                               " FROM alkis_linie"
+                               " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
+                               " LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+                               " WHERE alkis_linie.signaturnummer='%s'" % sn ):
+                    stricharten = []
+
+                    while lqry.next():
+                        abschluss, scheitel, strichstaerke, laenge, einzug, abstaende = \
+                            lqry.value(0), lqry.value(1), float(lqry.value(2)), \
+                            float(lqry.value(3)), float(lqry.value(4)), lqry.value(5)
+
+                        if abstaende:
+                            if abstaende.startswith("{") and abstaende.endswith("}"):
+                                abstaende = map ( lambda x: float(x)/100, abstaende[1:-1].split(",") )
+                            else:
+                                abstaende = [ float(abstaende)/100 ]
+                        else:
+                            abstaende = []
+
+                        gesamtl = 0
+                        for abstand in abstaende:
+                            gesamtl += laenge + abstand
+
+                        stricharten.append( [ abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl ] )
+
+                    gesamtl0 = None
+                    leinzug = None
+                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
+                        if gesamtl0 is None:
+                            gesamtl0 = gesamtl
+                        elif gesamtl0 <> gesamtl:
+                            raise BaseException( u"Signaturnummer %s: Stricharten nicht gleich lang (%lf vs %lf)" % (sn, gesamtl0, gesamtl) )
+
+                        if laenge>0:
+                            if leinzug is None:
+                                leinzug = einzug
+                            elif leinzug<>einzug:
+                                raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
+
+                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
+                        if abstaende and laenge==0:
+                            # Marker line
+                            if leinzug:
+                                if einzug > leinzug:
+                                    einzug -= leinzug
+                                else:
+                                    einzug += gesamtl - leinzug
+
+                            for abstand in abstaende:
+                                sl = QgsMarkerLineSymbolLayerV2( False, gesamtl )
+                                sl.setPlacement( QgsMarkerLineSymbolLayerV2.Interval )
+                                sl.setIntervalUnit( QgsSymbolV2.MapUnit )
+                                sl.setOffsetAlongLine( einzug )
+                                sl.setOffsetAlongLineUnit( QgsSymbolV2.MapUnit )
+                                sl.subSymbol().symbolLayer(0).setSize( strichstaerke )
+                                sl.subSymbol().symbolLayer(0).setSizeUnit( QgsSymbolV2.MapUnit )
+                                sl.subSymbol().symbolLayer(0).setOutlineStyle( Qt.NoPen )
+                                sl.subSymbol().symbolLayer(0).setColor( c )
+                                sl.setWidth( strichstaerke )
+                                sl.setWidthUnit( QgsSymbolV2.MapUnit )
+                                einzug += abstand
+                                sym.appendSymbolLayer( sl )
+                        else:
+                            # Simple line
+                            sl = QgsSimpleLineSymbolLayerV2( c, strichstaerke, Qt.SolidLine )
+
+                            if abstaende:
+                                dashvector = []
+                                for abstand in abstaende:
+                                    dashvector.extend( [laenge, abstand] )
+                                sl.setUseCustomDashPattern( True )
+                                sl.setCustomDashVector( dashvector )
+                                sl.setCustomDashPatternUnit( QgsSymbolV2.MapUnit )
+
+                            sl.setPenCapStyle( Qt.FlatCap if abschluss == "Abgeschnitten" else Qt.RoundCap )
+                            sl.setPenJoinStyle( Qt.MiterJoin if abschluss == "Spitz" else Qt.RoundJoin )
+                            sl.setWidth( strichstaerke )
+                            sl.setWidthUnit( QgsSymbolV2.MapUnit )
+
+                            sym.appendSymbolLayer( sl )
+
+                    if sym.symbolLayerCount() == 1:
+                        logMessage( u"Signaturnummer %s: Keine Linienarten erzeugt." % sn )
+                        return False
+
+                    sym.deleteSymbolLayer(0)
+                else:
+                    logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text() ) )
+                    return False
+
+                return True
+
         def alkisimport(self):
                 (db,conninfo) = self.opendb()
                 if db is None:
@@ -1057,9 +1222,16 @@ class alkisplugin(QObject):
                 self.showProgress.connect( self.iface.mainWindow().showProgress )
                 self.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
 
-                sql = u"SELECT find_srid('','po_points', 'point')"
-                if qry.exec_( sql ) and qry.next():
+                if qry.exec_( "SELECT find_srid('','po_points', 'point')" ) and qry.next():
                         epsg = qry.value(0)
+                        if epsg>100000:
+                                if qry.exec_( "SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % epsg ) and qry.next():
+                                        crs = QgsCoordinateReferenceSystem()
+                                        crs.createFromProj4( qry.value(0) )
+                                        if crs.authid() == "":
+                                                crs.saveAsUserCRS( "ALKIS %d" % epsg )
+                                else:
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
                 else:
                         QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
                         return
@@ -1121,7 +1293,7 @@ class alkisplugin(QObject):
                         self.progress(iThema, "Grenzen", 1)
 
                         sql = (u"SELECT"
-                               u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
+                               u" signaturnummer,r,g,b"
                                u" FROM alkis_linien"
                                u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
                                u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
@@ -1134,15 +1306,12 @@ class alkisplugin(QObject):
 
                                 n = 0
                                 while qry.next():
-                                        sn = qry.value(0)
-                                        c = QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) )
-
                                         sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
-                                        sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, float(qry.value(4)) ) )
-                                        sym.setOutputUnit( QgsSymbolV2.MapUnit )
+                                        sn = qry.value(0)
 
-                                        r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
-                                        n += 1
+                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) ):
+                                            r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
+                                            n += 1
 
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
@@ -1164,7 +1333,7 @@ class alkisplugin(QObject):
                         self.progress(iThema, "Linien", 2)
 
                         sql = (u"SELECT"
-                               u" signaturnummer,r,g,b,(SELECT avg(strichstaerke)/100 FROM alkis_linie WHERE alkis_linie.signaturnummer=alkis_linien.signaturnummer) AS ss"
+                               u" signaturnummer,r,g,b"
                                u" FROM alkis_linien"
                                u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
                                u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s"
@@ -1178,14 +1347,11 @@ class alkisplugin(QObject):
                                 n = 0
                                 while qry.next():
                                         sym = QgsSymbolV2.defaultSymbol( QGis.Line )
-
                                         sn = qry.value(0)
-                                        sym.setColor( QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) )
-                                        sym.setWidth( float(qry.value(4)) )
-                                        sym.setOutputUnit( QgsSymbolV2.MapUnit )
 
-                                        r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
-                                        n += 1
+                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) ):
+                                            r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
+                                            n += 1
 
                                 if n>0:
                                         layer = self.iface.addVectorLayer(
@@ -1948,7 +2114,7 @@ class alkisplugin(QObject):
                                         n = mapobj.numlayers
                                         mapobj.removeLayer( layer.index )
                                         if n == mapobj.numlayers:
-                                                raise "No layer removed"
+                                                raise BaseException( "No layer removed" )
 
                                 #
                                 # 3 Punkte (TODO: Darstellungspriorität)
@@ -2022,7 +2188,7 @@ class alkisplugin(QObject):
                                                         sym = tempsymbolset.getSymbolByName( "norGIS_alkis%s" % sn )
                                                         sym.inmapfile = True
                                                         if mapobj.symbolset.appendSymbol(sym) < 0:
-                                                             raise "symbol not added."
+                                                             raise BaseException( "symbol not added." )
 
                                                         del tempsymbolset
                                                         symbols[ "norGIS_alkis%s" % sn ] = 1
@@ -2178,8 +2344,8 @@ class alkisplugin(QObject):
                 if size: size = int(size)
                 if maxsize: maxsize = int(maxsize)
 
-                if not mapobj: raise "map undefined"
-                if not name: raise "name undefined"
+                if not mapobj: raise BaseException( "map undefined" )
+                if not name: raise BaseException( "name undefined" )
 
                 symname0 = "norGIS_%s" % name
                 name = name.lower()
@@ -2223,7 +2389,7 @@ class alkisplugin(QObject):
                                 symbol.type = block.get('type', mapscript.MS_SYMBOL_TRUETYPE)
 
                                 if symbol.type == mapscript.MS_SYMBOL_TRUETYPE:
-                                        if not block.get('character',None): raise "character for %s not defined" % name
+                                        if not block.get('character',None): raise BaseException( "character for %s not defined" % name )
 
                                         symbol.character = block['character']
                                         symbol.antialias = block.get('antialias', mapscript.MS_TRUE)
@@ -2231,7 +2397,7 @@ class alkisplugin(QObject):
                                         symbol.font = block.get('font', "webgis")
 
                                         if block.has_key('position'):
-                                                raise u"symbol.position not supported in mapscript 6"
+                                                raise BaseException( u"symbol.position not supported in mapscript 6" )
 
                                 elif symbol.type == mapscript.MS_SYMBOL_VECTOR or \
                                       symbol.type == mapscript.MS_SYMBOL_ELLIPSE:
@@ -2248,12 +2414,12 @@ class alkisplugin(QObject):
                                                         p.y = block['points'][i+1]
 
                                                         if line.add( p ) != mapscript.MS_SUCCESS:
-                                                                raise "failed to add point %d" % i
+                                                                raise BaseException( "failed to add point %d" % i )
 
                                                         i += 2
 
                                                 if symbol.setPoints( line ) != line.numpoints:
-                                                        raise "failed to add all %d points" % line.numpoints
+                                                        raise BaseException( "failed to add all %d points" % line.numpoints )
 
                                 elif symbol.type == mapscript.MS_SYMBOL_CARTOLINE:
 
@@ -2277,7 +2443,7 @@ class alkisplugin(QObject):
                                         continue
 
                                 if symbolset.appendSymbol(symbol) < 0:
-                                        raise "symbol not added."
+                                        raise BaseException( "symbol not added." )
 
                         else:
                                 symname = block['symbol']
@@ -2324,7 +2490,7 @@ class alkisplugin(QObject):
         def insertStylesFromBlock(self,**kwargs):
                 cl = kwargs.get('layerclass', None)
                 if not cl:
-                        raise "layerclass undefined"
+                        raise BaseException( "layerclass undefined" )
 
                 del kwargs['layerclass']
 
@@ -2375,7 +2541,7 @@ class alkisplugin(QObject):
                         mapobj.removeLayer(j)
 
                         if mapobj.insertLayer( l, i if i<mapobj.numlayers else -1 ) < 0:
-                                raise u"Konnte Layer %d nicht wieder hinzufügen" % i
+                                raise BaseException( u"Konnte Layer %d nicht wieder hinzufügen" % i )
 
                         for k in idx.keys():
                                 if idx[k]>=i and idx[k]<j:
