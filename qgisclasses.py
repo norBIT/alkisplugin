@@ -323,6 +323,9 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 self.setupUi(self)
                 self.plugin = plugin
 
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                self.cbxSuchmodus.setCurrentIndex( s.value( "suchmodus", 0 ) )
+
         def accept(self):
                 if not self.plugin.initLayers():
                         return
@@ -371,9 +374,9 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                 flsnr += "%03d" % f if f>0 else "___"
                                 flsnr += "%05d" % z
                                 flsnr += "%04d" % n if n>0 else "____"
-                                flsnr += "__"
+                                flsnr += "%"
 
-                                fs = self.plugin.highlight( u"flurstueckskennzeichen='%s'" % flsnr, True )
+                                fs = self.plugin.highlight( u"flurstueckskennzeichen LIKE '%s'" % flsnr, True )
                                 if len(fs)==0:
                                         QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s gefunden." % flsnr )
                                         return
@@ -386,6 +389,9 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                 if len(fs)==0:
                                     QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha) )
                                     return
+
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                s.setValue( "suchmodus", self.cbxSuchmodus.currentIndex() )
 
                 QDialog.accept(self)
 

@@ -83,7 +83,7 @@ class alkisplugin(QObject):
                             '2008': u'Flurstücksgrenze nicht feststellbar',
                             '2028': u'Flurstücksgrenze',
                             '2029': u'Flurstücksgrenze, abw. Rechtszustand',
-                            '3010': u'Flurstücks-Überhaken',
+                            '3010': u'Flurstücksüberhaken',
                             '3020': u'Abgemarkter Grenzpunkt',
                             '3021': u'Abgemarkter Grenzpunkt, abw. Rechtszustand',
                             '3022': u'Grenzpunkt, Abmarkung zeitweilig ausgesetzt',
@@ -466,7 +466,7 @@ class alkisplugin(QObject):
         )
 
         exts = {
-                '3010': { 'minx':-0.6024,       'miny':-1.0152, 'maxx':0.6171,  'maxy':1.2357 },
+                '3010': { 'minx':-0.6024,       'miny':0,       'maxx':0.6171,  'maxy':2.2309 },
                 '3011': { 'minx':-0.6216,       'miny':-1.0061, 'maxx':0.6299,  'maxy':1.2222 },
                 '3020': { 'minx':-0.8459,       'miny':-0.8475, 'maxx':0.8559,  'maxy':0.8569 },
                 '3021': { 'minx':-0.8459,       'miny':-0.8475, 'maxx':0.8559,  'maxy':0.8569 },
