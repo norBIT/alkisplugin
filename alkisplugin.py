@@ -1591,6 +1591,16 @@ class alkisplugin(QObject):
                         QgsProject.instance().writeEntry( "alkis", "/pointMarkerLayer", self.pointMarkerLayer.id() )
                         QgsProject.instance().writeEntry( "alkis", "/lineMarkerLayer", self.lineMarkerLayer.id() )
                         QgsProject.instance().writeEntry( "alkis", "/areaMarkerLayer", self.areaMarkerLayer.id() )
+
+                        restrictedLayers, ok = QgsProject.instance().readListEntry( "WMSRestrictedLayers", "/", [] )
+
+                        for l in [u'Punktmarkierung', u'Linienmarkierung', u'Flächenmarkierung']:
+                            try:
+                                restrictedLayers.index(l)
+                            except:
+                                restrictedLayers.append(l)
+
+                        QgsProject.instance().writeEntry( "WMSRestrictedLayers", "/", restrictedLayers )
                 else:
                         self.iface.legendInterface().removeGroup( self.alkisGroup )
 
