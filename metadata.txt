@@ -1,10 +1,10 @@
 [general]
 name=norGIS ALKIS-Einbindung
 description=This plugin is dealing with German cadastre data (therefore not localized)
-description[de]=Diese Erweiterung dient zur Einbindung von durch norGIS ALKIS Import vorbereiteten PostGIS-Layern 
+description[de]=Diese Erweiterung dient zur Einbindung von durch norGIS ALKIS Import vorbereiteten PostGIS-Layern
 
 category=Database
-version=1.0.1
+version=1.0.2
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de
