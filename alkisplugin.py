@@ -25,7 +25,7 @@ for c in [ "QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVa
         sip.setapi(c,2)
 
 from PyQt4.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
-from PyQt4.QtGui import QApplication, QIcon, QMessageBox, QAction, QColor, QFileDialog
+from PyQt4.QtGui import QApplication, QIcon, QMessageBox, QAction, QColor, QFileDialog, QPainter
 from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
 
@@ -55,7 +55,7 @@ def qDebug(s):
 
 def logMessage(s):
     if qgisAvailable:
-        QgsMessageLog.logMessage( s )
+        QgsMessageLog.logMessage( s, "ALKIS" )
     else:
         QtCore.qWarning( s.encode( "utf-8" ) )
 
@@ -1100,7 +1100,7 @@ class alkisplugin(QObject):
                 self.showProgress.emit( i*5+s, len(alkisplugin.themen)*5 )
                 QCoreApplication.processEvents()
 
-        def setStricharten(self, db, sym, sn, c):
+        def setStricharten(self, db, sym, sn, c, outline):
             lqry = QSqlQuery(db)
 
             if "setOffsetAlongLine" in dir(QgsMarkerLineSymbolLayerV2):
@@ -1111,10 +1111,15 @@ class alkisplugin(QObject):
                                " WHERE alkis_linie.signaturnummer='%s'" % sn ):
                     stricharten = []
 
+                    maxStrichstaerke = -1
+
                     while lqry.next():
                         abschluss, scheitel, strichstaerke, laenge, einzug, abstaende = \
                             lqry.value(0), lqry.value(1), float(lqry.value(2)), \
                             float(lqry.value(3)), float(lqry.value(4)), lqry.value(5)
+
+                        if strichstaerke > maxStrichstaerke:
+                            maxStrichstaerke = strichstaerke
 
                         if abstaende:
                             if abstaende.startswith("{") and abstaende.endswith("}"):
@@ -1190,7 +1195,12 @@ class alkisplugin(QObject):
                         logMessage( u"Signaturnummer %s: Keine Linienarten erzeugt." % sn )
                         return False
 
-                    sym.deleteSymbolLayer(0)
+                    if outline:
+                        sym.deleteSymbolLayer(0)
+                    else:
+                        sl = QgsSimpleLineSymbolLayerV2( QColor( 0, 0, 0, 0 ), maxStrichstaerke*1.01, Qt.SolidLine )
+                        sl.setWidthUnit( QgsSymbolV2.MapUnit )
+                        sym.changeSymbolLayer(0, sl)
                 else:
                     logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text() ) )
                     return False
@@ -1326,7 +1336,7 @@ class alkisplugin(QObject):
                                         sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
                                         sn = qry.value(0)
 
-                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) ):
+                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), True ):
                                             r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
                                             n += 1
 
@@ -1337,6 +1347,7 @@ class alkisplugin(QObject):
                                                 "postgres" )
                                         layer.setReadOnly()
                                         layer.setRendererV2( r )
+                                        layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         self.setScale( layer, d['outline'] )
                                         self.iface.legendInterface().refreshLayerSymbology( layer )
                                         self.iface.legendInterface().moveLayer( layer, thisGroup )
@@ -1355,10 +1366,11 @@ class alkisplugin(QObject):
                                u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
                                u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s"
                                u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet DESC" ) % where
+                               u" ORDER BY darstellungsprioritaet ASC" ) % where
                         #qDebug( u"SQL: %s" % sql )
                         if qry.exec_( sql ):
                                 r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
+                                r.setUsingSymbolLevels( True )
                                 r.deleteAllCategories()
 
                                 n = 0
@@ -1366,7 +1378,10 @@ class alkisplugin(QObject):
                                         sym = QgsSymbolV2.defaultSymbol( QGis.Line )
                                         sn = qry.value(0)
 
-                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) ):
+                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), False ):
+                                            for i in range(0,sym.symbolLayerCount()):
+                                                sym.symbolLayer(i).setRenderingPass(n)
+
                                             r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
                                             n += 1
 
@@ -1377,6 +1392,7 @@ class alkisplugin(QObject):
                                                         "postgres" )
                                         layer.setReadOnly()
                                         layer.setRendererV2( r )
+                                        layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         self.setScale( layer, d['line'] )
                                         self.iface.legendInterface().refreshLayerSymbology( layer )
                                         self.iface.legendInterface().moveLayer( layer, thisGroup )
