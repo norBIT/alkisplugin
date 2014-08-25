@@ -1101,8 +1101,9 @@ class alkisplugin(QObject):
                 QCoreApplication.processEvents()
 
         def setStricharten(self, db, sym, sn, c):
-                lqry = QSqlQuery(db)
+            lqry = QSqlQuery(db)
 
+            if "setOffsetAlongLine" in dir(QgsMarkerLineSymbolLayerV2):
                 if lqry.exec_( "SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand"
                                " FROM alkis_linie"
                                " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
@@ -1193,8 +1194,24 @@ class alkisplugin(QObject):
                 else:
                     logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text() ) )
                     return False
+            elif lqry.exec_( "SELECT coalesce(strichstaerke/100,0)"
+                             " FROM alkis_linie"
+                             " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
+                             " LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+                             " WHERE alkis_linie.signaturnummer='%s'" % sn ) and lqry.next():
 
-                return True
+                if sym.type() == QgsSymbolV2.Fill:
+                    sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, float(lqry.value(0)) ) )
+                else:
+                    sym.setWidth( float(lqry.value(0)) )
+                    sym.setColor( c )
+
+                sym.setOutputUnit( QgsSymbolV2.MapUnit )
+            else:
+                logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text() ) )
+                return False
+
+            return True
 
         def alkisimport(self):
                 (db,conninfo) = self.opendb()
