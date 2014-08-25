@@ -42,6 +42,9 @@ InfoBase = uic.loadUiType( os.path.join( d, 'info.ui' ) )[0]
 AboutBase = uic.loadUiType( os.path.join( d, 'about.ui' ) )[0]
 ALKISSearchBase = uic.loadUiType( os.path.join( d, 'search.ui' ) )[0]
 
+def qDebug(s):
+        QtCore.qDebug( s.encode('ascii', 'ignore') )
+
 class ALKISConf(QDialog, ConfBase):
         def __init__(self, plugin):
                 QDialog.__init__(self)
