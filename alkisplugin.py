@@ -1080,7 +1080,7 @@ class alkisplugin(QObject):
                                         +  " to_char(f.land,'fm00') || to_char(f.gemarkungsnummer,'fm0000')"
                                         +  " || '-' || to_char(coalesce(f.flurnummer,0),'fm000')"
                                         +  " || '-' || to_char(f.zaehler,'fm00000')"
-                                        +  " || '/' || to_char(coalesce(f.nenner,0),'fm000')=fs.flsnr"
+                                        +  " || '/' || CASE WHEN f.gml_id LIKE 'DESN%%' THEN substring(flurstueckskennzeichen,15,4) ELSE to_char(coalesce(f.nenner::int,0),'fm000') END=fs.flsnr"
                                         + " JOIN gema_shl ON gema_shl.gemashl=fs.gemashl"
                                         + " LEFT OUTER JOIN strassen s1 ON s1.pk=(SELECT MIN(pk) FROM strassen s2 WHERE s2.flsnr=fs.flsnr AND ff_stand=0)"
                                         + " LEFT OUTER JOIN str_shl ON str_shl.strshl=s1.strshl"
@@ -1738,7 +1738,7 @@ class alkisplugin(QObject):
                         u"gml_id"
                         u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
                         u"'-' || to_char(coalesce(flurnummer,0),'fm000') ||"
-                        u"'-' || to_char(zaehler,'fm00000') || '/' || to_char(coalesce(nenner,0),'fm000')"
+                        u"'-' || to_char(zaehler,'fm00000') || '/' || CASE WHEN gml_id LIKE 'DESN%%' THEN substring(flurstueckskennzeichen,15,4) ELSE to_char(coalesce(nenner::int,0),'fm000') END"
                         u" FROM ax_flurstueck"
                         u" WHERE endet IS NULL"
                         u" AND (%s)" % where
