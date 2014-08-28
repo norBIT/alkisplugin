@@ -873,11 +873,6 @@ class alkisplugin(QObject):
                 self.importAction.setStatusTip("ALKIS-Layer einbinden")
                 self.importAction.triggered.connect( self.alkisimport )
 
-                self.eignerAction = QAction( QIcon( "alkis:logo.svg" ), "Eignerlayer einbinden", self.iface.mainWindow())
-                self.eignerAction.setWhatsThis("Eignerlayer einbinden")
-                self.eignerAction.setStatusTip("EignerLayer einbinden")
-                self.eignerAction.triggered.connect( self.eignerlayer )
-
                 if mapscriptAvailable:
                         self.umnAction = QAction( QIcon( "alkis:logo.svg" ), "UMN-Mapdatei erzeugen...", self.iface.mainWindow())
                         self.umnAction.setWhatsThis("UMN-Mapserver-Datei erzeugen")
@@ -915,13 +910,11 @@ class alkisplugin(QObject):
 
                 if hasattr(self.iface, "addPluginToDatabaseMenu"):
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
-                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.eignerAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
                 else:
                         self.iface.addPluginToMenu("&ALKIS", self.importAction)
-                        self.iface.addPluginToMenu("&ALKIS", self.eignerAction)
                         self.iface.addPluginToMenu("&ALKIS", self.umnAction)
                         self.iface.addPluginToMenu("&ALKIS", self.confAction)
                         self.iface.addPluginToMenu("&ALKIS", self.aboutAction)
@@ -953,9 +946,6 @@ class alkisplugin(QObject):
                 if self.importAction:
                         self.importAction.deleteLater()
                         self.importAction = None
-                if self.eignerAction:
-                        self.eignerAction.deleteLater()
-                        self.eingerAction = None
                 if self.umnAction:
                         self.umnAction.deleteLater()
                         self.umnAction = None
@@ -1042,56 +1032,6 @@ class alkisplugin(QObject):
                 QApplication.setOverrideCursor( Qt.WaitCursor )
                 try:
                         self.alkisimport()
-                finally:
-                        QApplication.restoreOverrideCursor()
-
-        def eignerlayer(self):
-                if not self.initLayers():
-                        return
-
-                QApplication.setOverrideCursor( Qt.WaitCursor )
-                try:
-                        self.iface.mapCanvas().setRenderFlag( False )
-
-                        (db,conninfo) = self.opendb()
-                        if db is None:
-                                return
-
-                        layer = self.iface.addVectorLayer(
-                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=\"(%s)\" (wkb_geometry) sql=" % (
-                                        conninfo,
-                                        self.pointMarkerLayer.crs().postgisSrid(),
-                                        u"SELECT f.ogc_fid"
-                                        + ",f.gml_id"
-                                        + ",f.wkb_geometry"
-                                        + ",fs.flsnr"
-                                        + ",gemarkung"
-                                        + ",fs.flsfl"
-                                        + ",fs.lagebez"
-                                        + ",str_shl.strname"
-                                        + ",s1.hausnr"
-#                                       + ",(SELECT 'E' WHERE EXISTS (SELECT * FROM eignerart e WHERE e.flsnr=fs.flsnr AND e.b='2101'))"
-                                        + ",e.bestdnr"
-                                        + ",e.name1"
-                                        + ",e.name3"
-                                        + ",e.name4"
-                                        + " FROM ax_flurstueck f"
-                                        + " JOIN flurst fs ON fs.ff_stand=0 AND"
-                                        +  " to_char(f.land,'fm00') || to_char(f.gemarkungsnummer,'fm0000')"
-                                        +  " || '-' || to_char(coalesce(f.flurnummer,0),'fm000')"
-                                        +  " || '-' || to_char(f.zaehler,'fm00000')"
-                                        +  " || '/' || CASE WHEN f.gml_id LIKE 'DESN%%' THEN substring(flurstueckskennzeichen,15,4) ELSE to_char(coalesce(f.nenner::int,0),'fm000') END=fs.flsnr"
-                                        + " JOIN gema_shl ON gema_shl.gemashl=fs.gemashl"
-                                        + " LEFT OUTER JOIN strassen s1 ON s1.pk=(SELECT MIN(pk) FROM strassen s2 WHERE s2.flsnr=fs.flsnr AND ff_stand=0)"
-                                        + " LEFT OUTER JOIN str_shl ON str_shl.strshl=s1.strshl"
-                                        + " LEFT OUTER JOIN eignerart ea ON (ea.flsnr||'#'||ea.bestdnr||'#'||ea.bvnr)="
-                                        +  "(SELECT MIN(flsnr||'#'||bestdnr||'#'||bvnr) FROM eignerart ea2 WHERE ea2.flsnr=fs.flsnr AND ea2.ff_stand=0)"
-                                        + " LEFT OUTER JOIN eigner e ON e.pk=(SELECT MIN(pk) FROM eigner e2 WHERE ea.bestdnr=e2.bestdnr AND e2.ff_stand=0)"
-                                        + " WHERE f.endet IS NULL"
-                                ),
-                                u"Flurstücke mit Eignern",
-                                "postgres" )
-
                 finally:
                         QApplication.restoreOverrideCursor()
 

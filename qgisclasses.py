@@ -19,7 +19,7 @@
 """
 
 
-from PyQt4.QtCore import QSettings, Qt, QDate, QDir
+from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray
 from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem
 from PyQt4.QtSql import QSqlQuery
 from PyQt4 import QtCore, uic
@@ -141,6 +141,14 @@ class Info( QDialog, InfoBase ):
                 self.setupUi(self)
 
                 self.wvEigner.setHtml( html )
+
+                self.restoreGeometry( QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" ).value("infogeom", QByteArray(), type=QByteArray) )
+
+        def closeEvent(self, e):
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                s.setValue( "infogeom", self.saveGeometry() )
+                QDialog.closeEvent(self, e)
+
 
 class About( QDialog, AboutBase ):
         def __init__(self):
@@ -327,7 +335,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 self.plugin = plugin
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
-                self.cbxSuchmodus.setCurrentIndex( s.value( "suchmodus", 0 ) )
+                self.cbxSuchmodus.setCurrentIndex( s.value( "suchmodus", 0, type=int ) )
 
         def accept(self):
                 if not self.plugin.initLayers():
@@ -392,6 +400,27 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                 if len(fs)==0:
                                     QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha) )
                                     return
+
+                elif self.cbxSuchmodus.currentIndex() == 4:  # Eigentümer
+                        fs = self.plugin.highlight( ( u"EXISTS ("
+                                                      u"SELECT * FROM flurst fs"
+                                                      u" LEFT OUTER JOIN eignerart ea ON (ea.flsnr||'#'||ea.bestdnr||'#'||ea.bvnr)="
+                                                      u"(SELECT MIN(flsnr||'#'||bestdnr||'#'||bvnr) FROM eignerart ea2 WHERE ea2.flsnr=fs.flsnr AND ea2.ff_stand=0)"
+                                                      u" LEFT OUTER JOIN eigner e ON e.pk=(SELECT MIN(pk) FROM eigner e2 WHERE ea.bestdnr=e2.bestdnr AND e2.ff_stand=0)"
+                                                      u" WHERE e.name1||coalesce(', '||e.name3,'')||coalesce(', '||e.name4,'') LIKE '%%%s%%'"
+                                                      u" AND fs.ff_stand=0"
+                                                      u" AND to_char(ax_flurstueck.land,'fm00') || to_char(ax_flurstueck.gemarkungsnummer,'fm0000')"
+                                                      u" || '-' || to_char(coalesce(ax_flurstueck.flurnummer,0),'fm000')"
+                                                      u" || '-' || to_char(ax_flurstueck.zaehler,'fm00000')"
+                                                      u" || '/' ||"
+                                                      u" CASE"
+                                                      u" WHEN ax_flurstueck.gml_id LIKE 'DESN%%' THEN substring(ax_flurstueck.flurstueckskennzeichen,15,4)"
+                                                      u" ELSE to_char(coalesce(ax_flurstueck.nenner::int,0),'fm000')"
+                                                      u" END=fs.flsnr"
+                                                      u")" ) % text, True )
+                        if len(fs)==0:
+                            QMessageBox.information( None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text )
+                            return
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 s.setValue( "suchmodus", self.cbxSuchmodus.currentIndex() )
@@ -490,7 +519,6 @@ class ALKISOwnerInfo(QgsMapTool):
                 info = Info( self.getPage(fs) )
                 info.setWindowTitle( u"Flurstücksnachweis" )
                 info.exec_()
-
 
         def getPage(self,fs):
                 (db,conninfo) = self.plugin.opendb()

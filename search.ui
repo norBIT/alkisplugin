@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>228</width>
-    <height>101</height>
+    <width>283</width>
+    <height>102</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,6 +47,11 @@
      <item>
       <property name="text">
        <string>Straße und Hausnummer</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Eigentümer</string>
       </property>
      </item>
     </widget>
