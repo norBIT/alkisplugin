@@ -45,6 +45,20 @@ ALKISSearchBase = uic.loadUiType( os.path.join( d, 'search.ui' ) )[0]
 def qDebug(s):
     QgsMessageLog.logMessage( s, u'ALKIS' )
 
+def quote(x,prefix='E'):
+    if type(x)==str:
+        x.replace("'", "''")
+        x.replace("\\", "\\\\")
+        if x.find( "\\" )<0:
+            return u"'%s'" % x
+        else:
+            return u"%s'%s'" % (prefix, x)
+    elif type(x)==unicode and x.find( u"\\" ):
+        x.replace(u"\\", u"\\\\")
+        return u"%s'%s'" % (prefix, unicode(x))
+    else:
+        return u"'%s'" % unicode(x)
+
 class ALKISConf(QDialog, ConfBase):
         def __init__(self, plugin):
                 QDialog.__init__(self)
@@ -387,7 +401,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                 flsnr += "%04d" % n if n>0 else "____"
                                 flsnr += "%"
 
-                                fs = self.plugin.highlight( u"flurstueckskennzeichen LIKE '%s'" % flsnr, True )
+                                fs = self.plugin.highlight( u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True )
                                 if len(fs)==0:
                                         QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s gefunden." % flsnr )
                                         return
@@ -396,28 +410,33 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                         m = re.search( "^(.*)\s+(\d+[a-zA-Z]?)$", text )
                         if m:
                                 strasse, ha = m.group(1), m.group(2)
-                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE '{0}%' AND h.hausnummer='{1}')".format( strasse, ha.upper() ), True )
+                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format( quote(strasse+'%'), quote(ha.upper()) ), True )
                                 if len(fs)==0:
                                     QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha) )
                                     return
 
                 elif self.cbxSuchmodus.currentIndex() == 4:  # Eigentümer
-                        fs = self.plugin.highlight( ( u"EXISTS ("
-                                                      u"SELECT * FROM flurst fs"
-                                                      u" LEFT OUTER JOIN eignerart ea ON (ea.flsnr||'#'||ea.bestdnr||'#'||ea.bvnr)="
-                                                      u"(SELECT MIN(flsnr||'#'||bestdnr||'#'||bvnr) FROM eignerart ea2 WHERE ea2.flsnr=fs.flsnr AND ea2.ff_stand=0)"
-                                                      u" LEFT OUTER JOIN eigner e ON e.pk=(SELECT MIN(pk) FROM eigner e2 WHERE ea.bestdnr=e2.bestdnr AND e2.ff_stand=0)"
-                                                      u" WHERE e.name1||coalesce(', '||e.name3,'')||coalesce(', '||e.name4,'') LIKE '%%%s%%'"
-                                                      u" AND fs.ff_stand=0"
-                                                      u" AND to_char(ax_flurstueck.land,'fm00') || to_char(ax_flurstueck.gemarkungsnummer,'fm0000')"
-                                                      u" || '-' || to_char(coalesce(ax_flurstueck.flurnummer,0),'fm000')"
-                                                      u" || '-' || to_char(ax_flurstueck.zaehler,'fm00000')"
-                                                      u" || '/' ||"
-                                                      u" CASE"
-                                                      u" WHEN ax_flurstueck.gml_id LIKE 'DESN%%' THEN substring(ax_flurstueck.flurstueckskennzeichen,15,4)"
-                                                      u" ELSE to_char(coalesce(ax_flurstueck.nenner::int,0),'fm000')"
-                                                      u" END=fs.flsnr"
-                                                      u")" ) % text, True )
+                        where = "bs.gml_id=ax_flurstueck.istgebucht AND bs.endet IS NULL"
+                        for e in text.split():
+                                where += ( " AND " +
+                                  (
+                                  u"coalesce((SELECT v||' ' FROM alkis_wertearten WHERE element='ax_person' AND bezeichnung='anrede' AND k=p.anrede::text),'')||"
+                                  u"coalesce(p.akademischergrad||' ', '')||"
+                                  u"coalesce(p.vorname||' ', '')||"
+                                  u"coalesce(p.namensbestandteil||' ', '')||"
+                                  u"p.nachnameoderfirma||"
+                                  u"coalesce(', geb. '||p.geburtsname,'')"
+                                  ) + " LIKE " + quote('%'+e+'%')
+                                )
+
+                        fs = self.plugin.highlight( (
+                                u"EXISTS ("
+                                u" SELECT *"
+                                u" FROM ax_buchungsstelle bs"
+                                u" JOIN ax_buchungsblatt bb ON bb.gml_id=bs.istbestandteilvon OR EXISTS (SELECT * FROM ax_buchungsstelle bs0 WHERE bs0.endet IS NULL AND ARRAY[bs0.gml_id] <@ bs.an AND bb.gml_id=bs0.istbestandteilvon)"
+                                u" JOIN ax_namensnummer nn ON bb.gml_id=nn.istbestandteilvon AND bb.endet IS NULL"
+                                u" JOIN ax_person p ON p.gml_id=nn.benennt AND p.endet IS NULL"
+                                u" WHERE " ) + where + ")", True )
                         if len(fs)==0:
                             QMessageBox.information( None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text )
                             return

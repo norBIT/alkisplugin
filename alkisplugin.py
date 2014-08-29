@@ -868,7 +868,7 @@ class alkisplugin(QObject):
                 self.toolbar.setObjectName( "norGIS_ALKIS_Toolbar" )
 
                 d = os.path.dirname(__file__)
-                self.importAction = QAction( QIcon( "alkis:logo.svg" ), "ALKIS-Layer einbinden", self.iface.mainWindow())
+                self.importAction = QAction( QIcon( "alkis:logo.svg" ), "Layer einbinden", self.iface.mainWindow())
                 self.importAction.setWhatsThis("ALKIS-Layer einbinden")
                 self.importAction.setStatusTip("ALKIS-Layer einbinden")
                 self.importAction.triggered.connect( self.alkisimport )
@@ -881,7 +881,7 @@ class alkisplugin(QObject):
                 else:
                         self.umnAction = None
 
-                self.searchAction = QAction( QIcon( "alkis:find.png" ), "Beschriftung suchen", self.iface.mainWindow())
+                self.searchAction = QAction( QIcon( "alkis:find.png" ), "Suchen...", self.iface.mainWindow())
                 self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
                 self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
                 self.searchAction.triggered.connect(self.search)
