@@ -20,7 +20,7 @@
 
 
 from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray
-from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem
+from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem, QPrintDialog, QAction, QPrinter, QMenu
 from PyQt4.QtSql import QSqlQuery
 from PyQt4 import QtCore, uic
 
@@ -157,6 +157,19 @@ class Info( QDialog, InfoBase ):
                 self.wvEigner.setHtml( html )
 
                 self.restoreGeometry( QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" ).value("infogeom", QByteArray(), type=QByteArray) )
+
+	def print_(self):
+		printer = QPrinter()
+		dlg = QPrintDialog( printer )
+		if dlg.exec_() == QDialog.Accepted:
+			self.wvEigner.print_( printer )
+
+	def contextMenuEvent(self,e):
+		menu = QMenu( self )
+		action = QAction( "Drucken", self );
+		action.triggered.connect( self.print_ )
+		menu.addAction( action )
+		menu.exec_( e.globalPos() )
 
         def closeEvent(self, e):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
