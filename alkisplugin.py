@@ -1138,7 +1138,7 @@ class alkisplugin(QObject):
                     if outline:
                         sym.deleteSymbolLayer(0)
                     else:
-                        sl = QgsSimpleLineSymbolLayerV2( QColor( 0, 0, 0, 0 ), maxStrichstaerke*1.01, Qt.SolidLine )
+                        sl = QgsSimpleLineSymbolLayerV2( QColor( 0, 0, 0, 0 ) if "BlendSource" in dir(QgsMapRenderer) else Qt.white, maxStrichstaerke*1.01, Qt.SolidLine )
                         sl.setWidthUnit( QgsSymbolV2.MapUnit )
                         sym.changeSymbolLayer(0, sl)
                 else:
@@ -1287,7 +1287,8 @@ class alkisplugin(QObject):
                                                 "postgres" )
                                         layer.setReadOnly()
                                         layer.setRendererV2( r )
-                                        layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
+                                        if "BlendSource" in dir(QgsMapRenderer):
+                                                layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         self.setScale( layer, d['outline'] )
                                         self.iface.legendInterface().refreshLayerSymbology( layer )
                                         self.iface.legendInterface().moveLayer( layer, thisGroup )
@@ -1332,6 +1333,8 @@ class alkisplugin(QObject):
                                                         "postgres" )
                                         layer.setReadOnly()
                                         layer.setRendererV2( r )
+                                        if "BlendSource" in dir(QgsMapRenderer):
+                                                layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         self.setScale( layer, d['line'] )
                                         self.iface.legendInterface().refreshLayerSymbology( layer )
@@ -1893,12 +1896,12 @@ class alkisplugin(QObject):
                                 layer.setMetaData( u"wfs_srs", alkisplugin.defcrs )
                                 self.setUMNScale( layer, d['area'] )
 
-				sql = (u"SELECT"
-				       u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
-				       u" FROM alkis_flaechen"
-				       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-				       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
-				       u" ORDER BY darstellungsprioritaet" ) % where
+                                sql = (u"SELECT"
+                                       u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
+                                       u" FROM alkis_flaechen"
+                                       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
+                                       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
+                                       u" ORDER BY darstellungsprioritaet" ) % where
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
                                         sprio = 0
@@ -1974,11 +1977,11 @@ class alkisplugin(QObject):
                                 self.setUMNScale( layer, d['outline'] )
 
                                 sql = (u"SELECT"
-				       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
-				       u" FROM alkis_linien"
-				       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-				       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
-				       u" ORDER BY darstellungsprioritaet" ) % where
+                                       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
+                                       u" FROM alkis_linien"
+                                       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+                                       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
+                                       u" ORDER BY darstellungsprioritaet" ) % where
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
                                         sprio = 0
@@ -2051,11 +2054,11 @@ class alkisplugin(QObject):
                                 self.setUMNScale( layer, d['line'] )
 
                                 sql = (u"SELECT"
-				       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
-				       u" FROM alkis_linien"
-				       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-				       u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-				       u" ORDER BY darstellungsprioritaet" ) % where
+                                       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
+                                       u" FROM alkis_linien"
+                                       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+                                       u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
+                                       u" ORDER BY darstellungsprioritaet" ) % where
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
                                         sprio = 0
