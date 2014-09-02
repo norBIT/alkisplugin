@@ -910,7 +910,8 @@ class alkisplugin(QObject):
 
                 if hasattr(self.iface, "addPluginToDatabaseMenu"):
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
-                        self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
+                        if self.umnAction:
+                            self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
                         self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
                 else:
@@ -938,6 +939,19 @@ class alkisplugin(QObject):
                         self.iface.mainWindow().initializationCompleted.connect( self.register )
 
         def unload(self):
+                if hasattr(self.iface, "removePluginDatabaseMenu"):
+                        self.iface.removePluginDatabaseMenu("&ALKIS", self.importAction)
+                        if self.umnAction:
+                            self.iface.removePluginDatabaseMenu("&ALKIS", self.umnAction)
+                        self.iface.removePluginDatabaseMenu("&ALKIS", self.confAction)
+                        self.iface.removePluginDatabaseMenu("&ALKIS", self.aboutAction)
+                else:
+                        self.iface.removePluginMenu("&ALKIS", self.importAction)
+                        if self.umnAction:
+                            self.iface.removePluginMenu("&ALKIS", self.umnAction)
+                        self.iface.removePluginMenu("&ALKIS", self.confAction)
+                        self.iface.removePluginMenu("&ALKIS", self.aboutAction)
+
                 del self.toolbar
 
                 if self.searchAction:
