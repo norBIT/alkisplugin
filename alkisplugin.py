@@ -1057,7 +1057,7 @@ class alkisplugin(QObject):
         def setStricharten(self, db, sym, sn, c, outline):
             lqry = QSqlQuery(db)
 
-            if "setOffsetAlongLine" in dir(QgsMarkerLineSymbolLayerV2):
+            if hasattr(QgsMarkerLineSymbolLayerV2, "setOffsetAlongLine"):
                 if lqry.exec_( "SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand"
                                " FROM alkis_linie"
                                " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
@@ -1152,7 +1152,7 @@ class alkisplugin(QObject):
                     if outline:
                         sym.deleteSymbolLayer(0)
                     else:
-                        sl = QgsSimpleLineSymbolLayerV2( QColor( 0, 0, 0, 0 ) if "BlendSource" in dir(QgsMapRenderer) else Qt.white, maxStrichstaerke*1.01, Qt.SolidLine )
+                        sl = QgsSimpleLineSymbolLayerV2( QColor( 0, 0, 0, 0 ) if hasattr(QgsMapRenderer, "BlendSource") else Qt.white, maxStrichstaerke*1.01, Qt.SolidLine )
                         sl.setWidthUnit( QgsSymbolV2.MapUnit )
                         sym.changeSymbolLayer(0, sl)
                 else:
@@ -1301,7 +1301,7 @@ class alkisplugin(QObject):
                                                 "postgres" )
                                         layer.setReadOnly()
                                         layer.setRendererV2( r )
-                                        if "BlendSource" in dir(QgsMapRenderer):
+                                        if hasattr(QgsMapRenderer, "BlendSource"):
                                                 layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         self.setScale( layer, d['outline'] )
                                         self.iface.legendInterface().refreshLayerSymbology( layer )
@@ -1347,7 +1347,7 @@ class alkisplugin(QObject):
                                                         "postgres" )
                                         layer.setReadOnly()
                                         layer.setRendererV2( r )
-                                        if "BlendSource" in dir(QgsMapRenderer):
+                                        if hasattr(QgsMapRenderer, "BlendSource"):
                                                 layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
                                         self.setScale( layer, d['line'] )
