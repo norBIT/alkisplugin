@@ -2,4 +2,11 @@ arial			FreeSans.ttf
 arial-bold		FreeSansBold.ttf
 arial-bold-italic	FreeSansBoldOblique.ttf
 arial-italic		FreeSansOblique.ttf
+
+# TODO: durch gesperrte Fonts ersetzen
+arial-10		FreeSans.ttf
+arial-bold-10		FreeSansBold.ttf
+arial-bold-italic-10	FreeSansBoldOblique.ttf
+arial-italic-10		FreeSansOblique.ttf
+
 arial-spaced-10		FreeSans.ttf

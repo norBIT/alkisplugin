@@ -1456,6 +1456,10 @@ class alkisplugin(QObject):
                                         u",'Arial'::text AS family"
                                         u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
                                         u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
+                                        u",CASE WHEN font_umn LIKE '%-10' THEN 5 ELSE 0 END AS spacing"
+                                        u",split_part(color_umn,' ',1) AS r"
+                                        u",split_part(color_umn,' ',2) AS g"
+                                        u",split_part(color_umn,' ',3) AS b"
                                         u",{3}"
                                         u"{6}"
                                         u" FROM po_labels"
@@ -1500,28 +1504,19 @@ class alkisplugin(QObject):
                                 else:
                                     lyr.placement = QgsPalLayerSettings.Curved
                                     lyr.placementFlags = QgsPalLayerSettings.AboveLine
-                                try:
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, True, False, "", "tsize" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, True, False, "", "family" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, True, False, "", "italic" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
-                                        if geom == "point":
-                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
-                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
-                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
-                                except:
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, layer.dataProvider().fieldNameIndex("tsize") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, layer.dataProvider().fieldNameIndex("family") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, layer.dataProvider().fieldNameIndex("italic") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, layer.dataProvider().fieldNameIndex("bold") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, layer.dataProvider().fieldNameIndex("halign") )
-                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, layer.dataProvider().fieldNameIndex("valign") )
-                                        if geom == "point":
-                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, layer.dataProvider().fieldNameIndex("tx") )
-                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, layer.dataProvider().fieldNameIndex("ty") )
-                                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, layer.dataProvider().fieldNameIndex("tangle") )
+
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, True, False, "", "tsize" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, True, False, "", "family" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, True, False, "", "italic" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Color, True, True, "color_rgb(r,g,b)", "" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.FontLetterSpacing, True, False, "", "spacing" )
+                                if geom == "point":
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
                                 lyr.writeToLayer( layer )
 
                                 self.iface.legendInterface().refreshLayerSymbology( layer )

@@ -31,12 +31,12 @@
     <widget class="QComboBox" name="cbxSuchmodus">
      <item>
       <property name="text">
-       <string>Teiltreffer</string>
+       <string>Beschriftungsteiltreffer</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>Exakter Treffer</string>
+       <string>Exakter Beschriftungstreffer</string>
       </property>
      </item>
      <item>
