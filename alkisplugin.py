@@ -1456,7 +1456,7 @@ class alkisplugin(QObject):
                                         u",'Arial'::text AS family"
                                         u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
                                         u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
-                                        u",CASE WHEN font_umn LIKE '%-10' THEN 2.5 ELSE 0 END AS spacing"
+                                        u",fontsperrung"
                                         u",split_part(color_umn,' ',1) AS r"
                                         u",split_part(color_umn,' ',2) AS g"
                                         u",split_part(color_umn,' ',3) AS b"
@@ -1512,7 +1512,7 @@ class alkisplugin(QObject):
                                 lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
                                 lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
                                 lyr.setDataDefinedProperty( QgsPalLayerSettings.Color, True, True, "color_rgb(r,g,b)", "" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.FontLetterSpacing, True, False, "", "spacing" )
+                                lyr.setDataDefinedProperty( QgsPalLayerSettings.FontLetterSpacing, True, False, "", "fontsperrung" )
                                 if geom == "point":
                                     lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
                                     lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
