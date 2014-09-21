@@ -1721,7 +1721,7 @@ class alkisplugin(QObject):
                 if not qry.exec_(
                         u"SELECT "
                         u"gml_id"
-                        u",to_char(land,'fm00') || to_char(gemarkungsnummer,'fm0000') || "
+                        u",to_char(land::int,'fm00') || to_char(gemarkungsnummer::int,'fm0000') || "
                         u"'-' || to_char(coalesce(flurnummer,0),'fm000') ||"
                         u"'-' || to_char(zaehler,'fm00000') || '/' || CASE WHEN gml_id LIKE 'DESN%%' THEN substring(flurstueckskennzeichen,15,4) ELSE to_char(coalesce(nenner::int,0),'fm000') END"
                         u" FROM ax_flurstueck"

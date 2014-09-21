@@ -4,6 +4,7 @@ arial-bold-italic	FreeSansBoldOblique.ttf
 arial-italic		FreeSansOblique.ttf
 
 # TODO: durch gesperrte Fonts ersetzen
+# siehe auch https://github.com/mapserver/mapserver/issues/4026
 arial-10		FreeSans.ttf
 arial-bold-10		FreeSansBold.ttf
 arial-bold-italic-10	FreeSansBoldOblique.ttf
