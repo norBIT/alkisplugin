@@ -4,7 +4,7 @@ description=This plugin is dealing with German cadastre data (therefore not loca
 description[de]=Diese Erweiterung dient zur Einbindung von durch norGIS ALKIS Import vorbereiteten PostGIS-Layern
 
 category=Database
-version=1.0.5
+version=1.0.6
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de

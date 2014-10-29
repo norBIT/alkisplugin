@@ -30,7 +30,9 @@ from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
 
 from tempfile import NamedTemporaryFile
-import os
+import os, sys
+
+BASEDIR = os.path.dirname( unicode(__file__,sys.getfilesystemencoding()) )
 
 try:
         from qgis.core import *
@@ -867,7 +869,6 @@ class alkisplugin(QObject):
                 self.toolbar = self.iface.addToolBar( u"norGIS: ALKIS" )
                 self.toolbar.setObjectName( "norGIS_ALKIS_Toolbar" )
 
-                d = os.path.dirname(__file__)
                 self.importAction = QAction( QIcon( "alkis:logo.svg" ), "Layer einbinden", self.iface.mainWindow())
                 self.importAction.setWhatsThis("ALKIS-Layer einbinden")
                 self.importAction.setStatusTip("ALKIS-Layer einbinden")
@@ -1191,10 +1192,10 @@ class alkisplugin(QObject):
 
                 qs = QSettings( "QGIS", "QGIS2" )
                 svgpaths = qs.value( "svg/searchPathsForSVG", "", type=str ).split("|")
-                svgpath = os.path.abspath( os.path.join( os.path.dirname(__file__), "svg" ) )
+                svgpath = os.path.abspath( os.path.join( BASEDIR, "svg" ) )
                 if not svgpath.upper() in map(unicode.upper, svgpaths):
                         svgpaths.append( svgpath )
-                        qs.setValue( "svg/searchPathsForSVG", "|".join( svgpaths ) )
+                        qs.setValue( "svg/searchPathsForSVG", u"|".join( svgpaths ) )
 
                 self.alkisGroup = self.iface.legendInterface().addGroup( "ALKIS", False )
 
@@ -1796,7 +1797,7 @@ class alkisplugin(QObject):
 
                 mapobj = mapscript.mapObj()
                 mapobj.name = "ALKIS"
-                mapobj.setFontSet( os.path.abspath( os.path.join( os.path.dirname(__file__), "fonts", "fonts.txt" ) ) )
+                mapobj.setFontSet( os.path.abspath( os.path.join( BASEDIR, "fonts", "fonts.txt" ) ) )
 
                 mapobj.outputformat.driver = "GD/PNG"
                 mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
@@ -2152,7 +2153,7 @@ class alkisplugin(QObject):
                                                         logMessage( u"Leere Signaturnummer in po_points:%s" % thema )
                                                         continue
 
-                                                path = os.path.abspath( os.path.join( os.path.dirname(__file__), "svg", "alkis%s.svg" % sn ) )
+                                                path = os.path.abspath( os.path.join( BASEDIR, "svg", "alkis%s.svg" % sn ) )
 
                                                 if not symbols.has_key( "norGIS_alkis%s" % sn ) and not os.path.isfile( path ):
                                                         logMessage( "Symbol alkis%s.svg nicht gefunden" % sn )
