@@ -187,6 +187,7 @@ class alkisplugin(QObject):
                             '1530': u'Brücke, Hochbahn/-straße',
                             'rn1530': u'Brücke, Hochbahn/-straße',
                             'rn1533': u'Tunnel, Unterführung',
+                            'rn1535': u'Schleusenkammer',
                             '1542': u'Weg',
                             'rn1542': u'Weg',
                             '1543': u'Wattenweg',
@@ -198,7 +199,7 @@ class alkisplugin(QObject):
                             'rn1808': u'Landeplatz, -bahn, Vorfeld, Rollbahn',
                             '2305': u'Durchfahrt, Bauwerk',
                             '2533': u'Widerlager',
-                            '2515': u'Bahnverkehr',
+                            '2515': u'Bahnverkehr, Platz',
                             '3330': u'S-Bahnhof',
                             '3424': u'Fußweg',
                             '3426': u'Radweg',
@@ -1027,7 +1028,10 @@ class alkisplugin(QObject):
                 if not d['min'] is None: layer.setMinimumScale(d['min'])
                 if not d['max'] is None: layer.setMaximumScale(d['max'])
 
-                layer.toggleScaleBasedVisibility(True)
+                try:
+                    layer.setScaleBasedVisibility(True)
+                except:
+                    layer.toggleScaleBasedVisibility(True)
 
         def setUMNScale(self, layer, d):
                 if d['min'] is None and d['max'] is None:
