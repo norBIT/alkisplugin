@@ -2282,7 +2282,7 @@ class alkisplugin(QObject):
 
                                                 cl.addLabel( label )
                                         else:
-                                            layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,st_offsetcurve(line,size_umn*0.0127) AS geom,color_umn,font_umn,size_umn FROM po_labels l WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
+                                            layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,st_offsetcurve(line,size_umn*0.0127,'') AS geom,color_umn,font_umn,size_umn FROM po_labels l WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
 
                                             cl = mapscript.classObj( layer )
 
