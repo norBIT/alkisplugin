@@ -1106,7 +1106,9 @@ class alkisplugin(QObject):
                             if leinzug is None:
                                 leinzug = einzug
                             elif leinzug<>einzug:
-                                raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
+                                #raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
+                                logMessage( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
+                                return False
 
                     for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
                         if abstaende and laenge==0:
