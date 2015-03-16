@@ -813,20 +813,20 @@ class ALKISOwnerInfo(QgsMapTool):
         </TR>
 """
 
-                                if best['bse']:
-                                        html += """
+                                        if best['bse']:
+                                                html += """
         <TR class="fls_col_names"><TD>Anteil</TD><TD colspan="5">Namensinformation</TD></TR>
 """
 
-                                        for bse in best['bse']:
-                                                html += """
+                                                for bse in best['bse']:
+                                                        html += """
         <TR class="fls_col_values">
                 <TD>%(antverh)s</TD>
                 <TD colspan="5">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
         </TR>
 """ % bse
-                                else:
-                                        html += """
+                                        else:
+                                                html += """
         <p>Keine Eigner gefunden.</p>
 """
 
@@ -839,9 +839,5 @@ class ALKISOwnerInfo(QgsMapTool):
 </BODY>
 </HTML>
 """
-
-#               f = open("c:/cygwin/tmp/fs.html", "w")
-#               f.write(html.encode('utf8'))
-#               f.close()
 
                 return html
