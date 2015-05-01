@@ -650,7 +650,7 @@ class ALKISOwnerInfo(QgsMapTool):
         <TD>%(flurknr)s</TD>
         <TD>%(entst)s</TD>
         <TD>%(fortf)s</TD>
-        <TD>%(flsfl)s m&sup2;</TD>
+        <TD nowrap>%(flsfl)s m&sup2;</TD>
     </TR>
 </TABLE>
 """ % res
@@ -712,7 +712,7 @@ class ALKISOwnerInfo(QgsMapTool):
 
                                 for nutz in res['nutz']:
                                         html += """
-        <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD>%(fl)s m&sup2;</TD></TR>
+        <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD nowrap>%(fl)s m&sup2;</TD></TR>
 """ % nutz
 
                                 html += """
@@ -726,12 +726,12 @@ class ALKISOwnerInfo(QgsMapTool):
                         if res['klas']:
                                 html += """
 <TABLE border="0" class="fls_tab">
-        <TR class="fls_col_names"><TD></TD><TD>Klassifizierung</TD><TD>Fl&auml;che</TD></TR>
+        <TR class="fls_col_names"><TD width="21%%"></TD><TD width="69%%">Klassifizierung</TD><TD width="10%%">Fl&auml;che</TD></TR>
 """
 
                                 for klas in res['klas']:
                                         html += """
-        <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD>%(fl)s m&sup2;</TD></TR>
+        <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD nowrap>%(fl)s m&sup2;</TD></TR>
 """ % klas
 
                                 html += """
