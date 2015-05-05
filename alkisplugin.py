@@ -68,7 +68,7 @@ class alkisplugin(QObject):
                 {
                         'name'   : u"Flurstücke",
                         'area'   : { 'min':0, 'max':5000 },
-                        'outline': { 'min':0, 'max':5000 },
+                        'outline': { 'min':0, 'max':5000, 'umn': 'd:/temp/templates/alkisausk_inln.html', },
                         'line'   : { 'min':0, 'max':5000 },
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
@@ -864,6 +864,10 @@ class alkisplugin(QObject):
                     layer.toggleScaleBasedVisibility(True)
 
         def setUMNScale(self, layer, d):
+                if d.has_key('umn'):
+                        layer.template = d['umn']
+                        layer.tolerance = 1
+                        layer.toleranceunits = mapscript.MS_PIXELS
                 if d['min'] is None and d['max'] is None:
                         return
 
@@ -1644,6 +1648,8 @@ class alkisplugin(QObject):
                 mapobj.web.metadata.set( u"wms_enable_request", "*" )
                 mapobj.web.metadata.set( u"wfs_enable_request", "*" )
                 mapobj.web.metadata.set( u"ows_enable_request", "*" )
+                mapobj.web.metadata.set( u"wms_feature_info_mime_type", "text/html" )
+                mapobj.web.metadata.set( u"wms_encoding", "UTF-8" )
 
                 symbol = mapscript.symbolObj("0")
                 symbol.inmapfile = True
@@ -1736,6 +1742,7 @@ class alkisplugin(QObject):
 
                                 layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
+                                layer.setExtent( mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy )
                                 iLayer += 1
 
                                 layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg) ).encode("utf-8")
@@ -1821,6 +1828,7 @@ class alkisplugin(QObject):
                                 #
                                 layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
+                                layer.setExtent( mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy )
                                 iLayer += 1
                                 layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg) ).encode("utf-8")
                                 layer.classitem = "signaturnummer"
@@ -1830,7 +1838,7 @@ class alkisplugin(QObject):
                                 layer.setProcessing( "CLOSE_CONNECTION=DEFER" )
                                 #layer.symbolscaledenom = 1000
                                 layer.sizeunits = mapscript.MS_METERS
-                                layer.type = mapscript.MS_LAYER_LINE
+                                layer.type = mapscript.MS_LAYER_POLYGON
                                 layer.status = mapscript.MS_OFF
                                 layer.tileitem = None
                                 layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Grenzen" % tname).encode("utf-8") )
@@ -1898,6 +1906,7 @@ class alkisplugin(QObject):
                                 #
                                 layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
+                                layer.setExtent( mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy )
                                 iLayer += 1
                                 layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
                                 layer.classitem = "signaturnummer"
@@ -1993,6 +2002,7 @@ class alkisplugin(QObject):
 
                                 layer = mapscript.layerObj(mapobj)
                                 layer.name = "l%d" % iLayer
+                                layer.setExtent( mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy )
                                 iLayer += 1
                                 layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
                                 layer.classitem = "signaturnummer"
@@ -2090,6 +2100,7 @@ class alkisplugin(QObject):
 
                                         layer = mapscript.layerObj(mapobj)
                                         layer.name = "l%d" % iLayer
+                                        layer.setExtent( mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy )
                                         iLayer += 1
                                         layer.setMetaData( "norGIS_label", (u"ALKIS / %s / Beschriftungen" % tname).encode("utf-8") )
                                         layer.setMetaData( u"wms_layer_group", (u"/%s" % tname).encode("utf-8") )
@@ -2291,7 +2302,10 @@ class alkisplugin(QObject):
                             r, g, b = c
                         else:
                             r, g, b = c.split(" ")
-                        style.color.setRGB( int(r), int(g), int(b) )
+                        if outline:
+                            style.outlinecolor.setRGB( int(r), int(g), int(b) )
+                        else:
+                            style.color.setRGB( int(r), int(g), int(b) )
 
                         cl.insertStyle( style )
 
