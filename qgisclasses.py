@@ -429,27 +429,13 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                     return
 
                 elif self.cbxSuchmodus.currentIndex() == 4:  # Eigentümer
-                        where = "bs.gml_id=ax_flurstueck.istgebucht AND bs.endet IS NULL"
-                        for e in text.split():
-                                where += ( " AND " +
-                                  (
-                                  u"coalesce((SELECT v||' ' FROM alkis_wertearten WHERE element='ax_person' AND bezeichnung='anrede' AND k=p.anrede::text),'')||"
-                                  u"coalesce(p.akademischergrad||' ', '')||"
-                                  u"coalesce(p.vorname||' ', '')||"
-                                  u"coalesce(p.namensbestandteil||' ', '')||"
-                                  u"p.nachnameoderfirma||"
-                                  u"coalesce(', geb. '||p.geburtsname,'')"
-                                  ) + " LIKE " + quote('%'+e+'%')
-                                )
+                        where = []
 
-                        fs = self.plugin.highlight( (
-                                u"EXISTS ("
-                                u" SELECT *"
-                                u" FROM ax_buchungsstelle bs"
-                                u" JOIN ax_buchungsblatt bb ON bb.gml_id=bs.istbestandteilvon OR EXISTS (SELECT * FROM ax_buchungsstelle bs0 WHERE bs0.endet IS NULL AND ARRAY[bs0.gml_id] <@ bs.an AND bb.gml_id=bs0.istbestandteilvon)"
-                                u" JOIN ax_namensnummer nn ON bb.gml_id=nn.istbestandteilvon AND bb.endet IS NULL"
-                                u" JOIN ax_person p ON p.gml_id=nn.benennt AND p.endet IS NULL"
-                                u" WHERE " ) + where + ")", True )
+                        for e in text.split():
+                            where.append( "name1 LIKE " + quote('%'+e+'%') )
+
+                        fs = self.plugin.highlight( u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join( where ) )
+
                         if len(fs)==0:
                             QMessageBox.information( None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text )
                             return
