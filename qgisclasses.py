@@ -20,7 +20,7 @@
 
 
 from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray
-from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem, QPrintDialog, QAction, QPrinter, QMenu
+from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem, QPrintDialog, QAction, QPrinter, QMenu, QFileDialog
 from PyQt4.QtSql import QSqlQuery
 from PyQt4 import QtCore, uic
 
@@ -73,6 +73,11 @@ class ALKISConf(QDialog, ConfBase):
                 self.leDBNAME.setText( s.value( "dbname", "" ) )
                 self.leUID.setText( s.value( "uid", "" ) )
                 self.lePWD.setText( s.value( "pwd", "" ) )
+                self.cbxSignaturkatalog.setEnabled( False )
+
+                self.leUMNPath.setText( s.value( "umnpath", os.path.dirname(__file__) ) )
+                self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
+                self.leUMNTemplate.setText( s.value( "umntemplate" ) )
 
                 self.load(False)
 
@@ -89,11 +94,19 @@ class ALKISConf(QDialog, ConfBase):
                 s.setValue( "uid", self.leUID.text() )
                 s.setValue( "pwd", self.lePWD.text() )
 
+                self.twModellarten.clearContents()
+                self.cbxSignaturkatalog.clear()
+
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
                 (db,conninfo) = self.plugin.opendb()
-                if db:
-                        qry = QSqlQuery(db)
-                        if qry.exec_( """
+                if not db:
+                    if error:
+                        QMessageBox.critical( None, "ALKIS", u"Datenbankverbindung schlug fehl." )
+
+                    return
+
+                qry = QSqlQuery(db)
+                if qry.exec_( """
 SELECT modell,count(*)
 FROM (
         SELECT unnest(modell) AS modell FROM po_points   UNION ALL
@@ -105,30 +118,35 @@ FROM (
 GROUP BY modell
 ORDER BY count(*) DESC
 """ ):
-                                self.twModellarten.clearContents()
-                                res = {}
-                                while qry.next():
-                                        res[ qry.value(0) ] = qry.value(1)
+                        res = {}
+                        while qry.next():
+                            res[ qry.value(0) ] = qry.value(1)
 
-                                self.twModellarten.setRowCount( len(res) )
-                                i = 0
-                                for k,n in sorted(res.iteritems(), key=operator.itemgetter(1), reverse=True):
-                                        item = QTableWidgetItem( k )
-                                        item.setCheckState( Qt.Checked if (item.text() in modelle) else Qt.Unchecked )
-                                        self.twModellarten.setItem( i, 0, item )
+                        self.twModellarten.setRowCount( len(res) )
+                        i = 0
+                        for k,n in sorted(res.iteritems(), key=operator.itemgetter(1), reverse=True):
+                            item = QTableWidgetItem( k )
+                            item.setCheckState( Qt.Checked if (item.text() in modelle) else Qt.Unchecked )
+                            self.twModellarten.setItem( i, 0, item )
 
-                                        item = QTableWidgetItem( str(n) )
-                                        self.twModellarten.setItem( i, 1, item )
-                                        i += 1
-                                self.twModellarten.resizeColumnsToContents()
-                        elif error:
-                                modelle = []
-                                self.twModellarten.clearContents()
-                                self.twModellarten.setDisabled( True )
-                        else:
-                                modelle = []
-                elif error:
-                        QMessageBox.critical( None, "ALKIS", u"Datenbankverbindung schlug fehl." )
+                            item = QTableWidgetItem( str(n) )
+                            self.twModellarten.setItem( i, 1, item )
+                            i += 1
+                        self.twModellarten.resizeColumnsToContents()
+                        self.twModellarten.setEnabled( True )
+                else:
+                        modelle = []
+                        self.twModellarten.clearContents()
+                        self.twModellarten.setDisabled( True )
+
+                if qry.exec_( "SELECT id,name FROM alkis_signaturkataloge" ):
+                    while qry.next():
+                        self.cbxSignaturkatalog.addItem( qry.value(1), int(qry.value(0)) )
+                    self.cbxSignaturkatalog.setEnabled( True )
+                else:
+                    self.cbxSignaturkatalog.addItem( u"Farbe", -1 )
+
+                self.cbxSignaturkatalog.setCurrentIndex( max( [ 0, self.cbxSignaturkatalog.findData( s.value( "signaturkatalog", -1 ) ) ] ) )
 
         def accept(self):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
@@ -138,16 +156,27 @@ ORDER BY count(*) DESC
                 s.setValue( "dbname", self.leDBNAME.text() )
                 s.setValue( "uid", self.leUID.text() )
                 s.setValue( "pwd", self.lePWD.text() )
+                s.setValue( "umnpath", self.leUMNPath.text() )
+                s.setValue( "umntemplate", self.leUMNTemplate.text() )
 
                 modelle = []
-                for i in range( self.twModellarten.rowCount() ):
+                if self.twModellarten.isEnabled():
+                    for i in range( self.twModellarten.rowCount() ):
                         item = self.twModellarten.item(i,0)
                         if item.checkState() == Qt.Checked:
-                                modelle.append( item.text() )
+                            modelle.append( item.text() )
 
                 s.setValue( "modellarten", modelle )
+                s.setValue( "signaturkatalog", self.cbxSignaturkatalog.itemData( self.cbxSignaturkatalog.currentIndex() ) )
 
                 QDialog.accept(self)
+
+        def browseUMNPath(self):
+                path = self.leUMNPath.text()
+                path = QFileDialog.getExistingDirectory( self, u"UMN-Pfad wählen", path )
+                if path!="":
+                    self.leUMNPath.setText(path)
+
 
 class Info( QDialog, InfoBase ):
         def __init__(self, html):

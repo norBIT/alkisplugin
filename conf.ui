@@ -6,35 +6,93 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>762</width>
-    <height>279</height>
+    <width>734</width>
+    <height>326</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>ALKIS-Import</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="1">
-    <widget class="QLabel" name="label_9">
-     <property name="text">
-      <string>Gewählte Modellarten</string>
-     </property>
-     <property name="buddy">
-      <cstring>twModellarten</cstring>
+   <item row="6" column="0" colspan="4">
+    <widget class="QDialogButtonBox" name="bb">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>
-   <item row="0" column="0" rowspan="2">
+   <item row="1" column="0" rowspan="3">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Datenbankeinstellungen</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="4" column="1">
-       <widget class="QLineEdit" name="leDBNAME"/>
+      <item row="5" column="2">
+       <widget class="QLineEdit" name="leUID">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="leSERVICE"/>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Datenbankname</string>
+        </property>
+        <property name="buddy">
+         <cstring>leDBNAME</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Host</string>
+        </property>
+        <property name="buddy">
+         <cstring>leHOST</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QLineEdit" name="lePORT">
+        <property name="inputMask">
+         <string>99999; </string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Port</string>
+        </property>
+        <property name="buddy">
+         <cstring>lePORT</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QLineEdit" name="leHOST">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="2">
+       <widget class="QLineEdit" name="lePWD">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="echoMode">
+         <enum>QLineEdit::Password</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QLineEdit" name="leDBNAME"/>
       </item>
       <item row="5" column="0">
        <widget class="QLabel" name="label_2">
@@ -56,33 +114,6 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="1">
-       <widget class="QLineEdit" name="leUID">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Datenbankname</string>
-        </property>
-        <property name="buddy">
-         <cstring>leDBNAME</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="9" column="1">
-       <widget class="QLineEdit" name="lePWD">
-        <property name="text">
-         <string/>
-        </property>
-        <property name="echoMode">
-         <enum>QLineEdit::Password</enum>
-        </property>
-       </widget>
-      </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_6">
         <property name="text">
@@ -93,68 +124,106 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="leHOST">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Host</string>
-        </property>
-        <property name="buddy">
-         <cstring>leHOST</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QLineEdit" name="lePORT">
-        <property name="inputMask">
-         <string>99999; </string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Port</string>
-        </property>
-        <property name="buddy">
-         <cstring>lePORT</cstring>
-        </property>
-       </widget>
+      <item row="1" column="2">
+       <widget class="QLineEdit" name="leSERVICE"/>
       </item>
      </layout>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
-    <widget class="QDialogButtonBox" name="bb">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   <item row="4" column="0">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>UMN Mapserver-Einstellungen</string>
      </property>
+     <layout class="QGridLayout" name="gridLayout_4">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Server-Pfad</string>
+        </property>
+        <property name="buddy">
+         <cstring>leSERVICE</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="leUMNPath"/>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pbUMNBrowse">
+        <property name="text">
+         <string>...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Flurstückstemplate</string>
+        </property>
+        <property name="buddy">
+         <cstring>leSERVICE</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" colspan="2">
+       <widget class="QLineEdit" name="leUMNTemplate"/>
+      </item>
+     </layout>
+     <zorder>leUMNPath</zorder>
+     <zorder>label_10</zorder>
+     <zorder>pbUMNBrowse</zorder>
+     <zorder>label_11</zorder>
+     <zorder>leUMNTemplate</zorder>
     </widget>
    </item>
-   <item row="1" column="1">
-    <widget class="QTableWidget" name="twModellarten">
-     <property name="enabled">
-      <bool>true</bool>
+   <item row="1" column="1" rowspan="4">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Darstellung</string>
      </property>
-     <column>
-      <property name="text">
-       <string>Modell</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>#</string>
-      </property>
-     </column>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="1">
+       <widget class="QComboBox" name="cbxSignaturkatalog"/>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Signaturkatalog</string>
+        </property>
+        <property name="buddy">
+         <cstring>lePWD</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Gewählte Modellarten</string>
+        </property>
+        <property name="buddy">
+         <cstring>twModellarten</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QTableWidget" name="twModellarten">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <column>
+         <property name="text">
+          <string>Modell</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>#</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
@@ -166,7 +235,6 @@
   <tabstop>leDBNAME</tabstop>
   <tabstop>leUID</tabstop>
   <tabstop>lePWD</tabstop>
-  <tabstop>twModellarten</tabstop>
   <tabstop>bb</tabstop>
  </tabstops>
  <resources/>

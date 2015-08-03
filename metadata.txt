@@ -2,14 +2,22 @@
 name=norGIS ALKIS-Einbindung
 description=This plugin is dealing with German cadastre data (therefore not localized)
 description[de]=Diese Erweiterung dient zur Einbindung von durch norGIS ALKIS Import vorbereiteten PostGIS-Layern
+about=QGIS-Erweiterung zur ALKIS-Einbindung
+ Funktion:
+ * Einbinden von durch norGIS ALKIS-Import vorbereitete Datenbanken.
+ * Einbinden in QGIS
+ * Export von UMN-Mapfiles (optional, erfordert python-mapscript)
+ * Signaturierung nach GeoInfoDok
+ * Eignerabfrage (Einzelabfragen)
+ * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=1.0.9
+version=2.0.0
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de
 
-tags=cadastre,germany,NAS,ALKIS
+tags=cadastre,germany,NAS,ALKIS,PostNAS
 
 homepage=http://www.norbit.de/75/
 repository=https://github.com/norBIT/alkisplugin

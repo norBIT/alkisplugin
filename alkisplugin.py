@@ -68,7 +68,7 @@ class alkisplugin(QObject):
                 {
                         'name'   : u"Flurstücke",
                         'area'   : { 'min':0, 'max':5000 },
-                        'outline': { 'min':0, 'max':5000, 'umn': 'd:/temp/templates/alkisausk_inln.html', },
+                        'outline': { 'min':0, 'max':5000, 'umntemplate': 1, },
                         'line'   : { 'min':0, 'max':5000 },
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
@@ -105,19 +105,25 @@ class alkisplugin(QObject):
                         'classes': {
                             '1301': u'Wohngebäude',
                             '1304': u'Anderes Gebäude',
-                            '1305': u'[1305]',
+                            '1305': u'Mauer',
                             '1309': u'Gebäude für öffentliche Zwecke',
                             '1501': u'Aussichtsturm',
                             'rn1501': u'Anderes Gebäude',
                             '1525': u'Brunnen',
+                            '2030': u'Gebäude',
                             '2031': u'Anderes Gebäude',
                             '2032': u'Gebäude unter der Erdoberfläche',
                             '2305': u'Offene Gebäudelinie',
                             '2505': u'Öffentliches Gebäude',
+                            '2508': u'sonstiges Gebäudeteil',
+                            '2508': u'aufgeständert',
+                            '2509': u'Hochhausbauteil',
+                            '2513': u'Unterirdisch',
                             '2513': u'Schornstein im Gebäude',
                             '2514': u'Turm im Gebäude',
                             '2515': u'Brunnen',
                             '2519': u'Kanal, Im Bau',
+                            '2623': u'Hochhaus',
                             '3300': u'Bank',
                             '3302': u'Hotel',
                             '3303': u'Jugendherberge',
@@ -152,6 +158,10 @@ class alkisplugin(QObject):
                             '3537': u'Brunnen (Trinkwasserversorgung)',
                             '3539': u'Springbrunnen, Zierbrunnen',
                             '3540': u'Ziehbrunnen',
+
+                            '2901': u'Geplantes Gebäude (gebaut)',
+                            '2902': u'Geplantes Gebäude (Bauantrag)',
+                            '2903': u'Nicht eingemessenes Gebäude',
                         },
                 },
                 {
@@ -186,7 +196,8 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':5000 },
                         'label'  : { 'min':0, 'max':5000 },
                         'classes': {
-                            '1406': u'[1406]',
+                            '1406': u'Begleitfläche',
+                            '1414': u'Fußgängerzone',
                             '1530': u'Brücke, Hochbahn/-straße',
                             'rn1530': u'Brücke, Hochbahn/-straße',
                             'rn1533': u'Tunnel, Unterführung',
@@ -868,12 +879,15 @@ class alkisplugin(QObject):
                     layer.toggleScaleBasedVisibility(True)
 
         def setUMNScale(self, layer, d):
-                if d.has_key('umn'):
-                        layer.template = d['umn']
+                if d.get('umntemplate',0):
+                    s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                    template = s.value( "umntemplate", "" )
+                    if template:
+                        layer.template = template
                         layer.tolerance = 1
                         layer.toleranceunits = mapscript.MS_PIXELS
                 if d['min'] is None and d['max'] is None:
-                        return
+                    return
 
                 if not d['min'] is None: layer.minscaledenom = d['min']
                 if not d['max'] is None: layer.maxscaledenom = d['max']
@@ -897,23 +911,33 @@ class alkisplugin(QObject):
                 self.showProgress.emit( i*5+s, len(alkisplugin.themen)*5 )
                 QCoreApplication.processEvents()
 
-        def setStricharten(self, db, sym, sn, c, outline):
+        def setStricharten(self, db, sym, kat, sn, outline):
             lqry = QSqlQuery(db)
 
             if hasattr(QgsMarkerLineSymbolLayerV2, "setOffsetAlongLine"):
-                if lqry.exec_( "SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand"
-                               " FROM alkis_linie"
-                               " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
-                               " LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-                               " WHERE alkis_linie.signaturnummer='%s'" % sn ):
+                sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"
+                       u" FROM alkis_linien ln"
+                       u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer{0}"
+                       u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
+                       u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+                       u" LEFT OUTER JOIN alkis_farben ON {1}.farbe=alkis_farben.id"
+                       u" WHERE ln.signaturnummer='{2}'{3}").format(
+                           "" if kat<0 else u" AND l.katalog=%d" % kat,
+                           u"ln" if kat<0 else u"l",
+                           sn,
+                           "" if kat<0 else u" AND ln.katalog=%d" % kat
+                           )
+
+                if lqry.exec_( sql ):
                     stricharten = []
 
                     maxStrichstaerke = -1
 
                     while lqry.next():
-                        abschluss, scheitel, strichstaerke, laenge, einzug, abstaende = \
+                        abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, c = \
                             lqry.value(0), lqry.value(1), float(lqry.value(2)), \
-                            float(lqry.value(3)), float(lqry.value(4)), lqry.value(5)
+                            float(lqry.value(3)), float(lqry.value(4)), lqry.value(5), \
+                            QColor( int(lqry.value(6)), int(lqry.value(7)), lqry.value(8) )
 
                         if strichstaerke > maxStrichstaerke:
                             maxStrichstaerke = strichstaerke
@@ -930,11 +954,11 @@ class alkisplugin(QObject):
                         for abstand in abstaende:
                             gesamtl += laenge + abstand
 
-                        stricharten.append( [ abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl ] )
+                        stricharten.append( [ abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c ] )
 
                     gesamtl0 = None
                     leinzug = None
-                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
+                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
                         if gesamtl0 is None:
                             gesamtl0 = gesamtl
                         elif gesamtl0 <> gesamtl:
@@ -948,7 +972,7 @@ class alkisplugin(QObject):
                                 logMessage( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
                                 return False
 
-                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
+                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
                         if abstaende and laenge==0:
                             # Marker line
                             if leinzug:
@@ -1001,24 +1025,30 @@ class alkisplugin(QObject):
                         sl.setWidthUnit( QgsSymbolV2.MapUnit )
                         sym.changeSymbolLayer(0, sl)
                 else:
-                    logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text() ) )
+                    logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, sql, lqry.lastError().text() ) )
                     return False
-            elif lqry.exec_( "SELECT coalesce(strichstaerke/100,0)"
-                             " FROM alkis_linie"
-                             " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
-                             " LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-                             " WHERE alkis_linie.signaturnummer='%s'" % sn ) and lqry.next():
-
-                if sym.type() == QgsSymbolV2.Fill:
-                    sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, float(lqry.value(0)) ) )
-                else:
-                    sym.setWidth( float(lqry.value(0)) )
-                    sym.setColor( c )
-
-                sym.setOutputUnit( QgsSymbolV2.MapUnit )
             else:
-                logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text() ) )
-                return False
+                sql = (u"SELECT coalesce(strichstaerke/100,0)"
+                       u" FROM alkis_linien ln"
+                       u" LEFT OUTER JOIN alkis_linie l ON l.signaturnummer=ln.signaturnummer{0}"
+                       u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
+                       u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+                       u" WHERE ln.signaturnummer='{1}'{2}" ).format(
+                           "" if kat<0 else " AND l.katalog=%d" % kat,
+                           sn,
+                           "" if kat<0 else " AND ln.katalog=%d" % kat,
+                           )
+                if lqry.exec_( sql ) and lqry.next():
+                    if sym.type() == QgsSymbolV2.Fill:
+                        sym.changeSymbolLayer( 0, QgsSimpleFillSymbolLayerV2( c, Qt.NoBrush, c, Qt.SolidLine, float(lqry.value(0)) ) )
+                    else:
+                        sym.setWidth( float(lqry.value(0)) )
+                        sym.setColor( c )
+
+                    sym.setOutputUnit( QgsSymbolV2.MapUnit )
+                else:
+                    logMessage( u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, sql, lqry.lastError().text() ) )
+                    return False
 
             return True
 
@@ -1029,10 +1059,12 @@ class alkisplugin(QObject):
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
+                katalog = s.value( "signaturkatalog", -1 )
 
                 self.iface.mapCanvas().setRenderFlag( False )
 
                 qry = QSqlQuery(db)
+                qry2 = QSqlQuery(db)
 
                 qs = QSettings( "QGIS", "QGIS2" )
                 svgpaths = qs.value( "svg/searchPathsForSVG", "", type=str ).split("|")
@@ -1099,11 +1131,17 @@ class alkisplugin(QObject):
 
                             self.progress(iThema, u"Flächen", 0)
 
-                            sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
+                            sql = (u"SELECT signaturnummer,r,g,b"
+                                   u" FROM alkis_flaechen"
                                    u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                                   u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
-                                   u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
-                                   u" ORDER BY darstellungsprioritaet DESC") % where
+                                   u" WHERE EXISTS ("
+                                   u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
+                                   u"){1}"
+                                   u" ORDER BY darstellungsprioritaet DESC"
+                                  ).format(
+                                        where,
+                                        "" if katalog<0 else " AND alkis_flaechen.katalog=%d" % katalog
+                                  )
                             #qDebug( u"SQL: %s" % sql )
                             if qry.exec_( sql ):
                                     r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
@@ -1133,18 +1171,23 @@ class alkisplugin(QObject):
                                     else:
                                             del r
                             else:
-                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                     break
 
                             self.progress(iThema, "Grenzen", 1)
 
                             sql = (u"SELECT"
-                                   u" signaturnummer,r,g,b"
+                                   u" signaturnummer"
                                    u" FROM alkis_linien"
-                                   u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                                   u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
-                                   u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
-                                   u" ORDER BY darstellungsprioritaet" ) % where
+                                   u" WHERE EXISTS ("
+                                   u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_randlinie=alkis_linien.signaturnummer"
+                                   u"){1}"
+                                   u" ORDER BY darstellungsprioritaet"
+                                  ).format(
+                                      where,
+                                      "" if katalog<0 else " AND alkis_linien.katalog=%d" % katalog,
+                                      )
+
                             #qDebug( u"SQL: %s" % sql )
                             if qry.exec_(sql):
                                     r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
@@ -1155,7 +1198,7 @@ class alkisplugin(QObject):
                                             sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
                                             sn = qry.value(0)
 
-                                            if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), True ):
+                                            if self.setStricharten( db, sym, katalog, sn, True ):
                                                 r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
                                                 n += 1
 
@@ -1175,18 +1218,22 @@ class alkisplugin(QObject):
                                     else:
                                             del r
                             else:
-                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                     break
 
                             self.progress(iThema, "Linien", 2)
 
-                            sql = (u"SELECT"
-                                   u" signaturnummer,r,g,b"
+                            sql = (u"SELECT signaturnummer"
                                    u" FROM alkis_linien"
-                                   u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                                   u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s"
-                                   u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-                                   u" ORDER BY darstellungsprioritaet ASC" ) % where
+                                   u" WHERE EXISTS ("
+                                   u"SELECT * FROM po_lines WHERE {0} AND po_lines.signaturnummer=alkis_linien.signaturnummer"
+                                   u"){1}"
+                                   u" ORDER BY darstellungsprioritaet ASC"
+                                  ).format(
+                                      where,
+                                      "" if katalog<0 else u" AND alkis_linien.katalog=%d" % katalog,
+                                      )
+
                             #qDebug( u"SQL: %s" % sql )
                             if qry.exec_( sql ):
                                     r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
@@ -1198,7 +1245,7 @@ class alkisplugin(QObject):
                                             sym = QgsSymbolV2.defaultSymbol( QGis.Line )
                                             sn = qry.value(0)
 
-                                            if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), False ):
+                                            if self.setStricharten( db, sym, katalog, sn, False ):
                                                 for i in range(0,sym.symbolLayerCount()):
                                                     sym.symbolLayer(i).setRenderingPass(n)
 
@@ -1222,10 +1269,12 @@ class alkisplugin(QObject):
                                     else:
                                             del r
                             else:
-                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                     break
 
                             self.progress(iThema, "Punkte", 3)
+
+                            kat = max([1,katalog])
 
                             sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where
                             #qDebug( u"SQL: %s" % sql )
@@ -1237,27 +1286,27 @@ class alkisplugin(QObject):
                                     n = 0
                                     while qry.next():
                                             sn = qry.value(0)
-                                            svg = "alkis%s.svg" % sn
-                                            if alkisplugin.exts.has_key(sn):
+                                            svg = "alkis%s_%d.svg" % ( sn, kat )
+
+                                            x, y, w, h = 0, 0, 1, 1
+                                            if qry2.exec_( "SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn) ) and qry2.next():
+                                                    x = (qry2.value(0) + qry2.value(2)) / 2
+                                                    y = (qry2.value(1) + qry2.value(3)) / 2
+                                                    w = qry2.value(2) - qry2.value(0)
+                                                    h = qry2.value(3) - qry2.value(1)
+                                            elif alkisplugin.exts.has_key(sn):
                                                     x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
                                                     y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
                                                     w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
                                                     h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
-                                            else:
-                                                    x = 0
-                                                    y = 0
-                                                    w = 1
-                                                    h = 1
 
                                             symlayer = QgsSvgMarkerSymbolLayerV2( svg )
                                             symlayer.setOutputUnit( QgsSymbolV2.MapUnit )
-                                            qDebug( u"symlayer.setSize %s:%f" % (sn, w) )
                                             symlayer.setSize( w )
                                             symlayer.setOffset( QPointF( -x, -y ) )
 
                                             sym = QgsSymbolV2.defaultSymbol( QGis.Point )
                                             sym.setOutputUnit( QgsSymbolV2.MapUnit )
-                                            qDebug( u"sym.setSize %s:%f" % (sn, w) )
                                             sym.setSize( w )
 
                                             sym.changeSymbolLayer( 0, symlayer )
@@ -1279,7 +1328,7 @@ class alkisplugin(QObject):
                                     else:
                                             del r
                             else:
-                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                     break
 
                             n = 0
@@ -1289,7 +1338,7 @@ class alkisplugin(QObject):
                                     geomtype = "MULTIPOINT" if i==0 else "MULTILINESTRING"
 
                                     if not qry.exec_( "SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where,geom) ):
-                                            QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                            QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                             continue
 
                                     self.progress(iThema, "Beschriftungen (%d)" % (i+1), 4+i)
@@ -1307,34 +1356,36 @@ class alkisplugin(QObject):
                                             u"SELECT"
                                             u" ogc_fid"
                                             u",layer"
-                                            u",(size_umn*0.0254)::float8 AS tsize"
+                                            # FIXME: Faktor 1.3225 empirisch bestimmt (QGIS: Schriftgröße mit ascent/decent; ALKIS: reine Schriftgröße)
+                                            u",0.25*coalesce(skalierung,1)*s.grad_pt*1.3225 AS tsize"
                                             u",text"
-                                            u",CASE"
-                                            u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
-                                            u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
-                                            u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
+                                            u",CASE coalesce(po_labels.horizontaleausrichtung,s.horizontaleausrichtung)"
+                                            u" WHEN 'linksbündig' THEN 'Left'"
+                                            u" WHEN 'rechtsbündig' THEN 'Right'"
+                                            u" ELSE 'Center'"
                                             u" END AS halign"
-                                            u",CASE"
-                                            u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
-                                            u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
-                                            u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
+                                            u",CASE coalesce(po_labels.vertikaleausrichtung,s.vertikaleausrichtung)"
+                                            u" WHEN 'oben' THEN 'Cap'"
+                                            u" WHEN 'Basis' THEN 'Base'"
+                                            u" ELSE 'Half'"
                                             u" END AS valign"
-                                            u",'Arial'::text AS family"
-                                            u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
-                                            u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
-                                            u",fontsperrung"
-                                            u",split_part(color_umn,' ',1) AS r"
-                                            u",split_part(color_umn,' ',2) AS g"
-                                            u",split_part(color_umn,' ',3) AS b"
+                                            u",coalesce(s.art,'Arial'::text) AS family"
+                                            u",CASE WHEN s.stil LIKE '%Kursiv%' THEN 1 ELSE 0 END AS italic"
+                                            u",CASE WHEN s.stil LIKE '%Fett%' THEN 1 ELSE 0 END AS bold"
+                                            u",coalesce(sperrung_pt*0.25,0) AS fontsperrung"
+                                            u",replace(f.umn,' ',',') AS tcolor"
                                             u",{3}"
-                                            u"{6}"
                                             u" FROM po_labels"
-                                            u" WHERE {4}"
-                                            u")\" ({5}) sql="
+                                            u" LEFT OUTER JOIN alkis_schriften s ON po_labels.signaturnummer=s.signaturnummer{4}"
+                                            u" LEFT OUTER JOIN alkis_farben f ON s.farbe=f.id"
+                                            u" WHERE {5}"
+                                            u")\" ({6}) sql="
                                             ).format(
                                                 conninfo, geomtype, epsg,
                                                 u"point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom=="point" else "line",
-                                                where, geom, "" if len(modelle)==0 else ",modell"
+                                                "" if katalog<0 else " AND s.katalog=%d" % katalog,
+                                                where,
+                                                geom,
                                             )
 
                                     qDebug( u"URI: %s" % uri )
@@ -1361,7 +1412,8 @@ class alkisplugin(QObject):
                                     lyr.textFont.setPointSizeF( 2.5 )
                                     lyr.textFont.setFamily( "Arial" )
                                     lyr.bufferSizeInMapUnits = True
-                                    lyr.bufferSize = 0.25
+                                    lyr.bufferSize = 0.125
+                                    lyr.bufferDraw = True
                                     lyr.displayAll = True
                                     lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
                                     lyr.scaleVisibility = True
@@ -1377,7 +1429,7 @@ class alkisplugin(QObject):
                                     lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
                                     lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
                                     lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
-                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Color, True, True, "color_rgb(r,g,b)", "" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Color, True, False, "", "tcolor" )
                                     lyr.setDataDefinedProperty( QgsPalLayerSettings.FontLetterSpacing, True, False, "", "fontsperrung" )
                                     if geom == "point":
                                         lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
@@ -1583,7 +1635,6 @@ class alkisplugin(QObject):
 
                 qry = QSqlQuery(db)
 
-
                 if not qry.exec_(
                         u"SELECT "
                         u"gml_id"
@@ -1654,20 +1705,28 @@ class alkisplugin(QObject):
         def mapfile(self,conninfo=None,dstfile=None):
                 (db,conninfo) = self.opendb(conninfo)
                 if db is None:
-                        return
+                    return
+
+                qry = QSqlQuery(db)
+                qry2 = QSqlQuery(db)
 
                 if dstfile is None:
-                        dstfile = QFileDialog.getSaveFileName( None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)" )
-                        if dstfile is None:
-                                return
+                    if not self.iface:
+                        raise BaseException( "Destination file missing." )
+
+                    dstfile = QFileDialog.getSaveFileName( None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)" )
+                    if dstfile is None:
+                        return
 
                 if self.iface:
                         self.showProgress.connect( self.iface.mainWindow().showProgress )
                         self.showStatusMessage.connect( self.iface.mainWindow().showStatusMessage )
 
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+
                 mapobj = mapscript.mapObj()
                 mapobj.name = "ALKIS"
-                mapobj.setFontSet( os.path.abspath( os.path.join( BASEDIR, "fonts", "fonts.txt" ) ) )
+                mapobj.setFontSet( os.path.join( BASEDIR, "fonts", "fonts.txt" ) )
 
                 mapobj.outputformat.driver = "GD/PNG"
                 mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
@@ -1702,8 +1761,6 @@ class alkisplugin(QObject):
                 if mapobj.symbolset.appendSymbol(symbol) < 0:
                         raise BaseException( "symbol not added." )
 
-                qry = QSqlQuery(db)
-
                 if qry.exec_( "SELECT st_extent(wkb_geometry),find_srid('','ax_flurstueck','wkb_geometry') FROM ax_flurstueck" ) and qry.next():
                         bb = qry.value(0)[4:-1]
                         (p0,p1) = bb.split(",")
@@ -1713,8 +1770,8 @@ class alkisplugin(QObject):
                         mapobj.setProjection( "init=epsg:%d" % epsg )
                         mapobj.setExtent( float(x0), float(y0), float(x1), float(y1) )
 
-                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
+                katalog = s.value( "signaturkatalog", -1 )
 
                 missing = {}
                 symbols = {}
@@ -1805,8 +1862,14 @@ class alkisplugin(QObject):
                                        u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
                                        u" FROM alkis_flaechen"
                                        u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                                       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
-                                       u" ORDER BY darstellungsprioritaet" ) % where
+                                       u" WHERE EXISTS ("
+                                       u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
+                                       u"){1}"
+                                       u" ORDER BY darstellungsprioritaet"
+                                       ).format(
+                                        where,
+                                        "" if katalog<0 else " AND katalog=%d" % katalog
+                                        )
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
                                         sprio = 0
@@ -1841,7 +1904,7 @@ class alkisplugin(QObject):
                                                         maxprio = prio
 
                                 else:
-                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                         break
 
                                 if layer.numclasses > 0:
@@ -1887,11 +1950,20 @@ class alkisplugin(QObject):
                                 self.setUMNScale( layer, d['outline'] )
 
                                 sql = (u"SELECT"
-                                       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
-                                       u" FROM alkis_linien"
-                                       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                                       u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
-                                       u" ORDER BY darstellungsprioritaet" ) % where
+                                       u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
+                                       u" FROM alkis_linien ln{0}"
+                                       u" LEFT OUTER JOIN alkis_farben f ON {1}.farbe=f.id"
+                                       u" WHERE EXISTS ("
+                                       u"SELECT * FROM po_polygons WHERE {2} AND po_polygons.sn_randlinie=ln.signaturnummer"
+                                       u"){3}"
+                                       u" ORDER BY darstellungsprioritaet"
+                                      ).format(
+                                        "" if katalog<0 else u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
+                                        "ln" if katalog<0 else "l",
+                                        where,
+                                        "" if katalog<0 else " AND ln.katalog=%d" % katalog
+                                        )
+
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
                                         sprio = 0
@@ -1909,7 +1981,7 @@ class alkisplugin(QObject):
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
 
-                                                if not self.addLineStyles(db, cl, sn, color, True):
+                                                if not self.addLineStyles(db, cl, katalog, sn, color, True):
                                                         layer.removeClass( layer.numclasses-1 )
 
                                                 nclasses += 1
@@ -1920,7 +1992,7 @@ class alkisplugin(QObject):
                                                         maxprio = prio
 
                                 else:
-                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                         break
 
                                 if layer.numclasses > 0:
@@ -1965,11 +2037,19 @@ class alkisplugin(QObject):
                                 self.setUMNScale( layer, d['line'] )
 
                                 sql = (u"SELECT"
-                                       u" signaturnummer,umn,darstellungsprioritaet,alkis_linien.name"
-                                       u" FROM alkis_linien"
-                                       u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                                       u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-                                       u" ORDER BY darstellungsprioritaet" ) % where
+                                       u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
+                                       u" FROM alkis_linien ln{0}"
+                                       u" JOIN alkis_farben f ON {1}.farbe=f.id"
+                                       u" WHERE EXISTS ("
+                                       u"SELECT * FROM po_lines WHERE {2} AND po_lines.signaturnummer=ln.signaturnummer"
+                                       u"){3}"
+                                       u" ORDER BY darstellungsprioritaet"
+                                       ).format(
+                                        "" if katalog<0 else u" JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
+                                        "ln" if katalog<0 else "l",
+                                        where,
+                                        "" if katalog<0 else u" AND ln.katalog=%d" % katalog
+                                        )
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
                                         sprio = 0
@@ -1987,7 +2067,7 @@ class alkisplugin(QObject):
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
 
-                                                if not self.addLineStyles(db, cl, sn, color, False):
+                                                if not self.addLineStyles(db, cl, katalog, sn, color, False):
                                                         layer.removeClass( layer.numclasses-1 )
 
                                                 nclasses += 1
@@ -2014,7 +2094,7 @@ class alkisplugin(QObject):
                                                 nStyles += cl.numstyles
 
                                 else:
-                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql ) )
                                         break
 
                                 if layer.numclasses > 0:
@@ -2062,6 +2142,8 @@ class alkisplugin(QObject):
 
                                 self.progress(iThema, "Punkte", 3)
 
+                                kat = max([1,katalog])
+
                                 sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where
                                 #qDebug( "SQL: %s" % sql )
                                 if qry.exec_( sql ):
@@ -2071,11 +2153,11 @@ class alkisplugin(QObject):
                                                         logMessage( u"Leere Signaturnummer in po_points:%s" % thema )
                                                         continue
 
-                                                path = os.path.abspath( os.path.join( BASEDIR, "svg", "alkis%s.svg" % sn ) )
+                                                path = os.path.abspath( os.path.join( BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat) ) )
 
-                                                if not symbols.has_key( "norGIS_alkis%s" % sn ) and not os.path.isfile( path ):
+                                                if not symbols.has_key( "norGIS_alkis%s_%d" % (sn, kat) ) and not os.path.isfile( path ):
                                                         if sn != '6000':
-                                                            logMessage( "Symbol alkis%s.svg nicht gefunden" % sn )
+                                                            logMessage( "Symbol alkis%s_%d.svg nicht gefunden" % (sn, kat) )
                                                             missing[ "norGIS_alkis%s" % sn ] = 1
                                                         continue
 
@@ -2083,32 +2165,36 @@ class alkisplugin(QObject):
                                                 cl.setExpression( sn )
                                                 cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
 
-                                                if alkisplugin.exts.has_key(sn):
+                                                x, y, w, h = 0, 0, 1, 1
+                                                if qry2.exec_( "SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn) ) and qry2.next():
+                                                        x = (qry2.value(0) + qry2.value(2)) / 2
+                                                        y = (qry2.value(1) + qry2.value(3)) / 2
+                                                        w = qry2.value(2) - qry2.value(0)
+                                                        h = qry2.value(3) - qry2.value(1)
+                                                elif alkisplugin.exts.has_key(sn):
                                                         x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
                                                         y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
                                                         w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
                                                         h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
-                                                else:
-                                                        x, y, w, h = 0, 0, 1, 1
 
-                                                if not symbols.has_key( "norGIS_alkis%s" % sn ):
+                                                if not symbols.has_key( "norGIS_alkis%s_%d" % (sn, kat) ):
                                                         f = NamedTemporaryFile(delete=False)
                                                         tempname = f.name
-                                                        f.write( "SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}\" IMAGE \"{1}/alkis{0}.svg\" END END".format( sn, os.path.abspath( os.path.join( BASEDIR, "svg" ) ) ) )
+                                                        f.write( "SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" END END".format( sn, kat, s.value( "umnpath", BASEDIR ) + "/svg" ) )
                                                         f.close()
 
                                                         tempsymbolset = mapscript.symbolSetObj( tempname )
                                                         os.unlink( tempname )
 
-                                                        sym = tempsymbolset.getSymbolByName( "norGIS_alkis%s" % sn )
+                                                        sym = tempsymbolset.getSymbolByName( "norGIS_alkis%s_%d" % (sn, kat) )
                                                         sym.inmapfile = True
                                                         if mapobj.symbolset.appendSymbol(sym) < 0:
                                                              raise BaseException( "symbol not added." )
 
                                                         del tempsymbolset
-                                                        symbols[ "norGIS_alkis%s" % sn ] = 1
+                                                        symbols[ "norGIS_alkis%s_%d" % (sn, kat) ] = 1
 
-                                                stylestring = "STYLE ANGLE [drehwinkel_grad] OFFSET %lf %lf SIZE %lf SYMBOL \"norGIS_alkis%s\" MINSIZE 1 END" % (x, y, h, sn )
+                                                stylestring = "STYLE ANGLE [drehwinkel_grad] OFFSET %lf %lf SIZE %lf SYMBOL \"norGIS_alkis%s_%d\" MINSIZE 1 END" % (x, y, h, sn, kat)
                                                 style = fromstring( stylestring )
                                                 cl.insertStyle( style )
 
@@ -2148,61 +2234,80 @@ class alkisplugin(QObject):
                                         layer.setMetaData( u"norGIS_zindex", "999" )
                                         self.setUMNScale( layer, d['label'] )
 
+
+                                        data = (u"geom FROM (SELECT"
+                                                u" ogc_fid"
+                                                u",gml_id"
+                                                u",text"
+                                                u",f.umn AS color_umn"
+                                                u",lower(art) || coalesce('-'||effekt,'') ||"
+                                                u"CASE"
+                                                u" WHEN stil='Kursiv' THEN '-italic'"
+                                                u" WHEN stil='Fett' THEN '-bold'"
+                                                u" WHEN stil='Fett, Kursiv' THEN '-bold-italic'"
+                                                u" ELSE ''"
+                                                u" END || CASE"
+                                                u" WHEN coalesce(fontsperrung,0)=0 THEN ''"
+                                                u" ELSE '-'||(fontsperrung/0.25)::int"
+                                                u" END AS font_umn"
+                                                u",0.25/0.0254*skalierung*grad_pt AS size_umn"
+                                                )
+
                                         if geom=="point":
-                                            layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,point AS geom,drehwinkel_grad,color_umn,font_umn,size_umn,alignment_dxf AS alignment FROM po_labels l WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
-                                            layer.classitem = "alignment"
-
-                                            positions = {
-                                                        -1: mapscript.MS_AUTO,
-                                                         1: mapscript.MS_LR,
-                                                         2: mapscript.MS_LC,
-                                                         3: mapscript.MS_LL,
-                                                         4: mapscript.MS_CR,
-                                                         5: mapscript.MS_CC,
-                                                         6: mapscript.MS_CL,
-                                                         7: mapscript.MS_UR,
-                                                         8: mapscript.MS_UC,
-                                                         9: mapscript.MS_UL,
-                                                    }
-
-                                            for pos in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1 ]:
-                                                cl = mapscript.classObj( layer )
-
-                                                if pos >= 0:
-                                                        cl.setExpression( "%d" % pos )
-                                                        #cl.name = u"Beschriftungen %s %d" % (geom,pos)
-                                                else:
-                                                        #cl.name = u"Beschriftungen %s AUTO" % geom
-                                                        pass
-
-                                                label = mapscript.labelObj()
-                                                label.position = positions[ pos ]
-                                                label.type = mapscript.MS_TRUETYPE
-                                                label.setBinding( mapscript.MS_LABEL_BINDING_COLOR, "color_umn" )
-                                                label.setBinding( mapscript.MS_LABEL_BINDING_FONT, "font_umn" )
-                                                label.setBinding( mapscript.MS_LABEL_BINDING_ANGLE, "drehwinkel_grad" )
-                                                label.setBinding( mapscript.MS_LABEL_BINDING_SIZE, "size_umn" )
-                                                label.buffer = 2
-                                                label.force = mapscript.MS_TRUE
-                                                label.partials = mapscript.MS_TRUE
-                                                label.antialias = mapscript.MS_TRUE
-                                                label.outlinecolor.setRGB( 255, 255, 255 )
-                                                label.mindistance = -1
-                                                label.minfeaturesize = -1
-                                                label.shadowsizex = 0
-                                                label.shadowsizey = 0
-                                                #label.minsize = 4
-                                                #label.maxsize = 256
-                                                label.minfeaturesize = -1
-                                                label.priority = 10
-
-                                                cl.addLabel( label )
+                                                data += (u",CASE coalesce(l.vertikaleausrichtung,s.vertikaleausrichtung) "
+                                                         u" WHEN 'oben' THEN 'L'"
+                                                         u" WHEN 'Basis' THEN 'U'"
+                                                         u" ELSE 'C'"
+                                                         u" END || CASE coalesce(l.horizontaleausrichtung,s.horizontaleausrichtung)"
+                                                         u" WHEN 'linksbündig' THEN 'L'"
+                                                         u" WHEN 'rechtsbündig' THEN 'R'"
+                                                         u" ELSE 'C'"
+                                                         u" END AS position_umn"
+                                                         u",drehwinkel_grad"
+                                                         u",point AS geom"
+                                                )
+                                                where += " AND point IS NOT NULL"
                                         else:
-                                            layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,text,st_offsetcurve(line,size_umn*0.0127,'') AS geom,color_umn,font_umn,size_umn FROM po_labels l WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (where,epsg)).encode("utf-8")
+                                                data += u",st_offsetcurve(line,0.125*skalierung*grad_pt,'') AS geom"
+                                                where += " AND line IS NOT NULL"
 
-                                            cl = mapscript.classObj( layer )
+                                        data += (u" FROM po_labels l"
+                                                 u" JOIN alkis_schriften s ON s.signaturnummer=l.signaturnummer{0}"
+                                                 u" JOIN alkis_farben f ON s.farbe=f.id"
+                                                 u" WHERE {1} AND NOT point IS NULL"
+                                                 u") AS foo USING UNIQUE ogc_fid USING SRID={2}"
+                                                ).format(
+                                                    "" if katalog<0 else " AND s.katalog=%d" % katalog,
+                                                    where,
+                                                    epsg
+                                                    )
 
-                                            label = mapscript.labelObj()
+                                        layer.data = data.encode("utf-8")
+
+                                        cl = mapscript.classObj( layer )
+                                        label = mapscript.labelObj()
+
+                                        if geom=="point":
+                                            label.type = mapscript.MS_TRUETYPE
+                                            label.setBinding( mapscript.MS_LABEL_BINDING_COLOR, "color_umn" )
+                                            label.setBinding( mapscript.MS_LABEL_BINDING_FONT, "font_umn" )
+                                            label.setBinding( mapscript.MS_LABEL_BINDING_ANGLE, "drehwinkel_grad" )
+                                            label.setBinding( mapscript.MS_LABEL_BINDING_SIZE, "size_umn" )
+                                            label.setBinding( mapscript.MS_LABEL_BINDING_POSITION, "position_umn" )
+                                            label.buffer = 2
+                                            label.force = mapscript.MS_TRUE
+                                            label.partials = mapscript.MS_TRUE
+                                            label.antialias = mapscript.MS_TRUE
+                                            label.outlinecolor.setRGB( 255, 255, 255 )
+                                            label.mindistance = -1
+                                            label.minfeaturesize = -1
+                                            label.shadowsizex = 0
+                                            label.shadowsizey = 0
+                                            #label.minsize = 4
+                                            #label.maxsize = 256
+                                            label.minfeaturesize = -1
+                                            label.priority = 10
+                                        else:
                                             label.updateFromString( """
      LABEL
         ANGLE FOLLOW
@@ -2220,7 +2325,7 @@ class alkisplugin(QObject):
       END
 """ )
 
-                                            cl.addLabel( label )
+                                        cl.addLabel( label )
 
                                         layer.labelitem = "text"
                                         layer.setProjection( "init=epsg:%d" % epsg )
@@ -2236,7 +2341,6 @@ class alkisplugin(QObject):
                                         layer.status = mapscript.MS_OFF
                                         layer.tileitem = None
 
-
                                         lgroup.append( layer.name )
 
                 self.reorderLayers( mapobj )
@@ -2245,15 +2349,41 @@ class alkisplugin(QObject):
 
                 mapobj.save(dstfile)
 
-        def addLineStyles(self, db, cl, sn, c, outline):
+                if s.value( "umnpath", BASEDIR )!=BASEDIR:
+                    os.rename( dstfile, dstfile+".bak" )
+                    i = open(dstfile+".bak", "r")
+                    o = open(dstfile, "w")
+
+                    for l in i:
+                        if 'FONTSET "' in l:
+                            o.write( u'  FONTSET "%s/fonts/fonts.txt"\n' % s.value("umnpath") )
+                        else:
+                            o.write( l )
+
+                    o.close()
+                    i.close()
+
+                    os.remove( dstfile+".bak" )
+
+
+        def addLineStyles(self, db, cl, kat, sn, c, outline):
                 assert cl.numstyles == 0
 
+                sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand{0}"
+                       u" FROM alkis_linie l"
+                       u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
+                       u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+                       u"{1}"
+                       u" WHERE l.signaturnummer='{2}'{3}"
+                      ).format(
+                        "" if kat<0 else ",r,g,b",
+                        "" if kat<0 else " LEFT OUTER JOIN alkis_farben ON l.farbe=alkis_farben.id",
+                        sn,
+                        "" if kat<0 else " AND l.katalog=%d" % kat
+                        )
+
                 lqry = QSqlQuery(db)
-                if lqry.exec_( "SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand"
-                               " FROM alkis_linie"
-                               " LEFT OUTER JOIN alkis_stricharten_i ON alkis_linie.strichart=alkis_stricharten_i.stricharten"
-                               " LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-                               " WHERE alkis_linie.signaturnummer='%s'" % sn ):
+                if lqry.exec_( sql ):
                     stricharten = []
 
                     maxStrichstaerke = -1
@@ -2262,6 +2392,9 @@ class alkisplugin(QObject):
                         abschluss, scheitel, strichstaerke, laenge, einzug, abstaende = \
                             lqry.value(0), lqry.value(1), float(lqry.value(2)), \
                             float(lqry.value(3)), float(lqry.value(4)), lqry.value(5)
+
+                        if kat>=0:
+                            c = [ int(lqry.value(6)), int(lqry.value(7)), int(lqry.value(8)) ]
 
                         if strichstaerke > maxStrichstaerke:
                             maxStrichstaerke = strichstaerke
@@ -2278,11 +2411,11 @@ class alkisplugin(QObject):
                         for abstand in abstaende:
                             gesamtl += laenge + abstand
 
-                        stricharten.append( [ abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl ] )
+                        stricharten.append( [ abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c ] )
 
                     gesamtl0 = None
                     leinzug = None
-                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
+                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
                         if gesamtl0 is None:
                             gesamtl0 = gesamtl
                         elif gesamtl0 <> gesamtl:
@@ -2296,7 +2429,7 @@ class alkisplugin(QObject):
                                 logMessage( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
                                 return False
 
-                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl in stricharten:
+                    for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
                         if abstaende and laenge==0:
                             # Marker line
                             if leinzug:
