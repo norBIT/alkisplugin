@@ -98,6 +98,10 @@ class alkisplugin(QObject):
                         'line'   : { 'min':0, 'max':3500 },
                         'point'  : { 'min':0, 'max':3500 },
                         'label'  : { 'min':0, 'max':3500 },
+                        'filter' : [
+                            { 'name': u"Gebäude", 'filter': "layer<>'ax_lagebezeichnungmitpseudonummer'" },
+                            { 'name': u"Laufende Hausnummern", 'filter': "layer='ax_lagebezeichnungmitpseudonummer'" },
+                        ],
                         'classes': {
                             '1301': u'Wohngebäude',
                             '1304': u'Anderes Gebäude',
@@ -1063,316 +1067,337 @@ class alkisplugin(QObject):
                 for d in alkisplugin.themen:
                         iThema += 1
                         t = d['name']
-                        thisGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
+
+                        if not d.has_key('filter'):
+                                d['filter'] = [ { 'name':None, 'filter': None } ]
+
+                        themeGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
+
                         nLayers = 0
 
                         qDebug( u"Thema: %s" % t )
 
-                        where = "thema='%s'" % t
+                        for f in d['filter']:
+                            name = f.get('name', t)
+                            tname = t
 
-                        if len(modelle)>0:
-                            where += " AND modell && ARRAY['%s']::varchar[]" % "','".join( modelle )
+                            if len(d['filter']) > 1:
+                                thisGroup = self.iface.legendInterface().addGroup( name, False, themeGroup )
+                            else:
+                                thisGroup = themeGroup
 
-                        self.progress(iThema, u"Flächen", 0)
+                            where = "thema='%s'" % t
 
-                        sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
-                               u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                               u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
-                               u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet DESC") % where
-                        #qDebug( u"SQL: %s" % sql )
-                        if qry.exec_( sql ):
-                                r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
-                                r.deleteAllCategories()
+                            if len(modelle)>0:
+                                where += " AND modell && ARRAY['%s']::varchar[]" % "','".join( modelle )
 
-                                n = 0
-                                while qry.next():
-                                        sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
+                            if f.get('name',None):
+                                tname += " / " + f['name']
 
-                                        sn = qry.value(0)
-                                        sym.setColor( QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) )
+                            if f.get('filter',None):
+                                where += " AND (%s)" % f['filter']
 
-                                        r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
-                                        n += 1
+                            self.progress(iThema, u"Flächen", 0)
 
-                                if n>0:
-                                        layer = self.iface.addVectorLayer(
-                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=%s" % (conninfo, epsg, where),
-                                                u"Flächen (%s)" % t,
-                                                "postgres" )
-                                        layer.setReadOnly()
-                                        layer.setRendererV2( r )
-                                        self.setScale( layer, d['area'] )
-                                        self.iface.legendInterface().refreshLayerSymbology( layer )
-                                        self.iface.legendInterface().moveLayer( layer, thisGroup )
-                                        nLayers += 1
-                                else:
-                                        del r
-                        else:
-                                QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
-                                break
+                            sql = (u"SELECT signaturnummer,r,g,b FROM alkis_flaechen"
+                                   u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
+                                   u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
+                                   u" AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer)"
+                                   u" ORDER BY darstellungsprioritaet DESC") % where
+                            #qDebug( u"SQL: %s" % sql )
+                            if qry.exec_( sql ):
+                                    r = QgsCategorizedSymbolRendererV2( "sn_flaeche" )
+                                    r.deleteAllCategories()
 
-                        self.progress(iThema, "Grenzen", 1)
+                                    n = 0
+                                    while qry.next():
+                                            sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
 
-                        sql = (u"SELECT"
-                               u" signaturnummer,r,g,b"
-                               u" FROM alkis_linien"
-                               u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                               u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
-                               u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet" ) % where
-                        #qDebug( u"SQL: %s" % sql )
-                        if qry.exec_(sql):
-                                r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
-                                r.deleteAllCategories()
-
-                                n = 0
-                                while qry.next():
-                                        sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
-                                        sn = qry.value(0)
-
-                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), True ):
-                                            r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
-                                            n += 1
-
-                                if n>0:
-                                        layer = self.iface.addVectorLayer(
-                                                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=%s" % (conninfo, epsg, where),
-                                                u"Grenzen (%s)" % t,
-                                                "postgres" )
-                                        layer.setReadOnly()
-                                        layer.setRendererV2( r )
-                                        if hasattr(QgsMapRenderer, "BlendSource"):
-                                                layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
-                                        self.setScale( layer, d['outline'] )
-                                        self.iface.legendInterface().refreshLayerSymbology( layer )
-                                        self.iface.legendInterface().moveLayer( layer, thisGroup )
-                                        nLayers += 1
-                                else:
-                                        del r
-                        else:
-                                QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
-                                break
-
-                        self.progress(iThema, "Linien", 2)
-
-                        sql = (u"SELECT"
-                               u" signaturnummer,r,g,b"
-                               u" FROM alkis_linien"
-                               u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
-                               u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s"
-                               u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
-                               u" ORDER BY darstellungsprioritaet ASC" ) % where
-                        #qDebug( u"SQL: %s" % sql )
-                        if qry.exec_( sql ):
-                                r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
-                                r.setUsingSymbolLevels( True )
-                                r.deleteAllCategories()
-
-                                n = 0
-                                while qry.next():
-                                        sym = QgsSymbolV2.defaultSymbol( QGis.Line )
-                                        sn = qry.value(0)
-
-                                        if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), False ):
-                                            for i in range(0,sym.symbolLayerCount()):
-                                                sym.symbolLayer(i).setRenderingPass(n)
+                                            sn = qry.value(0)
+                                            sym.setColor( QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) )
 
                                             r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
                                             n += 1
 
-                                if n>0:
-                                        layer = self.iface.addVectorLayer(
-                                                        u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=po_lines (line) sql=%s" % (conninfo, epsg, where),
-                                                        u"Linien (%s)" % t,
-                                                        "postgres" )
-                                        layer.setReadOnly()
-                                        layer.setRendererV2( r )
-                                        if hasattr(QgsMapRenderer, "BlendSource"):
-                                                layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
-                                        layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
-                                        self.setScale( layer, d['line'] )
-                                        self.iface.legendInterface().refreshLayerSymbology( layer )
-                                        self.iface.legendInterface().moveLayer( layer, thisGroup )
-                                        nLayers += 1
-                                else:
-                                        del r
-                        else:
-                                QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
-                                break
+                                    if n>0:
+                                            layer = self.iface.addVectorLayer(
+                                                    u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=%s" % (conninfo, epsg, where),
+                                                    u"Flächen (%s)" % t,
+                                                    "postgres" )
+                                            layer.setReadOnly()
+                                            layer.setRendererV2( r )
+                                            self.setScale( layer, d['area'] )
+                                            self.iface.legendInterface().refreshLayerSymbology( layer )
+                                            self.iface.legendInterface().moveLayer( layer, thisGroup )
+                                            nLayers += 1
+                                    else:
+                                            del r
+                            else:
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    break
 
-                        self.progress(iThema, "Punkte", 3)
+                            self.progress(iThema, "Grenzen", 1)
 
-                        sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where
-                        #qDebug( u"SQL: %s" % sql )
-                        if qry.exec_( sql ):
-                                r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
-                                r.deleteAllCategories()
-                                r.setRotationField( "drehwinkel_grad" )
+                            sql = (u"SELECT"
+                                   u" signaturnummer,r,g,b"
+                                   u" FROM alkis_linien"
+                                   u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+                                   u" WHERE EXISTS (SELECT * FROM po_polygons WHERE %s"
+                                   u" AND po_polygons.sn_randlinie=alkis_linien.signaturnummer)"
+                                   u" ORDER BY darstellungsprioritaet" ) % where
+                            #qDebug( u"SQL: %s" % sql )
+                            if qry.exec_(sql):
+                                    r = QgsCategorizedSymbolRendererV2( "sn_randlinie" )
+                                    r.deleteAllCategories()
 
-                                n = 0
-                                while qry.next():
-                                        sn = qry.value(0)
-                                        svg = "alkis%s.svg" % sn
-                                        if alkisplugin.exts.has_key(sn):
-                                                x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
-                                                y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
-                                                w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
-                                                h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
-                                        else:
-                                                x = 0
-                                                y = 0
-                                                w = 1
-                                                h = 1
+                                    n = 0
+                                    while qry.next():
+                                            sym = QgsSymbolV2.defaultSymbol( QGis.Polygon )
+                                            sn = qry.value(0)
 
-                                        symlayer = QgsSvgMarkerSymbolLayerV2( svg )
-                                        symlayer.setOutputUnit( QgsSymbolV2.MapUnit )
-                                        qDebug( u"symlayer.setSize %s:%f" % (sn, w) )
-                                        symlayer.setSize( w )
-                                        symlayer.setOffset( QPointF( -x, -y ) )
+                                            if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), True ):
+                                                r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
+                                                n += 1
 
-                                        sym = QgsSymbolV2.defaultSymbol( QGis.Point )
-                                        sym.setOutputUnit( QgsSymbolV2.MapUnit )
-                                        qDebug( u"sym.setSize %s:%f" % (sn, w) )
-                                        sym.setSize( w )
+                                    if n>0:
+                                            layer = self.iface.addVectorLayer(
+                                                    u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=po_polygons (polygon) sql=%s" % (conninfo, epsg, where),
+                                                    u"Grenzen (%s)" % t,
+                                                    "postgres" )
+                                            layer.setReadOnly()
+                                            layer.setRendererV2( r )
+                                            if hasattr(QgsMapRenderer, "BlendSource"):
+                                                    layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
+                                            self.setScale( layer, d['outline'] )
+                                            self.iface.legendInterface().refreshLayerSymbology( layer )
+                                            self.iface.legendInterface().moveLayer( layer, thisGroup )
+                                            nLayers += 1
+                                    else:
+                                            del r
+                            else:
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    break
 
-                                        sym.changeSymbolLayer( 0, symlayer )
-                                        r.addCategory( QgsRendererCategoryV2( "%s" % sn, sym, self.categoryLabel(d, sn) ) )
-                                        n += 1
+                            self.progress(iThema, "Linien", 2)
 
-                                qDebug( u"classes: %d" % n )
-                                if n>0:
-                                        layer = self.iface.addVectorLayer(
-                                                        u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE %s)\" (point) sql=" % (conninfo, epsg, where),
-                                                        u"Punkte (%s)" % t,
-                                                        "postgres" )
-                                        layer.setReadOnly()
-                                        layer.setRendererV2( r )
-                                        self.setScale( layer, d['point'] )
-                                        self.iface.legendInterface().refreshLayerSymbology( layer )
-                                        self.iface.legendInterface().moveLayer( layer, thisGroup )
-                                        nLayers += 1
-                                else:
-                                        del r
-                        else:
-                                QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
-                                break
+                            sql = (u"SELECT"
+                                   u" signaturnummer,r,g,b"
+                                   u" FROM alkis_linien"
+                                   u" JOIN alkis_farben ON alkis_linien.farbe=alkis_farben.id"
+                                   u" WHERE EXISTS (SELECT * FROM po_lines WHERE %s"
+                                   u" AND po_lines.signaturnummer=alkis_linien.signaturnummer)"
+                                   u" ORDER BY darstellungsprioritaet ASC" ) % where
+                            #qDebug( u"SQL: %s" % sql )
+                            if qry.exec_( sql ):
+                                    r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
+                                    r.setUsingSymbolLevels( True )
+                                    r.deleteAllCategories()
 
-                        n = 0
-                        labelGroup = -1
-                        for i in range(2):
-                                geom = "point" if i==0 else "line"
-                                geomtype = "MULTIPOINT" if i==0 else "MULTILINESTRING"
+                                    n = 0
+                                    while qry.next():
+                                            sym = QgsSymbolV2.defaultSymbol( QGis.Line )
+                                            sn = qry.value(0)
 
-                                if not qry.exec_( "SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where,geom) ):
-                                        QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
-                                        continue
+                                            if self.setStricharten( db, sym, sn, QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ), False ):
+                                                for i in range(0,sym.symbolLayerCount()):
+                                                    sym.symbolLayer(i).setRenderingPass(n)
 
-                                self.progress(iThema, "Beschriftungen (%d)" % (i+1), 4+i)
+                                                r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
+                                                n += 1
 
-                                if not qry.next() or int(qry.value(0))==0:
-                                        continue
+                                    if n>0:
+                                            layer = self.iface.addVectorLayer(
+                                                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=po_lines (line) sql=%s" % (conninfo, epsg, where),
+                                                            u"Linien (%s)" % t,
+                                                            "postgres" )
+                                            layer.setReadOnly()
+                                            layer.setRendererV2( r )
+                                            if hasattr(QgsMapRenderer, "BlendSource"):
+                                                    layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
+                                            layer.setFeatureBlendMode( QPainter.CompositionMode_Source )
+                                            self.setScale( layer, d['line'] )
+                                            self.iface.legendInterface().refreshLayerSymbology( layer )
+                                            self.iface.legendInterface().moveLayer( layer, thisGroup )
+                                            nLayers += 1
+                                    else:
+                                            del r
+                            else:
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    break
 
-                                if n==1:
-                                        labelGroup = self.iface.legendInterface().addGroup( "Beschriftungen", False, thisGroup )
-                                        self.iface.legendInterface().moveLayer( layer, labelGroup )
+                            self.progress(iThema, "Punkte", 3)
 
-                                uri = (
-                                        u"{0} estimatedmetadata=true key='ogc_fid' type={1} srid={2} table="
-                                        u"\"("
-                                        u"SELECT"
-                                        u" ogc_fid"
-                                        u",(size_umn*0.0254)::float8 AS tsize"
-                                        u",text"
-                                        u",CASE"
-                                        u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
-                                        u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
-                                        u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
-                                        u" END AS halign"
-                                        u",CASE"
-                                        u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
-                                        u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
-                                        u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
-                                        u" END AS valign"
-                                        u",'Arial'::text AS family"
-                                        u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
-                                        u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
-                                        u",fontsperrung"
-                                        u",split_part(color_umn,' ',1) AS r"
-                                        u",split_part(color_umn,' ',2) AS g"
-                                        u",split_part(color_umn,' ',3) AS b"
-                                        u",{3}"
-                                        u"{6}"
-                                        u" FROM po_labels"
-                                        u" WHERE {4}"
-                                        u")\" ({5}) sql="
-                                        ).format(
-                                            conninfo, geomtype, epsg,
-                                            u"point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom=="point" else "line",
-                                            where, geom, "" if len(modelle)==0 else ",modell"
-                                        )
+                            sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where
+                            #qDebug( u"SQL: %s" % sql )
+                            if qry.exec_( sql ):
+                                    r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
+                                    r.deleteAllCategories()
+                                    r.setRotationField( "drehwinkel_grad" )
 
-                                qDebug( u"URI: %s" % uri )
+                                    n = 0
+                                    while qry.next():
+                                            sn = qry.value(0)
+                                            svg = "alkis%s.svg" % sn
+                                            if alkisplugin.exts.has_key(sn):
+                                                    x = ( alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx'] ) / 2
+                                                    y = ( alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy'] ) / 2
+                                                    w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
+                                                    h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
+                                            else:
+                                                    x = 0
+                                                    y = 0
+                                                    w = 1
+                                                    h = 1
 
-                                layer = self.iface.addVectorLayer( uri, u"Beschriftungen (%s)" % t, "postgres" )
-                                layer.setReadOnly()
+                                            symlayer = QgsSvgMarkerSymbolLayerV2( svg )
+                                            symlayer.setOutputUnit( QgsSymbolV2.MapUnit )
+                                            qDebug( u"symlayer.setSize %s:%f" % (sn, w) )
+                                            symlayer.setSize( w )
+                                            symlayer.setOffset( QPointF( -x, -y ) )
 
-                                self.setScale( layer, d['label'] )
+                                            sym = QgsSymbolV2.defaultSymbol( QGis.Point )
+                                            sym.setOutputUnit( QgsSymbolV2.MapUnit )
+                                            qDebug( u"sym.setSize %s:%f" % (sn, w) )
+                                            sym.setSize( w )
 
-                                sym = QgsSymbolV2.defaultSymbol( QGis.Point if geom=="point" else QGis.Line )
-                                if geom=="point":
-                                    sym.setSize( 0.0 )
-                                else:
-                                    sym.changeSymbolLayer( 0, QgsSimpleLineSymbolLayerV2( Qt.black, 0.0, Qt.NoPen ) )
-                                layer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
-                                self.iface.legendInterface().refreshLayerSymbology( layer )
-                                self.iface.legendInterface().moveLayer( layer, thisGroup )
+                                            sym.changeSymbolLayer( 0, symlayer )
+                                            r.addCategory( QgsRendererCategoryV2( "%s" % sn, sym, self.categoryLabel(d, sn) ) )
+                                            n += 1
 
-                                lyr = QgsPalLayerSettings()
-                                lyr.fieldName = "text"
-                                lyr.isExpression = False
-                                lyr.enabled = True
-                                lyr.fontSizeInMapUnits = True
-                                lyr.textFont.setPointSizeF( 2.5 )
-                                lyr.textFont.setFamily( "Arial" )
-                                lyr.bufferSizeInMapUnits = True
-                                lyr.bufferSize = 0.25
-                                lyr.displayAll = True
-                                lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
-                                lyr.scaleVisibility = True
-                                if geom == "point":
-                                    lyr.placement = QgsPalLayerSettings.AroundPoint
-                                else:
-                                    lyr.placement = QgsPalLayerSettings.Curved
-                                    lyr.placementFlags = QgsPalLayerSettings.AboveLine
+                                    qDebug( u"classes: %d" % n )
+                                    if n>0:
+                                            layer = self.iface.addVectorLayer(
+                                                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM po_points WHERE %s)\" (point) sql=" % (conninfo, epsg, where),
+                                                            u"Punkte (%s)" % t,
+                                                            "postgres" )
+                                            layer.setReadOnly()
+                                            layer.setRendererV2( r )
+                                            self.setScale( layer, d['point'] )
+                                            self.iface.legendInterface().refreshLayerSymbology( layer )
+                                            self.iface.legendInterface().moveLayer( layer, thisGroup )
+                                            nLayers += 1
+                                    else:
+                                            del r
+                            else:
+                                    QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                    break
 
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, True, False, "", "tsize" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, True, False, "", "family" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, True, False, "", "italic" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.Color, True, True, "color_rgb(r,g,b)", "" )
-                                lyr.setDataDefinedProperty( QgsPalLayerSettings.FontLetterSpacing, True, False, "", "fontsperrung" )
-                                if geom == "point":
-                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
-                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
-                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
-                                lyr.writeToLayer( layer )
+                            n = 0
+                            labelGroup = -1
+                            for i in range(2):
+                                    geom = "point" if i==0 else "line"
+                                    geomtype = "MULTIPOINT" if i==0 else "MULTILINESTRING"
 
-                                self.iface.legendInterface().refreshLayerSymbology( layer )
+                                    if not qry.exec_( "SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where,geom) ):
+                                            QMessageBox.critical( None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery() ) )
+                                            continue
 
-                                if labelGroup!=-1:
-                                        self.iface.legendInterface().moveLayer( layer, labelGroup )
+                                    self.progress(iThema, "Beschriftungen (%d)" % (i+1), 4+i)
 
-                                n += 1
-                                nLayers += 1
+                                    if not qry.next() or int(qry.value(0))==0:
+                                            continue
 
-                        if nLayers > 0:
-                                self.iface.legendInterface().setGroupExpanded( thisGroup, False )
-                                nGroups += 1
-                        else:
-                                self.iface.legendInterface().removeGroup( thisGroup )
+                                    if n==1:
+                                            labelGroup = self.iface.legendInterface().addGroup( "Beschriftungen", False, thisGroup )
+                                            self.iface.legendInterface().moveLayer( layer, labelGroup )
+
+                                    uri = (
+                                            u"{0} estimatedmetadata=true key='ogc_fid' type={1} srid={2} table="
+                                            u"\"("
+                                            u"SELECT"
+                                            u" ogc_fid"
+                                            u",layer"
+                                            u",(size_umn*0.0254)::float8 AS tsize"
+                                            u",text"
+                                            u",CASE"
+                                            u" WHEN horizontaleausrichtung='linksbündig' THEN 'Left'"
+                                            u" WHEN horizontaleausrichtung='zentrisch' THEN 'Center'"
+                                            u" WHEN horizontaleausrichtung='rechtsbündig' THEN 'Right'"
+                                            u" END AS halign"
+                                            u",CASE"
+                                            u" WHEN vertikaleausrichtung='oben' THEN 'Top'"
+                                            u" WHEN vertikaleausrichtung='Mitte' THEN 'Half'"
+                                            u" WHEN vertikaleausrichtung='Basis' THEN 'Bottom'"
+                                            u" END AS valign"
+                                            u",'Arial'::text AS family"
+                                            u",CASE WHEN font_umn LIKE '%italic%' THEN 1 ELSE 0 END AS italic"
+                                            u",CASE WHEN font_umn LIKE '%bold%' THEN 1 ELSE 0 END AS bold"
+                                            u",fontsperrung"
+                                            u",split_part(color_umn,' ',1) AS r"
+                                            u",split_part(color_umn,' ',2) AS g"
+                                            u",split_part(color_umn,' ',3) AS b"
+                                            u",{3}"
+                                            u"{6}"
+                                            u" FROM po_labels"
+                                            u" WHERE {4}"
+                                            u")\" ({5}) sql="
+                                            ).format(
+                                                conninfo, geomtype, epsg,
+                                                u"point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom=="point" else "line",
+                                                where, geom, "" if len(modelle)==0 else ",modell"
+                                            )
+
+                                    qDebug( u"URI: %s" % uri )
+
+                                    layer = self.iface.addVectorLayer( uri, u"Beschriftungen (%s)" % t, "postgres" )
+                                    layer.setReadOnly()
+
+                                    self.setScale( layer, d['label'] )
+
+                                    sym = QgsSymbolV2.defaultSymbol( QGis.Point if geom=="point" else QGis.Line )
+                                    if geom=="point":
+                                        sym.setSize( 0.0 )
+                                    else:
+                                        sym.changeSymbolLayer( 0, QgsSimpleLineSymbolLayerV2( Qt.black, 0.0, Qt.NoPen ) )
+                                    layer.setRendererV2( QgsSingleSymbolRendererV2( sym ) )
+                                    self.iface.legendInterface().refreshLayerSymbology( layer )
+                                    self.iface.legendInterface().moveLayer( layer, thisGroup )
+
+                                    lyr = QgsPalLayerSettings()
+                                    lyr.fieldName = "text"
+                                    lyr.isExpression = False
+                                    lyr.enabled = True
+                                    lyr.fontSizeInMapUnits = True
+                                    lyr.textFont.setPointSizeF( 2.5 )
+                                    lyr.textFont.setFamily( "Arial" )
+                                    lyr.bufferSizeInMapUnits = True
+                                    lyr.bufferSize = 0.25
+                                    lyr.displayAll = True
+                                    lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
+                                    lyr.scaleVisibility = True
+                                    if geom == "point":
+                                        lyr.placement = QgsPalLayerSettings.AroundPoint
+                                    else:
+                                        lyr.placement = QgsPalLayerSettings.Curved
+                                        lyr.placementFlags = QgsPalLayerSettings.AboveLine
+
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Size, True, False, "", "tsize" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Family, True, False, "", "family" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Italic, True, False, "", "italic" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Bold, True, False, "", "bold" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Hali, True, False, "", "halign" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Vali, True, False, "", "valign" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.Color, True, True, "color_rgb(r,g,b)", "" )
+                                    lyr.setDataDefinedProperty( QgsPalLayerSettings.FontLetterSpacing, True, False, "", "fontsperrung" )
+                                    if geom == "point":
+                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionX, True, False, "", "tx" )
+                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.PositionY, True, False, "", "ty" )
+                                        lyr.setDataDefinedProperty( QgsPalLayerSettings.Rotation, True, False, "", "tangle" )
+                                    lyr.writeToLayer( layer )
+
+                                    self.iface.legendInterface().refreshLayerSymbology( layer )
+
+                                    if labelGroup!=-1:
+                                            self.iface.legendInterface().moveLayer( layer, labelGroup )
+
+                                    n += 1
+                                    nLayers += 1
+
+                            if nLayers > 0:
+                                    self.iface.legendInterface().setGroupExpanded( themeGroup, False )
+                                    nGroups += 1
+                            else:
+                                    self.iface.legendInterface().removeGroup( themeGroup )
 
                 if nGroups > 0:
                         self.iface.legendInterface().setGroupExpanded( self.alkisGroup, False )
@@ -1641,6 +1666,9 @@ class alkisplugin(QObject):
 
                 mapobj.outputformat.driver = "GD/PNG"
                 mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
+
+                mapobj.legend.label.type = mapscript.MS_TRUETYPE
+                mapobj.legend.label.font = 'arial'
 
                 mapobj.maxsize = 20480
                 mapobj.setSize( 400, 400 )
