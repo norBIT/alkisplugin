@@ -386,15 +386,12 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
 
                             qry = QSqlQuery(db)
 
-                            if qry.exec_( u"SELECT find_srid('','po_labels', 'point')" ) and qry.next():
-                                crs = qry.value(0)
-
-                                sql = u"SELECT count(*),st_extent( coalesce(point,line) ) FROM po_labels WHERE {0}".format( text )
-                                if qry.exec_( sql ) and qry.next() and qry.value(0)>0:
-                                    self.plugin.zoomToExtent( qry.value(1), crs )
-                                else:
-                                    QMessageBox.information( None, "ALKIS", u"Keine Treffer gefunden." )
-                                    return
+                            sql = u"SELECT count(*),st_extent( coalesce(point,line) ) FROM po_labels WHERE {0}".format( text )
+                            if qry.exec_( sql ) and qry.next() and qry.value(0)>0:
+                                self.plugin.zoomToExtent( qry.value(1), self.plugin.pointMarkerLayer.crs() )
+                            else:
+                                QMessageBox.information( None, "ALKIS", u"Keine Treffer gefunden." )
+                                return
                         else:
                             text = "false"
 

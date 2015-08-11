@@ -1616,15 +1616,12 @@ class alkisplugin(QObject):
 
                 self.iface.mapCanvas().refresh()
 
-                if zoomTo and qry.exec_( u"SELECT find_srid('','ax_flurstueck', 'wkb_geometry')" ) and qry.next():
-                    crs = qry.value(0)
-
-                    if qry.exec_( u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
-                        self.zoomToExtent( qry.value(0), crs )
+                if zoomTo and qry.exec_( u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join( gmlids ) + "')" ) and qry.next():
+                    self.zoomToExtent( qry.value(0), self.areaMarkerLayer.crs() )
 
                 return fs
 
-        def zoomToExtent( self, bb, epsg ):
+        def zoomToExtent( self, bb, crs ):
                 bb = bb[4:-1]
                 (p0,p1) = bb.split(",")
                 (x0,y0) = p0.split(" ")
@@ -1634,10 +1631,18 @@ class alkisplugin(QObject):
 
                 c = self.iface.mapCanvas()
                 if c.hasCrsTransformEnabled():
+                    if not isinstance(crs,QgsCoordinateReferenceSystem):
+                        epsg = crs
+                        crs = QgsCoordinateReferenceSystem(epsg)
+
+                        if not crs.isValid():
+                            QMessageBox.critical( None, "ALKIS", u"Ungültiges Koordinatensystem %d\n" % epsg )
+                            return
+
                     try:
-                      t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapSettings().destinationCrs() )
+                      t = QgsCoordinateTransform( crs, c.mapSettings().destinationCrs() )
                     except:
-                      t = QgsCoordinateTransform( QgsCoordinateReferenceSystem(epsg), c.mapRenderer().destinationCrs() )
+                      t = QgsCoordinateTransform( crs, c.mapRenderer().destinationCrs() )
                     rect = t.transform( rect )
 
                 qDebug( u"rect:%s" % rect.toString() )
