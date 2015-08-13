@@ -1281,7 +1281,6 @@ class alkisplugin(QObject):
                             if qry.exec_( sql ):
                                     r = QgsCategorizedSymbolRendererV2( "signaturnummer" )
                                     r.deleteAllCategories()
-                                    r.setRotationField( "drehwinkel_grad" )
 
                                     n = 0
                                     while qry.next():
@@ -1310,6 +1309,12 @@ class alkisplugin(QObject):
                                             sym.setSize( w )
 
                                             sym.changeSymbolLayer( 0, symlayer )
+
+                                            if hasattr(sym, "setDataDefinedAngle"):
+                                                sym.setDataDefinedAngle( QgsDataDefined( "drehwinkel_grad" ) )
+                                            else:
+                                                symlayer.setDataDefinedProperty( "angle", "drehwinkel_grad" )
+
                                             r.addCategory( QgsRendererCategoryV2( "%s" % sn, sym, self.categoryLabel(d, sn) ) )
                                             n += 1
 
