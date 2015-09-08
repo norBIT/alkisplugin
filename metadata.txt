@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.0
+version=2.0.1
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de

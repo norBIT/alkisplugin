@@ -934,10 +934,14 @@ class alkisplugin(QObject):
                     maxStrichstaerke = -1
 
                     while lqry.next():
-                        abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, c = \
-                            lqry.value(0), lqry.value(1), float(lqry.value(2)), \
-                            float(lqry.value(3)), float(lqry.value(4)), lqry.value(5), \
-                            QColor( int(lqry.value(6)), int(lqry.value(7)), lqry.value(8) )
+                        try:
+                            abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, c = \
+                                lqry.value(0), lqry.value(1), float(lqry.value(2)), \
+                                float(lqry.value(3)), float(lqry.value(4)), lqry.value(5), \
+                                QColor( int(lqry.value(6)), int(lqry.value(7)), lqry.value(8) )
+                        except TypeError,e:
+                            logMessage( u"Signaturnummer %s: Ausnahme %s\nSQL:%s" % (sn, str(e), sql) )
+                            continue
 
                         if strichstaerke > maxStrichstaerke:
                             maxStrichstaerke = strichstaerke
@@ -1059,7 +1063,7 @@ class alkisplugin(QObject):
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
-                katalog = s.value( "signaturkatalog", -1 )
+                katalog = int( s.value( "signaturkatalog", -1 ) )
 
                 self.iface.mapCanvas().setRenderFlag( False )
 
@@ -1776,7 +1780,7 @@ class alkisplugin(QObject):
                         mapobj.setExtent( float(x0), float(y0), float(x1), float(y1) )
 
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
-                katalog = s.value( "signaturkatalog", -1 )
+                katalog = int( s.value( "signaturkatalog", -1 ) )
 
                 missing = {}
                 symbols = {}
