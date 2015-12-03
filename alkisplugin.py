@@ -728,18 +728,18 @@ class alkisplugin(QObject):
                 else:
                         self.umnAction = None
 
-                self.searchAction = QAction( QIcon( "alkis:find.png" ), "Suchen...", self.iface.mainWindow())
+                self.searchAction = QAction( QIcon( "alkis:find.svg" ), "Suchen...", self.iface.mainWindow())
                 self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
                 self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
                 self.searchAction.triggered.connect(self.search)
                 self.toolbar.addAction( self.searchAction )
 
-                self.queryOwnerAction = QAction( QIcon( "alkis:eigner.png" ), u"Flurstücksnachweis", self.iface.mainWindow())
+                self.queryOwnerAction = QAction( QIcon( "alkis:eigner.svg" ), u"Flurstücksnachweis", self.iface.mainWindow())
                 self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
                 self.toolbar.addAction( self.queryOwnerAction )
                 self.queryOwnerInfoTool = ALKISOwnerInfo( self )
 
-                self.clearAction = QAction( QIcon( "alkis:clear.png" ), "Hervorhebungen entfernen", self.iface.mainWindow())
+                self.clearAction = QAction( QIcon( "alkis:clear.svg" ), "Hervorhebungen entfernen", self.iface.mainWindow())
                 self.clearAction.setWhatsThis("Hervorhebungen entfernen")
                 self.clearAction.setStatusTip("Hervorhebungen entfernen")
                 self.clearAction.triggered.connect(self.clearHighlight)
@@ -769,12 +769,12 @@ class alkisplugin(QObject):
 
                 ns = QSettings( "norBIT", "EDBSgen/PRO" )
                 if ns.contains( "norGISPort" ):
-                        self.pointInfoAction = QAction( QIcon( "alkis:info.png" ), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
+                        self.pointInfoAction = QAction( QIcon( "alkis:info.svg" ), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
                         self.pointInfoAction.activated.connect( self.setPointInfoTool )
                         self.toolbar.addAction( self.pointInfoAction )
                         self.pointInfoTool = ALKISPointInfo( self )
 
-                        self.polygonInfoAction = QAction( QIcon( "alkis:pinfo.png" ), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
+                        self.polygonInfoAction = QAction( QIcon( "alkis:pinfo.svg" ), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
                         self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
                         self.toolbar.addAction( self.polygonInfoAction )
                         self.polygonInfoTool = ALKISPolygonInfo( self )
