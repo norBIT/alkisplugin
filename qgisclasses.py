@@ -27,6 +27,8 @@ from PyQt4 import QtCore, uic
 from qgis.core import *
 from qgis.gui import *
 
+import qgis.gui
+
 import socket, os, re, sys, operator
 
 try:
@@ -75,6 +77,15 @@ class ALKISConf(QDialog, ConfBase):
                 self.lePWD.setText( s.value( "pwd", "" ) )
                 self.cbxSignaturkatalog.setEnabled( False )
 
+                if hasattr(qgis.gui,'QgsAuthConfigSelect'):
+                    self.authCfgSelect = QgsAuthConfigSelect( self, "postgres" )
+                    self.tabWidget.insertTab( 1, self.authCfgSelect, "Konfigurationen" )
+
+                    authcfg = s.value( "authcfg", "" )
+                    if authcfg:
+                        self.tabWidget.setCurrentIndex( 1 )
+                        self.authCfgSelect.setConfigId( authcfg );
+
                 self.leUMNPath.setText( s.value( "umnpath", os.path.dirname(__file__) ) )
                 self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
                 self.leUMNTemplate.setText( s.value( "umntemplate" ) )
@@ -93,6 +104,9 @@ class ALKISConf(QDialog, ConfBase):
                 s.setValue( "dbname", self.leDBNAME.text() )
                 s.setValue( "uid", self.leUID.text() )
                 s.setValue( "pwd", self.lePWD.text() )
+
+                if hasattr(qgis.gui,'QgsAuthConfigSelect'):
+                    s.setValue( "authcfg", self.authCfgSelect.configId() )
 
                 self.twModellarten.clearContents()
                 self.cbxSignaturkatalog.clear()
@@ -156,6 +170,8 @@ ORDER BY count(*) DESC
                 s.setValue( "dbname", self.leDBNAME.text() )
                 s.setValue( "uid", self.leUID.text() )
                 s.setValue( "pwd", self.lePWD.text() )
+                if hasattr(qgis.gui,'QgsAuthConfigSelect'):
+                    s.setValue( "authcfg", self.authCfgSelect.configId() )
                 s.setValue( "umnpath", self.leUMNPath.text() )
                 s.setValue( "umntemplate", self.leUMNTemplate.text() )
 

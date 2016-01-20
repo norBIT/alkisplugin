@@ -37,6 +37,7 @@ BASEDIR = os.path.dirname( unicode(__file__,sys.getfilesystemencoding()) )
 try:
         from qgis.core import *
         from qgis.gui import *
+        import qgis.core
         qgisAvailable = True
 except:
         qgisAvailable = False
@@ -1547,6 +1548,13 @@ class alkisplugin(QObject):
                         dbname = s.value( "dbname", "" )
                         uid = s.value( "uid", "" )
                         pwd = s.value( "pwd", "" )
+                        authcfg = s.value( "authcfg", "" )
+
+                        if authcfg and hasattr(qgis.core,'QgsAuthManager'):
+                            amc = QgsAuthMethodConfig()
+                            QgsAuthManager.instance().loadAuthenticationConfig( authcfg, amc, True)
+                            uid = amc.config( "username", uid )
+                            pwd = amc.config( "password", pwd )
 
                         uri = QgsDataSourceURI()
                         if service:
@@ -1554,7 +1562,10 @@ class alkisplugin(QObject):
                         else:
                                 uri.setConnection( host, port, dbname, uid, pwd )
 
-                        conninfo0 = uri.connectionInfo()
+                        if hasattr(qgis.core,'QgsAuthManager'):
+                            conninfo0 = uri.connectionInfo(False)
+                        else:
+                            conninfo0 = uri.connectionInfo()
                 else:
                         uid = None
                         pwd = None
@@ -1583,6 +1594,14 @@ class alkisplugin(QObject):
 
                         QgsCredentials.instance().put( conninfo0, uid, pwd )
                         conninfo = conninfo0
+
+                authcfg = s.value( "authcfg", "" )
+                if authcfg and hasattr(qgis.core,'QgsAuthManager'):
+                    uri = QgsDataSourceURI(conninfo)
+                    uri.setAuthConfigId( authcfg )
+                    uri.setUsername( None )
+                    uri.setPassword( None )
+                    conninfo = uri.connectionInfo(False)
 
                 return (db,conninfo)
 
