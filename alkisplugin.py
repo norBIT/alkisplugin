@@ -94,7 +94,7 @@ class alkisplugin(QObject):
                 },
                 {
                         'name'   : u"Gebäude",
-                        'area'   : { 'min':0, 'max':3500 },
+                        'area'   : { 'min':0, 'max':10000 },
                         'outline': { 'min':0, 'max':3500 },
                         'line'   : { 'min':0, 'max':3500 },
                         'point'  : { 'min':0, 'max':3500 },
@@ -1158,6 +1158,7 @@ class alkisplugin(QObject):
 
                                             sn = qry.value(0)
                                             sym.setColor( QColor( int(qry.value(1)), int(qry.value(2)), int(qry.value(3)) ) )
+                                            sym.symbolLayer(0).setBorderStyle( Qt.NoPen )
 
                                             r.addCategory( QgsRendererCategoryV2( sn, sym, self.categoryLabel(d, sn) ) )
                                             n += 1
