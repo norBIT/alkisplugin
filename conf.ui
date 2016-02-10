@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>734</width>
-    <height>374</height>
+    <width>646</width>
+    <height>477</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -236,6 +236,18 @@
          </property>
         </column>
        </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="title">
+      <string>Fußnote für Eigentümer-Auskunft</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QTextEdit" name="teFussnote"/>
       </item>
      </layout>
     </widget>

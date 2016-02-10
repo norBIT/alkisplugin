@@ -89,6 +89,7 @@ class ALKISConf(QDialog, ConfBase):
                 self.leUMNPath.setText( s.value( "umnpath", os.path.dirname(__file__) ) )
                 self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
                 self.leUMNTemplate.setText( s.value( "umntemplate" ) )
+                self.teFussnote.setPlainText( s.value( "footnote", "" ) )
 
                 self.load(False)
 
@@ -174,6 +175,7 @@ ORDER BY count(*) DESC
                     s.setValue( "authcfg", self.authCfgSelect.configId() )
                 s.setValue( "umnpath", self.leUMNPath.text() )
                 s.setValue( "umntemplate", self.leUMNTemplate.text() )
+                s.setValue( "footnote", self.teFussnote.toPlainText() )
 
                 modelle = []
                 if self.twModellarten.isEnabled():
@@ -650,6 +652,7 @@ class ALKISOwnerInfo(QgsMapTool):
 .fls_col_values{vertical-align:top;}
 .fls_bst{width:100%%;empty-cells:show}
 .fls_hr{border:dotted 1px;color:#080808;}
+.fls_footnote{text-align:center;}
 </style>
 
 <TABLE class="fls_tab" border="0">
@@ -862,7 +865,17 @@ class ALKISOwnerInfo(QgsMapTool):
         <TR><TD colspan="6"><hr class="fls_hr"></TD></TR>
 """
 
+                html += """
+"""
+
+                s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
+                footnote = s.value( "footnote", "" )
+                if footnote:
                         html += """
+        <TR><TD colspan="7" class="fls_footnote">%s</TD></TR>
+""" % footnote
+
+                html += """
         </TABLE>
 </BODY>
 </HTML>
