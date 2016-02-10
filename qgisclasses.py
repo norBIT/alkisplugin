@@ -476,7 +476,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                         for e in text.split():
                             where.append( "name1 LIKE " + quote('%'+e+'%') )
 
-                        fs = self.plugin.highlight( u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join( where ) )
+                        fs = self.plugin.highlight( u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join( where ), True )
 
                         if len(fs)==0:
                             QMessageBox.information( None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text )
