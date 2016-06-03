@@ -6,28 +6,75 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>283</width>
-    <height>102</height>
+    <width>741</width>
+    <height>224</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>ALKIS-Suche</string>
   </property>
-  <layout class="QFormLayout" name="formLayout">
-   <property name="fieldGrowthPolicy">
-    <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-   </property>
-   <item row="0" column="0">
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="4" column="0">
+    <widget class="QLabel" name="lblHNR">
+     <property name="text">
+      <string>Hausnummer</string>
+     </property>
+     <property name="buddy">
+      <cstring>cbxHNR</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QLineEdit" name="leSuchbegriff"/>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close|QDialogButtonBox::Save</set>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>Suchbegriff</string>
      </property>
+     <property name="buddy">
+      <cstring>leSuchbegriff</cstring>
+     </property>
     </widget>
    </item>
-   <item row="0" column="1">
-    <widget class="QLineEdit" name="leSuchbegriff"/>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Modus</string>
+     </property>
+     <property name="buddy">
+      <cstring>cbxSuchmodus</cstring>
+     </property>
+    </widget>
    </item>
-   <item row="1" column="1">
+   <item row="3" column="0">
+    <widget class="QLabel" name="lblStrassen">
+     <property name="text">
+      <string>Straße</string>
+     </property>
+     <property name="buddy">
+      <cstring>cbxStrassen</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="pbSearchStr">
+     <property name="text">
+      <string>...</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" colspan="2">
     <widget class="QComboBox" name="cbxSuchmodus">
      <item>
       <property name="text">
@@ -56,25 +103,29 @@
      </item>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Modus</string>
+   <item row="3" column="1" colspan="2">
+    <widget class="QComboBox" name="cbxStrassen">
+     <property name="enabled">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   <item row="4" column="1" colspan="2">
+    <widget class="QComboBox" name="cbxHNR">
+     <property name="enabled">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>cbxSuchmodus</tabstop>
+  <tabstop>leSuchbegriff</tabstop>
+  <tabstop>cbxStrassen</tabstop>
+  <tabstop>cbxHNR</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
@@ -84,12 +135,12 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
+     <x>257</x>
+     <y>190</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
-     <y>274</y>
+     <y>174</y>
     </hint>
    </hints>
   </connection>
@@ -100,12 +151,12 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
+     <x>310</x>
+     <y>190</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
-     <y>274</y>
+     <y>174</y>
     </hint>
    </hints>
   </connection>

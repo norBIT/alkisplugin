@@ -411,9 +411,17 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 self.cbxSuchmodus.setCurrentIndex( s.value( "suchmodus", 0, type=int ) )
 
-        def accept(self):
+                (db, conninfo) = self.plugin.opendb()
+                self.db = db
+
+                self.buttonBox.addButton( u"Hinzufügen", QDialogButtonBox.ActionRole ).clicked.connect( self.addClicked )
+                self.buttonBox.addButton( u"Leeren", QDialogButtonBox.ActionRole ).clicked.connect( self.clearClicked )
+
+                self.on_cbxSuchmodus_currentIndexChanged(0)
+
+        def evaluate(self, add):
                 if not self.plugin.initLayers():
-                        return
+                        return False
 
                 text = self.leSuchbegriff.text()
 
@@ -427,18 +435,14 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                 # Exakter Treffer
                                 text = u"text='%s'" % text
 
-                            (db,conninfo) = self.plugin.opendb()
-                            if db is None:
-                                return
-
-                            qry = QSqlQuery(db)
+                            qry = QSqlQuery(self.db)
 
                             sql = u"SELECT count(*),st_extent( coalesce(point,line) ) FROM po_labels WHERE {0}".format( text )
                             if qry.exec_( sql ) and qry.next() and qry.value(0)>0:
                                 self.plugin.zoomToExtent( qry.value(1), self.plugin.pointMarkerLayer.crs() )
                             else:
                                 QMessageBox.information( None, "ALKIS", u"Keine Treffer gefunden." )
-                                return
+                                return False
                         else:
                             text = "false"
 
@@ -458,19 +462,30 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                                 flsnr += "%04d" % n if n>0 else "____"
                                 flsnr += "%"
 
-                                fs = self.plugin.highlight( u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True )
+                                fs = self.plugin.highlight( u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True, add )
                                 if len(fs)==0:
                                         QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s gefunden." % flsnr )
-                                        return
+                                        return False
 
                 elif self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
                         m = re.search( "^(.*)\s+(\d+[a-zA-Z]?)$", text )
                         if m:
                                 strasse, ha = m.group(1), m.group(2)
-                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format( quote(strasse+'%'), quote(ha.upper()) ), True )
+                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format( quote(strasse+'%'), quote(ha.upper()) ), True, add )
                                 if len(fs)==0:
                                     QMessageBox.information( None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha) )
-                                    return
+                                    return False
+
+                        if self.cbxHNR.isVisible():
+                            hnr = self.cbxHNR.currentText()
+                            if hnr <> "Alle":
+                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0} AND h.hausnummer={1})".format( quote(self.cbxStrassen.itemData( self.cbxStrassen.currentIndex() ) ), quote(hnr)), True, add )
+                            else:
+                                fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})".format( quote(self.cbxStrassen.itemData( self.cbxStrassen.currentIndex() ) ) ), True, add )
+
+                            if len(fs)==0:
+                                QMessageBox.information( None, u"Fehler", u"Keine Flurstücke gefunden." )
+                                return False
 
                 elif self.cbxSuchmodus.currentIndex() == 4:  # Eigentümer
                         where = []
@@ -478,16 +493,77 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                         for e in text.split():
                             where.append( "name1 LIKE " + quote('%'+e+'%') )
 
-                        fs = self.plugin.highlight( u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join( where ), True )
+                        fs = self.plugin.highlight( u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join( where ), True, add )
 
                         if len(fs)==0:
                             QMessageBox.information( None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text )
-                            return
+                            return False
+
+                return True
+
+        def addClicked(self):
+                self.evaluate(True)
+
+        def clearClicked(self):
+                self.plugin.clearHighlight()
+
+        def accept(self):
+                if not self.evaluate(False):
+                    return
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 s.setValue( "suchmodus", self.cbxSuchmodus.currentIndex() )
 
                 QDialog.accept(self)
+
+        def on_cbxSuchmodus_currentIndexChanged(self, index):
+                self.lblStrassen.setVisible( False )
+                self.cbxStrassen.setVisible( False )
+                self.lblHNR.setVisible( False )
+                self.cbxHNR.setVisible( False )
+                self.pbSearchStr.setVisible( False )
+
+                self.on_leSuchbegriff_textChanged()
+
+        def on_leSuchbegriff_textChanged(self):
+                self.lblStrassen.setVisible( False )
+                self.cbxStrassen.setVisible( False )
+                self.lblHNR.setVisible( False )
+                self.cbxHNR.setVisible( False )
+
+                if self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
+                    m = re.search( "^(.*)\s+(\d+[a-zA-Z]?)$", self.leSuchbegriff.text())
+                    if m:
+                        self.pbSearchStr.setVisible( False )
+                    else:
+                        self.pbSearchStr.setVisible( True )
+
+        def on_pbSearchStr_clicked(self):
+                qry = QSqlQuery(self.db)
+
+                self.cbxStrassen.clear()
+                if qry.exec_( u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE k.bezeichnung LIKE {0} AND k.endet IS NULL".format( quote(self.leSuchbegriff.text()+'%') ) ):
+                    while qry.next():
+                        self.cbxStrassen.addItem( qry.value(1), qry.value(0) )
+
+                self.lblStrassen.setVisible( self.cbxStrassen.count() > 0 )
+                self.cbxStrassen.setVisible( self.cbxStrassen.count() > 0 )
+
+                self.on_cbxStrassen_currentIndexChanged(0)
+
+        def on_cbxStrassen_currentIndexChanged(self, index):
+                qry = QSqlQuery(self.db)
+
+                schluesselgesamt = self.cbxStrassen.itemData( self.cbxStrassen.currentIndex() )
+
+                self.cbxHNR.clear()
+                self.cbxHNR.addItem( "Alle" )
+                if qry.exec_( u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format( quote( schluesselgesamt ) ) ):
+                    while qry.next():
+                        self.cbxHNR.addItem( qry.value(0) )
+
+                self.lblHNR.setVisible( self.cbxHNR.count() > 0 )
+                self.cbxHNR.setVisible( self.cbxHNR.count() > 0 )
 
 class ALKISOwnerInfo(QgsMapTool):
         def __init__(self, plugin):

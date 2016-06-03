@@ -30,7 +30,7 @@ from PyQt4.QtSql import QSqlDatabase, QSqlQuery, QSqlError, QSql
 from PyQt4 import QtCore
 
 from tempfile import NamedTemporaryFile
-import os, sys
+import os, sys, re
 
 BASEDIR = os.path.dirname( unicode(__file__,sys.getfilesystemencoding()) )
 
@@ -1064,7 +1064,10 @@ class alkisplugin(QObject):
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
-                katalog = int( s.value( "signaturkatalog", -1 ) )
+                try:
+                    katalog = int( s.value( "signaturkatalog", -1 ) )
+                except:
+                    katalog = -1
 
                 self.iface.mapCanvas().setRenderFlag( False )
 
@@ -1646,7 +1649,7 @@ class alkisplugin(QObject):
                 currentLayer = self.iface.activeLayer()
                 self.iface.mapCanvas().refresh()
 
-        def highlight(self, where, zoomTo=False):
+        def highlight(self, where, zoomTo=False, add=False):
                 fs = []
 
                 if not self.areaMarkerLayer:
@@ -1686,9 +1689,14 @@ class alkisplugin(QObject):
                         return fs
 
 
-                gmlids = []
+                gmlids = set()
                 for e in fs:
-                        gmlids.append( e['gmlid'] )
+                        gmlids.add( e['gmlid'] )
+
+                if add:
+                    m = re.search( "layer='ax_flurstueck' AND gml_id IN \\('(.*)'\\)", self.areaMarkerLayer.subsetString() )
+                    if m:
+                        gmlids = gmlids | set( m.group(1).split("','") )
 
                 self.areaMarkerLayer.setSubsetString( "layer='ax_flurstueck' AND gml_id IN ('" + "','".join( gmlids ) + "')" )
 
