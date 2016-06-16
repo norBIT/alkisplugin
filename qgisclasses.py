@@ -542,7 +542,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 qry = QSqlQuery(self.db)
 
                 self.cbxStrassen.clear()
-                if qry.exec_( u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE k.bezeichnung LIKE {0} AND k.endet IS NULL".format( quote(self.leSuchbegriff.text()+'%') ) ):
+                if qry.exec_( u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE k.bezeichnung LIKE {0} AND k.endet IS NULL ORDER BY k.bezeichnung || coalesce(', ' || g.bezeichnung,'')".format( quote(self.leSuchbegriff.text()+'%') ) ):
                     while qry.next():
                         self.cbxStrassen.addItem( qry.value(1), qry.value(0) )
 
