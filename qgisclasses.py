@@ -113,6 +113,8 @@ class ALKISConf(QDialog, ConfBase):
                 self.cbxSignaturkatalog.clear()
 
                 modelle = s.value( "modellarten", ['DLKM','DKKM1000'] )
+                if modelle is None:
+                    modelle = ['DLKM','DKKM1000']
                 (db,conninfo) = self.plugin.opendb()
                 if not db:
                     if error:
@@ -201,7 +203,7 @@ class Info( QDialog, InfoBase ):
                 QDialog.__init__(self)
                 self.setupUi(self)
 
-                self.wvEigner.setHtml( html )
+                self.tbEigentuemer.setHtml( html )
 
                 self.restoreGeometry( QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" ).value("infogeom", QByteArray(), type=QByteArray) )
 
@@ -209,7 +211,7 @@ class Info( QDialog, InfoBase ):
 		printer = QPrinter()
 		dlg = QPrintDialog( printer )
 		if dlg.exec_() == QDialog.Accepted:
-			self.wvEigner.print_( printer )
+			self.tbEigentuemer.print_( printer )
 
 	def contextMenuEvent(self,e):
 		menu = QMenu( self )
@@ -934,7 +936,7 @@ class ALKISOwnerInfo(QgsMapTool):
 """ % bse
                                         else:
                                                 html += """
-        <p>Keine Eigner gefunden.</p>
+        <p>Kein Eigentümer gefunden.</p>
 """
 
                                         html += """
