@@ -733,8 +733,8 @@ class ALKISOwnerInfo(QgsMapTool):
 .fls_footnote{text-align:center;}
 </style>
 
-<TABLE class="fls_tab" border="0">
-    <TR><TD>Flurst&uuml;cksnachweis</TD><TD class="fls_time" colspan="6"><span>%(datum)s</TD></TR>
+<TABLE class="fls_tab" border="0" width="100%%">
+    <TR><TD>Flurst&uuml;cksnachweis</TD><TD class="fls_time" colspan="6" align="right"><span>%(datum)s</TD></TR>
     <TR><TD colspan="7"><hr style="width:100%%"></TD></TR>
     <TR class="fls_headline_col">
         <TD colspan="7"><span class="fls_headline">Flurst&uuml;cksnachweis<span></TD>
@@ -759,14 +759,14 @@ class ALKISOwnerInfo(QgsMapTool):
         <TD>%(flurknr)s</TD>
         <TD>%(entst)s</TD>
         <TD>%(fortf)s</TD>
-        <TD nowrap>%(flsfl)s m&sup2;</TD>
+        <TD>%(flsfl)s&nbsp;m&sup2;</TD>
     </TR>
 </TABLE>
 """ % res
 
                         if res['blbnr']:
                                 html += """
-<TABLE border="0" class="fls_tab">
+<TABLE class="fls_tab" border="0" width="100%%">
     <TR class="fls_col_names">
         <TD width="21%%"></TD>
         <TD width="79%%">Baulastenblattnr.</TD>
@@ -780,7 +780,7 @@ class ALKISOwnerInfo(QgsMapTool):
 
                         if res['lagebez'] or res['anl_verm']:
                                 html += """
-<TABLE border="0" class="fls_tab">
+<TABLE class="fls_tab" border="0" width="100%%">
     <TR class="fls_col_names">
         <TD width="21%%"></TD>
         <TD width="52%%">Lage</TD>
@@ -796,9 +796,11 @@ class ALKISOwnerInfo(QgsMapTool):
 
                         if res['str']:
                                 html += """
-<TABLE border="0" class="fls_tab">
+<TABLE border="0" class="fls_tab" width="100%">
     <TR class="fls_col_names">
-        <TD></TD><TD>Strasse</TD><TD>Hausnummer</TD>
+        <TD width="21%"></TD>
+        <TD width="52%">Strasse</TD>
+        <TD width="27%">Hausnummer</TD>
     </TR>
 """
 
@@ -813,67 +815,67 @@ class ALKISOwnerInfo(QgsMapTool):
 </TABLE>
 """
 
-                        if res['nutz']:
-                                html += """
-<TABLE border="0" class="fls_tab">
-        <TR class="fls_col_names"><TD width="21%%"></TD><TD width="69%%">Nutzung</TD><TD width="10%%">Fl&auml;che</TD></TR>
+                        html += """
+<TABLE border="0" class="fls_tab" width="100%">
+        <TR class="fls_col_names"><TD width="21%"></TD><TD width="69%">Nutzung</TD><TD width="10%">Fl&auml;che</TD></TR>
 """
-
+                        if res['nutz']:
                                 for nutz in res['nutz']:
                                         html += """
-        <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD nowrap>%(fl)s m&sup2;</TD></TR>
+        <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
 """ % nutz
-
-                                html += """
-</TABLE>
-"""
                         else:
                                 html += """
-        <p>Keine Nutzungen.</p>
+        <TR class="fls_col_values"><TD></TD><TD colspan=2 align="center">Keine</TD></TR>
+"""
+
+                        html += """
+</TABLE>
+"""
+
+                        html += """
+<TABLE border="0" class="fls_tab" width="100%">
+        <TR class="fls_col_names"><TD width="21%"></TD><TD width="69%">Klassifizierung(en)</TD><TD width="10%">Fl&auml;che</TD></TR>
 """
 
                         if res['klas']:
-                                html += """
-<TABLE border="0" class="fls_tab">
-        <TR class="fls_col_names"><TD width="21%%"></TD><TD width="69%%">Klassifizierung</TD><TD width="10%%">Fl&auml;che</TD></TR>
-"""
-
                                 for klas in res['klas']:
                                         html += """
-        <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD nowrap>%(fl)s m&sup2;</TD></TR>
+        <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
 """ % klas
-
-                                html += """
-</TABLE>
-"""
                         else:
                                 html += """
-        <p>Keine Klassifizierungen.</p>
+        <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
+"""
+
+                        html += """
+</TABLE>
+"""
+                        html += """
+<TABLE border="0" class="fls_tab" width="100%">
+        <TR class="fls_col_names"><TD width="21%"></TD><TD width="79%">Ausf&uuml;hrende Stelle(n)</TD></TR>
 """
 
                         if res['afst']:
-                                html += """
-<TABLE border="0" class="fls_tab">
-        <TR class="fls_col_names"><TD width="21%%"></TD><TD width="79%%">Ausf&uuml;hrende Stelle</TD></TR>
-"""
-
                                 for afst in res['afst']:
                                         html += """
         <TR class="fls_col_values"><TD></TD><TD>%(afst_txt)s</TD></TR>
 """ % afst
 
-                                html += """
-</TABLE>
-"""
                         else:
                                 html += """
-        <p>Keine ausf&uuml;hrenden Stellen.</p>
+        <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
+"""
+
+                        html += """
+</TABLE>
 """
 
                         if res['best']:
                                 html += """
-<TABLE border="0" class="fls_bst">
-        <TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%%"></h3></TD></TR>
+<br>
+<TABLE border="0" class="fls_bst" width="100%">
+        <TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%"></h3></TD></TR>
 """
 
                                 for best in res['best']:
