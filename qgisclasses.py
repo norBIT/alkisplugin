@@ -416,7 +416,8 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 (db, conninfo) = self.plugin.opendb()
                 self.db = db
 
-                if not self.plugin.queryOwnerAction.isVisible():
+                qry = QSqlQuery(db)
+                if not qry.exec_( "SELECT has_table_privilege('eigner', 'SELECT')" ) or not qry.next() or not qry.value(0):
                     self.cbxSuchmodus.removeItem(4)
 
                 self.buttonBox.addButton( u"Hinzufügen", QDialogButtonBox.ActionRole ).clicked.connect( self.addClicked )
@@ -675,9 +676,6 @@ class ALKISOwnerInfo(QgsMapTool):
                         exists_ea_anteil = False
 
 
-                if not self.plugin.queryOwnerAction.isVisible():
-                        return u"Kein Zugriff auf Buchdaten."
-
                 html=""
                 for i in range(0, len(fs)):
                         flsnr = fs[i]['flsnr']
@@ -709,15 +707,25 @@ class ALKISOwnerInfo(QgsMapTool):
                         res['datum'] = QDate.currentDate().toString( "d. MMMM yyyy" )
                         res['hist'] = 0
 
-                        res['str']  = self.fetchall( db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0" % flsnr )
-                        res['nutz'] = self.fetchall( db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr )
-                        res['klas'] = self.fetchall( db, "SELECT kl.*, kls.klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0" % flsnr )
-                        res['afst'] = self.fetchall( db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr )
-                        res['best'] = self.fetchall( db, "SELECT ea.bvnr,'' as pz,(SELECT eignerart FROM eign_shl WHERE ea.b = b) as eignerart,%s as anteil,ea.ff_stand AS zhist,b.bestdnr,b.gbbz,b.gbblnr,b.bestfl,b.ff_stand AS bhist FROM eignerart ea JOIN bestand b ON ea.bestdnr = b.bestdnr WHERE ea.flsnr='%s' ORDER BY zhist,bhist,b" %
+                        if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['strassen', 'str_shl']) ) ) and qry.next() and qry.value(0):
+                            res['str']  = self.fetchall( db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0" % flsnr )
+
+                        if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['nutz_21', 'nutz_shl']) ) ) and qry.next() and qry.value(0):
+                            res['nutz'] = self.fetchall( db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr )
+
+                        if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['klas_3x', 'kls_shl']) ) ) and qry.next() and qry.value(0):
+                            res['klas'] = self.fetchall( db, "SELECT kl.*, kls.klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0" % flsnr )
+
+                        if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['ausfst', 'afst_shl']) ) ) and qry.next() and qry.value(0):
+                            res['afst'] = self.fetchall( db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr )
+
+                        if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['bestand', 'eignerart', 'eign_shl']) ) ) and qry.next() and qry.value(0):
+                            res['best'] = self.fetchall( db, "SELECT ea.bvnr,'' as pz,(SELECT eignerart FROM eign_shl WHERE ea.b = b) as eignerart,%s as anteil,ea.ff_stand AS zhist,b.bestdnr,b.gbbz,b.gbblnr,b.bestfl,b.ff_stand AS bhist FROM eignerart ea JOIN bestand b ON ea.bestdnr = b.bestdnr WHERE ea.flsnr='%s' ORDER BY zhist,bhist,b" %
                                                                 ("ea.anteil" if exists_ea_anteil else "''", flsnr) )
 
-                        for b in res['best']:
-                                b['bse'] = self.fetchall( db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'] )
+                            if qry.exec_( "SELECT has_table_privilege('eigner', 'SELECT')" ) and qry.next() and qry.value(0):
+                                for b in res['best']:
+                                    b['bse'] = self.fetchall( db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'] )
 
 #                        for k,v in res.iteritems():
 #                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
@@ -772,7 +780,7 @@ class ALKISOwnerInfo(QgsMapTool):
 """ % res
 
                         if res['blbnr']:
-                                html += """
+                                html += u"""
 <TABLE class="fls_tab" border="0" width="100%%">
     <TR class="fls_col_names">
         <TD width="21%%"></TD>
@@ -786,7 +794,7 @@ class ALKISOwnerInfo(QgsMapTool):
 """ % res
 
                         if res['lagebez'] or res['anl_verm']:
-                                html += """
+                                html += u"""
 <TABLE class="fls_tab" border="0" width="100%%">
     <TR class="fls_col_names">
         <TD width="21%%"></TD>
@@ -801,8 +809,9 @@ class ALKISOwnerInfo(QgsMapTool):
 </TABLE>
 """ % res
 
-                        if res['str']:
-                                html += """
+                        if 'str' in res:
+                            if res['str']:
+                                html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
     <TR class="fls_col_names">
         <TD width="21%"></TD>
@@ -812,81 +821,86 @@ class ALKISOwnerInfo(QgsMapTool):
 """
 
                                 for strres in res['str']:
-                                        html += """
+                                        html += u"""
     <TR class="fls_col_values">
         <TD></TD><TD>%(strname)s</TD><TD>%(hausnr)s</TD></TR>
     </TR>
 """ % strres
 
-                                html += """
+                                html += u"""
 </TABLE>
 """
 
-                        html += """
+                        if 'nutz' in res:
+                            html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
         <TR class="fls_col_names"><TD width="21%"></TD><TD width="69%">Nutzung</TD><TD width="10%">Fl&auml;che</TD></TR>
 """
-                        if res['nutz']:
+                            if res['nutz']:
                                 for nutz in res['nutz']:
-                                        html += """
+                                    html += u"""
         <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
 """ % nutz
-                        else:
-                                html += """
+                            else:
+                                    html += u"""
         <TR class="fls_col_values"><TD></TD><TD colspan=2 align="center">Keine</TD></TR>
 """
 
-                        html += """
+                        html += u"""
 </TABLE>
 """
 
-                        html += """
+                        if 'klas' in res:
+                            html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
         <TR class="fls_col_names"><TD width="21%"></TD><TD width="69%">Klassifizierung(en)</TD><TD width="10%">Fl&auml;che</TD></TR>
 """
 
-                        if res['klas']:
+                            if res['klas']:
                                 for klas in res['klas']:
-                                        html += """
+                                        html += u"""
         <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
 """ % klas
-                        else:
-                                html += """
+                            else:
+                                html += u"""
         <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
 """
 
-                        html += """
+                        html += u"""
 </TABLE>
 """
-                        html += """
+
+                        if 'afst' in res:
+                            html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
         <TR class="fls_col_names"><TD width="21%"></TD><TD width="79%">Ausf&uuml;hrende Stelle(n)</TD></TR>
 """
 
-                        if res['afst']:
+                            if res['afst']:
                                 for afst in res['afst']:
-                                        html += """
+                                        html += u"""
         <TR class="fls_col_values"><TD></TD><TD>%(afst_txt)s</TD></TR>
 """ % afst
 
-                        else:
-                                html += """
+                            else:
+                                html += u"""
         <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
 """
 
-                        html += """
+                            html += u"""
 </TABLE>
 """
 
-                        if res['best']:
-                                html += """
+                        if 'best' in res:
+                                if res['best']:
+                                    html += u"""
 <br>
 <TABLE border="0" class="fls_bst" width="100%">
         <TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%"></h3></TD></TR>
 """
 
-                                for best in res['best']:
-                                        html += """
+                                    for best in res['best']:
+                                        html += u"""
         <TR class="fls_col_names">
                 <TD>Bestandsnummer</TD>
                 <TD>Grundbuchbezirk</TD>
@@ -907,15 +921,15 @@ class ALKISOwnerInfo(QgsMapTool):
 """ % best
 
                                         if res['hist']:
-                                                html += """
+                                                html += u"""
                 <TD>Hist. Bestand</TD><TD>Hist. Zuordnung</TD>
 """
                                         else:
-                                                html += """
+                                                html += u"""
                 <TD></TD><TD></TD>
 """
 
-                                        html += """
+                                        html += u"""
         </TR>
         <TR class="fls_col_values">
                 <TD></TD>
@@ -927,42 +941,43 @@ class ALKISOwnerInfo(QgsMapTool):
                                         html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['bhist'] else "")
                                         html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['zhist'] else "")
 
-                                        html += """
+                                        html += u"""
         </TR>
 """
 
-                                        if best['bse']:
-                                                html += """
+                                        if 'bse' in best:
+                                            if best['bse']:
+                                                html += u"""
         <TR class="fls_col_names"><TD>Anteil</TD><TD colspan="5">Namensinformation</TD></TR>
 """
 
                                                 for bse in best['bse']:
-                                                        html += """
+                                                    html += u"""
         <TR class="fls_col_values">
                 <TD>%(antverh)s</TD>
                 <TD colspan="5">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
         </TR>
 """ % bse
-                                        else:
-                                                html += """
+                                            else:
+                                                html += u"""
         <p>Kein Eigentümer gefunden.</p>
 """
 
-                                        html += """
+                                            html += u"""
         <TR><TD colspan="6"><hr class="fls_hr"></TD></TR>
 """
 
-                html += """
+                html += u"""
 """
 
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 footnote = s.value( "footnote", "" )
                 if footnote:
-                        html += """
+                        html += u"""
         <TR><TD colspan="7" class="fls_footnote">%s</TD></TR>
 """ % footnote
 
-                html += """
+                html += u"""
         </TABLE>
 </BODY>
 </HTML>

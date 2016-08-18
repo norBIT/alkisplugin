@@ -1616,7 +1616,7 @@ class alkisplugin(QObject):
                 if db.open() and qgisAvailable:
                     qry = QSqlQuery(db)
 
-                    sql = u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['eigner', 'eignerart', 'bestand', 'flurst', 'strassen', 'nutz_21', 'nutz_shl', 'klas_3x', 'kls_shl', 'ausfst', 'afst_shl'] ) )
+                    sql = u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['gema_shl', 'eignerart', 'bestand', 'flurst']) )
                     buchZugriff = qry.exec_( sql ) and qry.next() and qry.value(0)
 
                     self.queryOwnerAction.setVisible(buchZugriff)
