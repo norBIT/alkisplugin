@@ -259,7 +259,15 @@
   <tabstop>leHOST</tabstop>
   <tabstop>lePORT</tabstop>
   <tabstop>leDBNAME</tabstop>
+  <tabstop>tabWidget</tabstop>
   <tabstop>leUID</tabstop>
+  <tabstop>lePWD</tabstop>
+  <tabstop>leUMNPath</tabstop>
+  <tabstop>pbUMNBrowse</tabstop>
+  <tabstop>leUMNTemplate</tabstop>
+  <tabstop>cbxSignaturkatalog</tabstop>
+  <tabstop>twModellarten</tabstop>
+  <tabstop>teFussnote</tabstop>
   <tabstop>bb</tabstop>
  </tabstops>
  <resources/>

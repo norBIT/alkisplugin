@@ -737,8 +737,10 @@ class alkisplugin(QObject):
 
                 self.queryOwnerAction = QAction( QIcon( "alkis:eigner.svg" ), u"Flurstücksnachweis", self.iface.mainWindow())
                 self.queryOwnerAction.triggered.connect( self.setQueryOwnerTool )
+                self.queryOwnerAction.setCheckable(True)
                 self.toolbar.addAction( self.queryOwnerAction )
                 self.queryOwnerInfoTool = ALKISOwnerInfo( self )
+                self.queryOwnerInfoTool.setAction( self.queryOwnerAction )
 
                 self.clearAction = QAction( QIcon( "alkis:clear.svg" ), "Hervorhebungen entfernen", self.iface.mainWindow())
                 self.clearAction.setWhatsThis("Hervorhebungen entfernen")
@@ -772,13 +774,17 @@ class alkisplugin(QObject):
                 if ns.contains( "norGISPort" ):
                         self.pointInfoAction = QAction( QIcon( "alkis:info.svg" ), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
                         self.pointInfoAction.activated.connect( self.setPointInfoTool )
+                        self.pointInfoAction.setCheckable(True)
                         self.toolbar.addAction( self.pointInfoAction )
                         self.pointInfoTool = ALKISPointInfo( self )
+                        self.pointInfoTool.setAction( self.pointInfoAction )
 
                         self.polygonInfoAction = QAction( QIcon( "alkis:pinfo.svg" ), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
                         self.polygonInfoAction.activated.connect( self.setPolygonInfoTool )
+                        self.polygonInfoAction.setCheckable(True)
                         self.toolbar.addAction( self.polygonInfoAction )
                         self.polygonInfoTool = ALKISPolygonInfo( self )
+                        self.polygonInfoTool.setAction( self.polygonInfoAction )
                 else:
                         self.pointInfoTool = None
                         self.polygonInfoTool = None
@@ -1606,6 +1612,14 @@ class alkisplugin(QObject):
                     uri.setUsername( None )
                     uri.setPassword( None )
                     conninfo = uri.connectionInfo(False)
+
+                if db.open() and qgisAvailable:
+                    qry = QSqlQuery(db)
+
+                    sql = u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['eigner', 'eignerart', 'bestand', 'flurst', 'strassen', 'nutz_21', 'nutz_shl', 'klas_3x', 'kls_shl', 'ausfst', 'afst_shl'] ) )
+                    buchZugriff = qry.exec_( sql ) and qry.next() and qry.value(0)
+
+                    self.queryOwnerAction.setVisible(buchZugriff)
 
                 return (db,conninfo)
 

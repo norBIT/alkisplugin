@@ -416,6 +416,9 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 (db, conninfo) = self.plugin.opendb()
                 self.db = db
 
+                if not self.plugin.queryOwnerAction.isVisible():
+                    self.cbxSuchmodus.removeItem(4)
+
                 self.buttonBox.addButton( u"Hinzufügen", QDialogButtonBox.ActionRole ).clicked.connect( self.addClicked )
                 self.buttonBox.addButton( u"Leeren", QDialogButtonBox.ActionRole ).clicked.connect( self.clearClicked )
 
@@ -670,6 +673,10 @@ class ALKISOwnerInfo(QgsMapTool):
                         exists_ea_anteil = qry.value(0) == 1
                 else:
                         exists_ea_anteil = False
+
+
+                if not self.plugin.queryOwnerAction.isVisible():
+                        return u"Kein Zugriff auf Buchdaten."
 
                 html=""
                 for i in range(0, len(fs)):
