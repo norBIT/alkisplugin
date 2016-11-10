@@ -12,12 +12,123 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.11
+version=2.0.12
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
+
+changelog=Änderungen in 2.0.12
+ 
+ * NRW KOM-OK Symbole ergänzt
+ * Änderungsliste in metadata.txt
+ 
+ Änderungen in 2.0.11
+ 
+ * Flurstücksnachweis an abfragbare Tabellen anpassen
+ 
+ Änderungen in 2.0.10
+ 
+ * Eigentümerabfragen ausblenden, wenn Buchdaten nicht verfügbar sind
+ * Taborder in Konfiguration korrigiert
+ 
+ Änderungen in 2.0.9
+ 
+ * Eigentümerauskunftslayout angepaßt
+ 
+ Änderungen in 2.0.8
+ 
+ * Eigentümerabfragen von QWebView auf QTextBrowser umstellen (für Debian unstable/testing)
+ 
+ Änderungen in 2.0.7 (Experimental)
+ 
+ * Eigentümerabfragen von QWebView auf QTextBrowser umstellen (für Debian unstable/testing)
+ 
+ Änderungen in 2.0.6
+ 
+ * Straßen-/Hausnummernsuche: gefundene Straßen sortieren
+ 
+ Änderungen in 2.0.5
+ 
+ * Kommulative Suche
+ * Suche nach Straße/Hausnummer verbessert
+ 
+ Änderungen in 2.0.4
+ 
+ * Zoom auf Flurstücke nach Eigentümersuche
+ * Optionale Fußnote für Flurstücksnachweis
+ 
+ Änderungen in 2.0.3
+ 
+ Auf Flächenlayern keine Randlinien darstellen (sind bereits auf Grenzen und Linien)
+ 
+ Änderungen in 2.0.2
+ 
+ Unterstützung für neue QGIS-Authentifizierung
+ 
+ Änderungen in 2.0.1
+ 
+ Fix für https://github.com/norBIT/alkisplugin/issues/8
+ 
+ Änderungen in 2.0.0
+ 
+ * Unterstützung eines S/W-Signaturkatalogs neben dem für die Farbdarstellung (S/W erfordert Migration oder Neuimport mit norGIS ALKIS-Import-Version)
+ * Laufende Hausnummer in gesondertem Layer darstellen.
+ * UMN-Mapfile-Erzeugung: Konfigurationsmöglichkeit für Flurstücksabfragetemplate und Serverpfad vorgesehen.
+ * Zoom auf Suchergebnisse bei BW/BY-Projektion korrigiert.
+ * Eigentümerabfrage aus Performance-Gründen wieder auf norGIS-Buchdaten umgestellt.
+ 
+ Änderungen in 1.0.9
+ 
+ * Mapfileerzeugung verbessert (Linienstile, Layerstatus)
+ * Formatierung des Flurstücksnachweise verbessert.
+ 
+ Änderungen in 1.0.8
+ 
+ Bestandsanzeige korrigiert
+ 
+ Änderungen in 1.0.7
+ 
+ * Bei Liniensignaturen mit unterschiedlichen Einzügen nur warnen
+ * Mapfile-Erzeugung: st_offsetcurve mit leerem dritten Parameter aufrufen
+ 
+ Änderungen in 1.0.6
+ 
+ * Unterstützung für Benutzerverzeichnisse mit Umlauten
+ * Name für Verkehrssignaturen ergänzt
+ * Veraltete QgsMapLayer.toggleScaleBasedVisibility gegen setScaleBasedVisibility ersetzt
+ 
+ Änderungen in 1.0.5
+ 
+ * Schemaanpassung an alkisimport
+ * Fontsperrung verbessert
+ * Unterstützung für Schriftfarben und -sperrung
+ * pre-1.8 datendefinierte Beschriftungskonfiguration entfernt
+ * Menüeinträge beim Entladen entfernen
+ 
+ Änderungen in 1.0.4
+ 
+ * Ab QGIS 6d4dee91 transparente Hintergrundlinie für Liniensignaturen verwenden
+ * Druckfunktion im Kontextmenü der Flurstücksnachweise ergänzt
+ * Eignerlayer durch Eigersuche ersetzt
+ 
+ Änderungen in 1.0.3
+ 
+ *Unterstützung für Liniensignaturen auf QGIS 2.4 beschränken
+ * Nenner mit Buchstaben berücksichtigen (Sachsen/SN)
+ 
+ Änderungen in 1.0.2
+ 
+ * Markierungslayer in QGIS-Server ausblenden
+ * Letzten Suchmodus merken und Auffüllung des Flurstückskennzeichen mit 00 (BW) statt __ berücksichtigen
+ * Flurstücksüberhakenposition korrigiert
+ 
+ Änderungen in 1.0.1
+ 
+ * Erzeugung von Liniensignaturen ergänzt
+ * Anlegen von Benutzerkoordinatensystem für BW/BY (ermöglicht Reprojektion)
+ * Signaturnamen ergänzt
 
 homepage=http://www.norbit.de/75/
 repository=https://github.com/norBIT/alkisplugin

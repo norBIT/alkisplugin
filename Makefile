@@ -14,7 +14,8 @@ alkisplugin-$(VERSION).zip: plugin.xml
 	git archive --format=zip --prefix=alkisplugin/ HEAD >alkisplugin-$(VERSION).zip
 
 upload: plugin.xml alkisplugin-$(VERSION).zip
-	rsync -apvP alkisplugin-$(VERSION).zip plugin.xml logo.svg jef@buten.intern.norbit.de:~jef/public_html/qgis/
+	python plugin_upload.py alkisplugin-$(VERSION).zip
 
 release:
 	@perl mkxml.pl -r
+	vim +/changelog= -c "set list" metadata.txt

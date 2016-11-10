@@ -17,15 +17,27 @@ while( <I> ) {
 		#$v{$s}{$1} = $2;
 		$v{$k} = $v;
 
-		if( grep("-r", @ARGV) && $k eq "version" ) {
+		next unless grep("-r", @ARGV);
+
+		if( $k eq "version" ) {
 			my($major,$minor,$patch) = split /\./, $v;
 			$patch++;
 			$v{version} = "$major.$minor.$patch";
 			$_ = "version=$v{version}\n";
 			print STDERR "New version:" . $v{version} . "\n";
+		} elsif( $k eq "changelog" ) {
+			$_ = "changelog=Änderungen in $v{version}\n \n";
+			open F, "git log --date-order --date=short --pretty=%B \$(git log -1 --pretty=%h metadata.txt)..|";
+			while(my $l = <F>) {
+				next if $l =~ /^\s*$/;
+				$_ .= " * $l";
+			}
+			close F;
+			s/\s+$//;
+			$_ .= "\n \n $v\n";
 		}
 	}
-
+} continue {
 	print O;
 }
 close O;
@@ -45,7 +57,7 @@ print F <<EOF;
         <qgis_minimum_version>$v{qgisMinimumVersion}</qgis_minimum_version>
         <qgis_maximum_version>2.99.0</qgis_maximum_version>
         <homepage>http://www.norbit.de</homepage>
-	<icon>./logo.svg</icon>
+        <icon>./logo.svg</icon>
         <file_name>alkisplugin-$v{version}.zip</file_name>
         <author_name><![CDATA[$v{author}]]></author_name>
         <download_url>http://buten.norbit.de/~jef/qgis/alkisplugin-$v{version}.zip</download_url>
