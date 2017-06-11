@@ -53,7 +53,7 @@ except:
         mapscriptAvailable = False
 
 def qDebug(s):
-        QtCore.qDebug( s.encode('ascii', 'ignore') )
+    QtCore.qDebug( s.encode('ascii', 'ignore') )
 
 def logMessage(s):
     if qgisAvailable:
@@ -100,8 +100,12 @@ class alkisplugin(QObject):
                         'point'  : { 'min':0, 'max':3500 },
                         'label'  : { 'min':0, 'max':3500 },
                         'filter' : [
-                            { 'name': u"Gebäude", 'filter': "layer<>'ax_lagebezeichnungmitpseudonummer'" },
-                            { 'name': u"Laufende Hausnummern", 'filter': "layer='ax_lagebezeichnungmitpseudonummer'" },
+                            { 'name': u"Gebäude",	        'filter': "layer NOT IN ('ax_lagebezeichnungmitpseudonummer','ax_gebaeude_dachform','ax_gebaeude_funktion','ax_gebaeude_geschosse','ax_gebaeude_zustand')", },
+                            { 'name': u"Laufende Hausnummern",	'filter': "layer='ax_lagebezeichnungmitpseudonummer'", },
+                            { 'name': u"Dachform",              'filter': "layer='ax_gebaeude_dachform'", },
+                            { 'name': u"Funktion",              'filter': "layer='ax_gebaeude_funktion'", },
+                            { 'name': u"Geschosse",             'filter': "layer='ax_gebaeude_geschosse'", },
+                            { 'name': u"Zustand",               'filter': "layer='ax_gebaeude_zustand'", },
                         ],
                         'classes': {
                             '1301': u'Wohngebäude',
@@ -262,6 +266,24 @@ class alkisplugin(QObject):
                         'classes': {
                             '1405': u'[1405]',
                             '2515': u'[2515]',
+                        },
+                },
+                {
+                        'name'   : u"Topographie",
+                        'area'   : { 'min':0, 'max':500000, },
+                        'outline': { 'min':0, 'max':10000, },
+                        'line'   : { 'min':0, 'max':10000, },
+                        'point'  : { 'min':0, 'max':10000, },
+                        'label'  : { 'min':0, 'max':10000, },
+                        'classes': {
+                            '2620': u'Damm, Wall, Deich, Graben, Knick, Wallkante',
+                            '3484': u'Düne, Sand',
+                            '3601': u'Busch, Hecke, Knick',
+                            '3625': u'Höhleneingang',
+                            '3627': u'Felsen, Felsblock, Felsnadel',
+                            '3629': u'Besonderer topographischer Punkt',
+                            '3632': u'Busch, Hecke, Knick',
+                            '3634': u'Felsen, Felsblock, Felsnadel',
                         },
                 },
                 {
@@ -463,24 +485,6 @@ class alkisplugin(QObject):
                             '2515': u'[2515]',
                         },
                 },
-                {
-                        'name'   : u"Topographie",
-                        'area'   : { 'min':0, 'max':500000, },
-                        'outline': { 'min':0, 'max':10000, },
-                        'line'   : { 'min':0, 'max':10000, },
-                        'point'  : { 'min':0, 'max':10000, },
-                        'label'  : { 'min':0, 'max':10000, },
-                        'classes': {
-                            '2620': u'Damm, Wall, Deich, Graben, Knick, Wallkante',
-                            '3484': u'Düne, Sand',
-                            '3601': u'Busch, Hecke, Knick',
-                            '3625': u'Höhleneingang',
-                            '3627': u'Felsen, Felsblock, Felsnadel',
-                            '3629': u'Besonderer topographischer Punkt',
-                            '3632': u'Busch, Hecke, Knick',
-                            '3634': u'Felsen, Felsblock, Felsnadel',
-                        },
-                }
         )
 
         exts = {
@@ -1119,7 +1123,7 @@ class alkisplugin(QObject):
 
                         themeGroup = self.iface.legendInterface().addGroup( t, False, self.alkisGroup )
 
-                        nLayers = 0
+                        nSubGroups = 0
 
                         qDebug( u"Thema: %s" % t )
 
@@ -1127,6 +1131,7 @@ class alkisplugin(QObject):
                             name = f.get('name', t)
                             tname = t
 
+                            nLayers = 0
                             if len(d['filter']) > 1:
                                 thisGroup = self.iface.legendInterface().addGroup( name, False, themeGroup )
                             else:
@@ -1460,16 +1465,21 @@ class alkisplugin(QObject):
                                     self.iface.legendInterface().refreshLayerSymbology( layer )
 
                                     if labelGroup!=-1:
-                                            self.iface.legendInterface().moveLayer( layer, labelGroup )
+                                        self.iface.legendInterface().moveLayer( layer, labelGroup )
 
                                     n += 1
                                     nLayers += 1
 
                             if nLayers > 0:
-                                    self.iface.legendInterface().setGroupExpanded( themeGroup, False )
-                                    nGroups += 1
-                            else:
-                                    self.iface.legendInterface().removeGroup( themeGroup )
+                                self.iface.legendInterface().setGroupExpanded( thisGroup, False )
+                                nSubGroups += 1
+                            elif thisGroup != themeGroup:
+                                self.iface.legendInterface().removeGroup( thisGroup )
+
+                        if nSubGroups > 0:
+                            nGroups += 1
+                        else:
+                            self.iface.legendInterface().removeGroup( themeGroup )
 
                 if nGroups > 0:
                         self.iface.legendInterface().setGroupExpanded( self.alkisGroup, False )

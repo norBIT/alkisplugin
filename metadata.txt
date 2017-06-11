@@ -12,14 +12,19 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.12
+version=2.0.13
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.12
+changelog=Änderungen in 2.0.13
+ 
+ * Gebäudebeschriftungen aufteilen (closes #18)
+ * Topographie-Thema vorziehen (f. Böschungen)
+ 
+ Änderungen in 2.0.12
  
  * NRW KOM-OK Symbole ergänzt
  * Änderungsliste in metadata.txt
