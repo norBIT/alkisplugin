@@ -73,6 +73,7 @@ class ALKISConf(QDialog, ConfBase):
                 self.leHOST.setText( s.value( "host", "" ) )
                 self.lePORT.setText( s.value( "port", "5432" ) )
                 self.leDBNAME.setText( s.value( "dbname", "" ) )
+                self.leSCHEMA.setText( s.value( "schema", "public" ) )
                 self.leUID.setText( s.value( "uid", "" ) )
                 self.lePWD.setText( s.value( "pwd", "" ) )
                 self.cbxSignaturkatalog.setEnabled( False )
@@ -103,6 +104,7 @@ class ALKISConf(QDialog, ConfBase):
                 s.setValue( "host", self.leHOST.text() )
                 s.setValue( "port", self.lePORT.text() )
                 s.setValue( "dbname", self.leDBNAME.text() )
+                s.setValue( "schema", self.leSCHEMA.text() )
                 s.setValue( "uid", self.leUID.text() )
                 s.setValue( "pwd", self.lePWD.text() )
 
