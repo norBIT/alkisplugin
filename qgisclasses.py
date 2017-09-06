@@ -286,8 +286,8 @@ class ALKISPointInfo(QgsMapTool):
 
                 QApplication.setOverrideCursor( Qt.WaitCursor )
 
-                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,find_srid('','ax_flurstueck','wkb_geometry')))" % (
-                                                        point.x(), point.y()
+                fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
+                                                        point.x(), point.y(), self.plugin.getepsg()
                                         ) )
 
                 if len(fs) == 0:
@@ -374,8 +374,9 @@ class ALKISPolygonInfo(QgsMapTool):
 
                         self.rubberBand.reset( QGis.Polygon )
 
-                        fs = self.plugin.highlight( u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,find_srid('','ax_flurstueck','wkb_geometry')))" % (
-                                                        ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) )
+                        fs = self.plugin.highlight( u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,%d))" % (
+                                                        ",".join( map ( lambda p : "%.3lf %.3lf" % ( p[0], p[1] ), g.asPolygon()[0] ) ),
+                                                        self.plugin.getepsg()
                                                 ) )
 
                         if len(fs) == 0:
@@ -651,8 +652,8 @@ class ALKISOwnerInfo(QgsMapTool):
                 try:
                         QApplication.setOverrideCursor( Qt.WaitCursor )
 
-                        fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,find_srid('','ax_flurstueck','wkb_geometry')))" % (
-                                                        point.x(), point.y()
+                        fs = self.plugin.highlight( u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
+                                                        point.x(), point.y(), self.plugin.getepsg()
                                                 ) )
 
                         if len(fs) == 0:
@@ -662,14 +663,18 @@ class ALKISOwnerInfo(QgsMapTool):
                 finally:
                         QApplication.restoreOverrideCursor()
 
-                info = Info( self.getPage(fs) )
+                page = self.getPage(fs)
+                if page is None:
+                        return
+
+                info = Info( page )
                 info.setWindowTitle( u"Flurstücksnachweis" )
                 info.exec_()
 
         def getPage(self,fs):
                 (db,conninfo) = self.plugin.opendb()
                 if db is None:
-                        return
+                        return None
 
                 qry = QSqlQuery(db)
                 if qry.exec_("SELECT 1 FROM pg_attribute WHERE attrelid=(SELECT oid FROM pg_class WHERE relname='eignerart') AND attname='anteil'") and qry.next():
@@ -704,7 +709,7 @@ class ALKISOwnerInfo(QgsMapTool):
                                 res = res[0]
                         else:
                                 QMessageBox.information( None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr,repr(fs)) )
-                                return
+                                return None
 
                         res['datum'] = QDate.currentDate().toString( "d. MMMM yyyy" )
                         res['hist'] = 0
@@ -716,7 +721,7 @@ class ALKISOwnerInfo(QgsMapTool):
                             res['nutz'] = self.fetchall( db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr )
 
                         if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['klas_3x', 'kls_shl']) ) ) and qry.next() and qry.value(0):
-                            res['klas'] = self.fetchall( db, "SELECT kl.*, kls.klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0" % flsnr )
+                            res['klas'] = self.fetchall( db, "SELECT sum(fl::int) AS fl, min(kls.klf_text) AS klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0 GROUP BY kls.klf" % flsnr )
 
                         if qry.exec_(  u"SELECT " + u" AND ".join( map( lambda x: "has_table_privilege('{}', 'SELECT')".format(x), ['ausfst', 'afst_shl']) ) ) and qry.next() and qry.value(0):
                             res['afst'] = self.fetchall( db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr )
@@ -845,7 +850,7 @@ class ALKISOwnerInfo(QgsMapTool):
 """ % nutz
                             else:
                                     html += u"""
-        <TR class="fls_col_values"><TD></TD><TD colspan=2 align="center">Keine</TD></TR>
+        <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
 """
 
                         html += u"""
