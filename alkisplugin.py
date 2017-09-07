@@ -1935,7 +1935,7 @@ class alkisplugin(QObject):
                                 layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                                 iLayer += 1
 
-                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM \"%s\".po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (schema, where, epsg)).encode("utf-8")
+                                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM \"%s\".po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (schema, where, self.epsg)).encode("utf-8")
                                 layer.classitem = "signaturnummer"
                                 layer.setProjection("init=epsg:%d" % self.epsg)
                                 layer.connectiontype = mapscript.MS_POSTGIS

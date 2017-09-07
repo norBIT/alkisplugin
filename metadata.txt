@@ -12,14 +12,18 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.16
+version=2.0.17
 qgisMinimumVersion=2.0
 author=Jürgen E. Fischer
 email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.16
+changelog=Änderungen in 2.0.17
+ 
+ * Fix für mapfile-Export (followup 565beef4f)
+ 
+ Änderungen in 2.0.16
  
  * Schema, SRID einmalig abfragen und Verbindungsaufnahmen reduzieren
  
