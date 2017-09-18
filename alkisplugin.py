@@ -1210,6 +1210,7 @@ class alkisplugin(QObject):
                                                 "postgres")
                                             layer.setReadOnly()
                                             layer.setRendererV2(r)
+                                            self.setShortName(layer)
                                             self.setScale(layer, d['area'])
                                             self.iface.legendInterface().refreshLayerSymbology(layer)
                                             self.iface.legendInterface().moveLayer(layer, thisGroup)
@@ -1255,6 +1256,7 @@ class alkisplugin(QObject):
                                                 "postgres")
                                             layer.setReadOnly()
                                             layer.setRendererV2(r)
+                                            self.setShortName(layer)
                                             if hasattr(QgsMapRenderer, "BlendSource"):
                                                     layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
                                             self.setScale(layer, d['outline'])
@@ -1305,6 +1307,7 @@ class alkisplugin(QObject):
                                                 "postgres")
                                             layer.setReadOnly()
                                             layer.setRendererV2(r)
+                                            self.setShortName(layer)
                                             if hasattr(QgsMapRenderer, "BlendSource"):
                                                     layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
                                             layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
@@ -1372,6 +1375,7 @@ class alkisplugin(QObject):
                                                 "postgres")
                                             layer.setReadOnly()
                                             layer.setRendererV2(r)
+                                            self.setShortName(layer)
                                             self.setScale(layer, d['point'])
                                             self.iface.legendInterface().refreshLayerSymbology(layer)
                                             self.iface.legendInterface().moveLayer(layer, thisGroup)
@@ -1444,6 +1448,7 @@ class alkisplugin(QObject):
 
                                     layer = self.iface.addVectorLayer(uri, u"Beschriftungen (%s)" % t, "postgres")
                                     layer.setReadOnly()
+                                    self.setShortName(layer)
 
                                     self.setScale(layer, d['label'])
 
@@ -2642,6 +2647,12 @@ class alkisplugin(QObject):
             if db is None:
                 return None
             return self.epsg
+
+        def setShortName(self, layer):
+            (idx, ok) = QgsProject.instance().readNumEntry("alkis", "/shortNameIndex")
+            layer.setShortName("alkis{}".format(idx))
+            idx += 1
+            QgsProject.instance().writeEntry("alkis", "/shortNameIndex", idx)
 
 
 if __name__ == '__main__':

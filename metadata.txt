@@ -29,15 +29,15 @@ changelog=Änderungen in 2.0.17
  
  Änderungen in 2.0.15
  
- * * Unterstützung für verschiedene Schemata (erfordert noch norBIT/alkisimport fullschema & norBIT/gdal nas-full-schema Branches)
- * * Kleine Anpassung an volles ALKIS-Modell (ax_flurstueck.zaehler: int => varchar)
- * * Minimale Anpassung der Mapfile-Ausgabe an mapscript 7
- * * PEP-8 Updates
+ * Unterstützung für verschiedene Schemata (erfordert noch norBIT/alkisimport fullschema & norBIT/gdal nas-full-schema Branches)
+ * Kleine Anpassung an volles ALKIS-Modell (ax_flurstueck.zaehler: int => varchar)
+ * Minimale Anpassung der Mapfile-Ausgabe an mapscript 7
+ * PEP-8 Updates
  
  Änderungen in 2.0.14
  
- * * Auch Beschriftungen von Gebäudeteilen aufteilen (fixes #18)
- * * Topographie-Thema vorziehen (f. Böschungen)
+ * Auch Beschriftungen von Gebäudeteilen aufteilen (fixes #18)
+ * Topographie-Thema vorziehen (f. Böschungen)
  
  Änderungen in 2.0.13
  
