@@ -19,7 +19,7 @@
 """
 
 
-from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray
+from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray, QEvent
 from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem, QPrintDialog, QAction, QPrinter, QMenu, QFileDialog
 from PyQt4.QtSql import QSqlQuery
 from PyQt4 import QtCore, uic
@@ -200,14 +200,17 @@ ORDER BY count(*) DESC
                     self.leUMNPath.setText(path)
 
 
-class Info( QDialog, InfoBase ):
-        def __init__(self, html):
-                QDialog.__init__(self)
+class Info(QDialog, InfoBase):
+        def __init__(self, plugin, html, gmlid, parent):
+                QDialog.__init__(self, parent)
                 self.setupUi(self)
 
+                self.plugin = plugin
                 self.tbEigentuemer.setHtml( html )
+                self.gmlid = gmlid
 
                 self.restoreGeometry( QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" ).value("infogeom", QByteArray(), type=QByteArray) )
+                self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def print_(self):
 		printer = QPrinter()
@@ -226,6 +229,11 @@ class Info( QDialog, InfoBase ):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
                 s.setValue( "infogeom", self.saveGeometry() )
                 QDialog.closeEvent(self, e)
+
+        def event(self, e):
+            if e.type() == QEvent.WindowActivate:
+                self.plugin.highlight("gml_id='{}'".format(self.gmlid))
+            return QDialog.event(self, e)
 
 
 class About( QDialog, AboutBase ):
@@ -667,9 +675,9 @@ class ALKISOwnerInfo(QgsMapTool):
                 if page is None:
                         return
 
-                info = Info( page )
+                info = Info( self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow() )
                 info.setWindowTitle( u"Flurstücksnachweis" )
-                info.exec_()
+                info.show()
 
         def getPage(self,fs):
                 (db,conninfo) = self.plugin.opendb()
