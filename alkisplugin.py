@@ -1622,7 +1622,7 @@ class alkisplugin(QObject):
 
                 conninfo0 = conninfo
 
-                if conninfo0 == self.conninfo and self.db and self.db.isOpen():
+                if conninfo0 == self.conninfo and self.db and self.db.isOpen() and schema == self.schema:
                     return (self.db, self.conninfo)
 
                 if authAvailable:
@@ -1667,7 +1667,7 @@ class alkisplugin(QObject):
                     if qry.exec_(u"SELECT find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text)".format(schema.replace("'", "''"))) and qry.next():
                         self.epsg = int(qry.value(0))
                     else:
-                        QMessageBox.warning(None, "ALKIS", u"Fehler: EPSG {} nicht gefunden!".format(schema))
+                        QMessageBox.warning(None, "ALKIS", u"Fehler: Schema {} nicht gefunden!".format(schema))
 
                     self.schema = schema
 
