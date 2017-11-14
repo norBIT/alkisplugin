@@ -14,7 +14,7 @@ alkisplugin-$(VERSION).zip: plugin.xml
 	git archive --format=zip --prefix=alkisplugin/ HEAD >alkisplugin-$(VERSION).zip
 
 upload: plugin.xml alkisplugin-$(VERSION).zip
-	python2 plugin_upload.py alkisplugin-$(VERSION).zip
+	python3 plugin_upload.py alkisplugin-$(VERSION).zip
 
 release:
 	@perl mkxml.pl -r

@@ -16,6 +16,7 @@
 *                                                                         *
 ***************************************************************************
 """
+from __future__ import absolute_import
 
 
 def name():
@@ -37,5 +38,5 @@ def icon():
     return ":/plugins/alkis/logo.png"
 
 def classFactory(iface):
-  from alkisplugin import alkisplugin
+  from .alkisplugin import alkisplugin
   return alkisplugin(iface)
