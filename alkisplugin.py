@@ -1963,7 +1963,7 @@ class alkisplugin(QObject):
                                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
                                 self.setUMNScale(layer, d['area'])
 
-                                sql = (u"SELECT"
+                                sql = (u"SELECT DISTINCT"
                                        u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
                                        u" FROM alkis_flaechen"
                                        u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
@@ -2054,7 +2054,7 @@ class alkisplugin(QObject):
                                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
                                 self.setUMNScale(layer, d['outline'])
 
-                                sql = (u"SELECT"
+                                sql = (u"SELECT DISTINCT"
                                        u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
                                        u" FROM alkis_linien ln{0}"
                                        u" LEFT OUTER JOIN alkis_farben f ON {1}.farbe=f.id"
@@ -2141,7 +2141,7 @@ class alkisplugin(QObject):
                                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
                                 self.setUMNScale(layer, d['line'])
 
-                                sql = (u"SELECT"
+                                sql = (u"SELECT DISTINCT"
                                        u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
                                        u" FROM alkis_linien ln{0}"
                                        u" JOIN alkis_farben f ON {1}.farbe=f.id"
