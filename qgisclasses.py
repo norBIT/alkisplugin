@@ -202,28 +202,29 @@ ORDER BY count(*) DESC
 
 class Info(QDialog, InfoBase):
         def __init__(self, plugin, html, gmlid, parent):
+                self.plugin = plugin
+                self.gmlid = gmlid
+
                 QDialog.__init__(self, parent)
                 self.setupUi(self)
 
-                self.plugin = plugin
                 self.tbEigentuemer.setHtml( html )
-                self.gmlid = gmlid
 
                 self.restoreGeometry( QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" ).value("infogeom", QByteArray(), type=QByteArray) )
                 self.setAttribute(Qt.WA_DeleteOnClose)
 
-	def print_(self):
-		printer = QPrinter()
-		dlg = QPrintDialog( printer )
-		if dlg.exec_() == QDialog.Accepted:
-			self.tbEigentuemer.print_( printer )
+        def print_(self):
+                printer = QPrinter()
+                dlg = QPrintDialog( printer )
+                if dlg.exec_() == QDialog.Accepted:
+                        self.tbEigentuemer.print_( printer )
 
-	def contextMenuEvent(self,e):
-		menu = QMenu( self )
-		action = QAction( "Drucken", self );
-		action.triggered.connect( self.print_ )
-		menu.addAction( action )
-		menu.exec_( e.globalPos() )
+        def contextMenuEvent(self, e):
+                menu = QMenu( self )
+                action = QAction( "Drucken", self );
+                action.triggered.connect( self.print_ )
+                menu.addAction( action )
+                menu.exec_( e.globalPos() )
 
         def closeEvent(self, e):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
@@ -231,9 +232,9 @@ class Info(QDialog, InfoBase):
                 QDialog.closeEvent(self, e)
 
         def event(self, e):
-            if e.type() == QEvent.WindowActivate:
-                self.plugin.highlight("gml_id='{}'".format(self.gmlid))
-            return QDialog.event(self, e)
+                if e.type() == QEvent.WindowActivate:
+                    self.plugin.highlight("gml_id='{}'".format(self.gmlid))
+                return QDialog.event(self, e)
 
 
 class About( QDialog, AboutBase ):
@@ -304,7 +305,7 @@ class ALKISPointInfo(QgsMapTool):
                         return
 
                 try:
-			s = QSettings( "norBIT", "EDBSgen/PRO" )
+                        s = QSettings( "norBIT", "EDBSgen/PRO" )
                         sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
                         sock.connect( ( "localhost", int( s.value( "norGISPort", "6102" ) ) ) )
                         sock.send( "NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'] )
@@ -443,7 +444,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
                 text = self.leSuchbegriff.text()
 
                 if self.cbxSuchmodus.currentIndex() < 2:
-                        if text <> "":
+                        if text != "":
                             text = text.replace("'", "''")
                             if self.cbxSuchmodus.currentIndex() == 0:
                                 # Teiltreffer
@@ -495,7 +496,7 @@ class ALKISSearch(QDialog, ALKISSearchBase ):
 
                         if self.cbxHNR.isVisible():
                             hnr = self.cbxHNR.currentText()
-                            if hnr <> "Alle":
+                            if hnr != "Alle":
                                 fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0} AND h.hausnummer={1})".format( quote(self.cbxStrassen.itemData( self.cbxStrassen.currentIndex() ) ), quote(hnr)), True, add )
                             else:
                                 fs = self.plugin.highlight( u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})".format( quote(self.cbxStrassen.itemData( self.cbxStrassen.currentIndex() ) ) ), True, add )
