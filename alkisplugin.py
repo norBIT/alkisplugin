@@ -132,6 +132,7 @@ class alkisplugin(QObject):
                     '1501': u'Aussichtsturm',
                     'rn1501': u'Anderes Gebäude',
                     '1525': u'Brunnen',
+                    '2002': u'Zaun',
                     '2030': u'Gebäude',
                     '2031': u'Anderes Gebäude',
                     '2032': u'Gebäude unter der Erdoberfläche',

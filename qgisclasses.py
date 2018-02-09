@@ -19,8 +19,8 @@
 """
 
 
-from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray, QEvent
-from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem, QPrintDialog, QAction, QPrinter, QMenu, QFileDialog
+from PyQt4.QtCore import QSettings, Qt, QDate, QDir, QByteArray, QEvent, QSize
+from PyQt4.QtGui import QApplication, QDialog, QDialogButtonBox, QMessageBox, QCursor, QPixmap, QTableWidgetItem, QPrintDialog, QAction, QPrinter, QMenu, QFileDialog, QTextBrowser, QPushButton, QVBoxLayout
 from PyQt4.QtSql import QSqlQuery
 from PyQt4 import QtCore, uic
 
@@ -40,7 +40,6 @@ except:
 d = os.path.dirname(__file__)
 QDir.addSearchPath( "alkis", d )
 ConfBase = uic.loadUiType( os.path.join( d, 'conf.ui' ) )[0]
-InfoBase = uic.loadUiType( os.path.join( d, 'info.ui' ) )[0]
 AboutBase = uic.loadUiType( os.path.join( d, 'about.ui' ) )[0]
 ALKISSearchBase = uic.loadUiType( os.path.join( d, 'search.ui' ) )[0]
 
@@ -200,31 +199,35 @@ ORDER BY count(*) DESC
                     self.leUMNPath.setText(path)
 
 
-class Info(QDialog, InfoBase):
+
+class Info(QDialog):
         def __init__(self, plugin, html, gmlid, parent):
+                QDialog.__init__(self, parent)
+                self.resize(QSize(740, 580))
+
                 self.plugin = plugin
                 self.gmlid = gmlid
 
-                QDialog.__init__(self, parent)
-                self.setupUi(self)
+                self.tbEigentuemer = QTextBrowser(self)
+                self.tbEigentuemer.setHtml(html)
 
-                self.tbEigentuemer.setHtml( html )
+                l = QVBoxLayout(self)
+                l.addWidget(self.tbEigentuemer)
+
+                pb = QPushButton("Drucken", self)
+                l.addWidget(pb)
+                pb.clicked.connect(self.print_)
+
+                self.setLayout(l)
 
                 self.restoreGeometry( QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" ).value("infogeom", QByteArray(), type=QByteArray) )
                 self.setAttribute(Qt.WA_DeleteOnClose)
 
         def print_(self):
                 printer = QPrinter()
-                dlg = QPrintDialog( printer )
+                dlg = QPrintDialog(printer)
                 if dlg.exec_() == QDialog.Accepted:
-                        self.tbEigentuemer.print_( printer )
-
-        def contextMenuEvent(self, e):
-                menu = QMenu( self )
-                action = QAction( "Drucken", self );
-                action.triggered.connect( self.print_ )
-                menu.addAction( action )
-                menu.exec_( e.globalPos() )
+                        self.tbEigentuemer.print_(printer)
 
         def closeEvent(self, e):
                 s = QSettings( "norBIT", "norGIS-ALKIS-Erweiterung" )
