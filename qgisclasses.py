@@ -38,10 +38,10 @@ import re
 import operator
 
 try:
-        import win32gui
-        win32 = True
+    import win32gui
+    win32 = True
 except ImportError:
-        win32 = False
+    win32 = False
 
 d = os.path.dirname(__file__)
 QDir.addSearchPath("alkis", d)
@@ -70,700 +70,700 @@ def quote(x, prefix='E'):
 
 
 class ALKISConf(QDialog, ConfBase):
-        def __init__(self, plugin):
-                QDialog.__init__(self)
-                self.setupUi(self)
+    def __init__(self, plugin):
+        QDialog.__init__(self)
+        self.setupUi(self)
 
-                self.plugin = plugin
+        self.plugin = plugin
 
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                self.leSERVICE.setText(s.value("service", ""))
-                self.leHOST.setText(s.value("host", ""))
-                self.lePORT.setText(s.value("port", "5432"))
-                self.leDBNAME.setText(s.value("dbname", ""))
-                self.leSCHEMA.setText(s.value("schema", "public"))
-                self.leUID.setText(s.value("uid", ""))
-                self.lePWD.setText(s.value("pwd", ""))
-                self.cbxSignaturkatalog.setEnabled(False)
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        self.leSERVICE.setText(s.value("service", ""))
+        self.leHOST.setText(s.value("host", ""))
+        self.lePORT.setText(s.value("port", "5432"))
+        self.leDBNAME.setText(s.value("dbname", ""))
+        self.leSCHEMA.setText(s.value("schema", "public"))
+        self.leUID.setText(s.value("uid", ""))
+        self.lePWD.setText(s.value("pwd", ""))
+        self.cbxSignaturkatalog.setEnabled(False)
 
-                if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
-                    self.authCfgSelect = QgsAuthConfigSelect(self, "postgres")
-                    self.tabWidget.insertTab(1, self.authCfgSelect, "Konfigurationen")
+        if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
+            self.authCfgSelect = QgsAuthConfigSelect(self, "postgres")
+            self.tabWidget.insertTab(1, self.authCfgSelect, "Konfigurationen")
 
-                    authcfg = s.value("authcfg", "")
-                    if authcfg:
-                        self.tabWidget.setCurrentIndex(1)
-                        self.authCfgSelect.setConfigId(authcfg)
+            authcfg = s.value("authcfg", "")
+            if authcfg:
+                self.tabWidget.setCurrentIndex(1)
+                self.authCfgSelect.setConfigId(authcfg)
 
-                self.leUMNPath.setText(s.value("umnpath", os.path.dirname(__file__)))
-                self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
-                self.leUMNTemplate.setText(s.value("umntemplate"))
-                self.teFussnote.setPlainText(s.value("footnote", ""))
+        self.leUMNPath.setText(s.value("umnpath", os.path.dirname(__file__)))
+        self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
+        self.leUMNTemplate.setText(s.value("umntemplate"))
+        self.teFussnote.setPlainText(s.value("footnote", ""))
 
-                self.load(False)
+        self.load(False)
 
-                self.bb.accepted.connect(self.accept)
-                self.bb.rejected.connect(self.reject)
-                self.bb.addButton("Modelle laden", QDialogButtonBox.ActionRole).clicked.connect(self.load)
+        self.bb.accepted.connect(self.accept)
+        self.bb.rejected.connect(self.reject)
+        self.bb.addButton("Modelle laden", QDialogButtonBox.ActionRole).clicked.connect(self.load)
 
-        def load(self, error=True):
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                s.setValue("service", self.leSERVICE.text())
-                s.setValue("host", self.leHOST.text())
-                s.setValue("port", self.lePORT.text())
-                s.setValue("dbname", self.leDBNAME.text())
-                s.setValue("schema", self.leSCHEMA.text())
-                s.setValue("uid", self.leUID.text())
-                s.setValue("pwd", self.lePWD.text())
+    def load(self, error=True):
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        s.setValue("service", self.leSERVICE.text())
+        s.setValue("host", self.leHOST.text())
+        s.setValue("port", self.lePORT.text())
+        s.setValue("dbname", self.leDBNAME.text())
+        s.setValue("schema", self.leSCHEMA.text())
+        s.setValue("uid", self.leUID.text())
+        s.setValue("pwd", self.lePWD.text())
 
-                if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
-                    s.setValue("authcfg", self.authCfgSelect.configId())
+        if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
+            s.setValue("authcfg", self.authCfgSelect.configId())
 
-                self.twModellarten.clearContents()
-                self.cbxSignaturkatalog.clear()
+        self.twModellarten.clearContents()
+        self.cbxSignaturkatalog.clear()
 
-                modelle = s.value("modellarten", ['DLKM', 'DKKM1000'])
-                if modelle is None:
-                    modelle = ['DLKM', 'DKKM1000']
-                (db, conninfo) = self.plugin.opendb()
-                if not db:
-                    if error:
-                        QMessageBox.critical(None, "ALKIS", u"Datenbankverbindung schlug fehl.")
+        modelle = s.value("modellarten", ['DLKM', 'DKKM1000'])
+        if modelle is None:
+            modelle = ['DLKM', 'DKKM1000']
+        (db, conninfo) = self.plugin.opendb()
+        if not db:
+            if error:
+                QMessageBox.critical(None, "ALKIS", u"Datenbankverbindung schlug fehl.")
 
-                    return
+            return
 
-                qry = QSqlQuery(db)
-                if qry.exec_("""
+        qry = QSqlQuery(db)
+        if qry.exec_("""
 SELECT modell,count(*)
 FROM (
-        SELECT unnest(modell) AS modell FROM po_points   UNION ALL
-        SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
-        SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
-        SELECT unnest(modell) AS modell from po_lines    UNION ALL
-        SELECT unnest(modell) AS modell from po_labels
+SELECT unnest(modell) AS modell FROM po_points   UNION ALL
+SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
+SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
+SELECT unnest(modell) AS modell from po_lines    UNION ALL
+SELECT unnest(modell) AS modell from po_labels
 ) AS foo
 GROUP BY modell
 ORDER BY count(*) DESC
 """):
-                        res = {}
-                        while qry.next():
-                            res[qry.value(0)] = qry.value(1)
+            res = {}
+            while qry.next():
+                res[qry.value(0)] = qry.value(1)
 
-                        self.twModellarten.setRowCount(len(res))
-                        i = 0
-                        for k, n in sorted(iter(list(res.items())), key=operator.itemgetter(1), reverse=True):
-                            item = QTableWidgetItem(k)
-                            item.setCheckState(Qt.Checked if (item.text() in modelle) else Qt.Unchecked)
-                            self.twModellarten.setItem(i, 0, item)
+            self.twModellarten.setRowCount(len(res))
+            i = 0
+            for k, n in sorted(iter(list(res.items())), key=operator.itemgetter(1), reverse=True):
+                item = QTableWidgetItem(k)
+                item.setCheckState(Qt.Checked if (item.text() in modelle) else Qt.Unchecked)
+                self.twModellarten.setItem(i, 0, item)
 
-                            item = QTableWidgetItem(str(n))
-                            self.twModellarten.setItem(i, 1, item)
-                            i += 1
-                        self.twModellarten.resizeColumnsToContents()
-                        self.twModellarten.setEnabled(True)
-                else:
-                        modelle = []
-                        self.twModellarten.clearContents()
-                        self.twModellarten.setDisabled(True)
+                item = QTableWidgetItem(str(n))
+                self.twModellarten.setItem(i, 1, item)
+                i += 1
+            self.twModellarten.resizeColumnsToContents()
+            self.twModellarten.setEnabled(True)
+        else:
+            modelle = []
+            self.twModellarten.clearContents()
+            self.twModellarten.setDisabled(True)
 
-                if qry.exec_("SELECT id,name FROM alkis_signaturkataloge"):
-                    while qry.next():
-                        self.cbxSignaturkatalog.addItem(qry.value(1), int(qry.value(0)))
-                    self.cbxSignaturkatalog.setEnabled(True)
-                else:
-                    self.cbxSignaturkatalog.addItem(u"Farbe", -1)
+        if qry.exec_("SELECT id,name FROM alkis_signaturkataloge"):
+            while qry.next():
+                self.cbxSignaturkatalog.addItem(qry.value(1), int(qry.value(0)))
+            self.cbxSignaturkatalog.setEnabled(True)
+        else:
+            self.cbxSignaturkatalog.addItem(u"Farbe", -1)
 
-                self.cbxSignaturkatalog.setCurrentIndex(max([0, self.cbxSignaturkatalog.findData(s.value("signaturkatalog", -1))]))
+        self.cbxSignaturkatalog.setCurrentIndex(max([0, self.cbxSignaturkatalog.findData(s.value("signaturkatalog", -1))]))
 
-        def accept(self):
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                s.setValue("service", self.leSERVICE.text())
-                s.setValue("host", self.leHOST.text())
-                s.setValue("port", self.lePORT.text())
-                s.setValue("dbname", self.leDBNAME.text())
-                s.setValue("uid", self.leUID.text())
-                s.setValue("pwd", self.lePWD.text())
-                if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
-                    s.setValue("authcfg", self.authCfgSelect.configId())
-                s.setValue("umnpath", self.leUMNPath.text())
-                s.setValue("umntemplate", self.leUMNTemplate.text())
-                s.setValue("footnote", self.teFussnote.toPlainText())
+    def accept(self):
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        s.setValue("service", self.leSERVICE.text())
+        s.setValue("host", self.leHOST.text())
+        s.setValue("port", self.lePORT.text())
+        s.setValue("dbname", self.leDBNAME.text())
+        s.setValue("uid", self.leUID.text())
+        s.setValue("pwd", self.lePWD.text())
+        if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
+            s.setValue("authcfg", self.authCfgSelect.configId())
+        s.setValue("umnpath", self.leUMNPath.text())
+        s.setValue("umntemplate", self.leUMNTemplate.text())
+        s.setValue("footnote", self.teFussnote.toPlainText())
 
-                modelle = []
-                if self.twModellarten.isEnabled():
-                    for i in range(self.twModellarten.rowCount()):
-                        item = self.twModellarten.item(i, 0)
-                        if item.checkState() == Qt.Checked:
-                            modelle.append(item.text())
+        modelle = []
+        if self.twModellarten.isEnabled():
+            for i in range(self.twModellarten.rowCount()):
+                item = self.twModellarten.item(i, 0)
+                if item.checkState() == Qt.Checked:
+                    modelle.append(item.text())
 
-                s.setValue("modellarten", modelle)
-                s.setValue("signaturkatalog", self.cbxSignaturkatalog.itemData(self.cbxSignaturkatalog.currentIndex()))
+        s.setValue("modellarten", modelle)
+        s.setValue("signaturkatalog", self.cbxSignaturkatalog.itemData(self.cbxSignaturkatalog.currentIndex()))
 
-                QDialog.accept(self)
+        QDialog.accept(self)
 
-        def browseUMNPath(self):
-                path = self.leUMNPath.text()
-                path = QFileDialog.getExistingDirectory(self, u"UMN-Pfad wählen", path)
-                if path != "":
-                    self.leUMNPath.setText(path)
+    def browseUMNPath(self):
+        path = self.leUMNPath.text()
+        path = QFileDialog.getExistingDirectory(self, u"UMN-Pfad wählen", path)
+        if path != "":
+            self.leUMNPath.setText(path)
 
 
 class Info(QDialog):
-        def __init__(self, plugin, html, gmlid, parent):
-                QDialog.__init__(self, parent)
-                self.resize(QSize(740, 580))
-                self.setWindowTitle(u"Flurstücksnachweis")
+    def __init__(self, plugin, html, gmlid, parent):
+        QDialog.__init__(self, parent)
+        self.resize(QSize(740, 580))
+        self.setWindowTitle(u"Flurstücksnachweis")
 
-                self.plugin = plugin
-                self.gmlid = gmlid
+        self.plugin = plugin
+        self.gmlid = gmlid
 
-                self.tbEigentuemer = QTextBrowser(self)
-                self.tbEigentuemer.setHtml(html)
-                self.tbEigentuemer.setContextMenuPolicy(Qt.NoContextMenu)
+        self.tbEigentuemer = QTextBrowser(self)
+        self.tbEigentuemer.setHtml(html)
+        self.tbEigentuemer.setContextMenuPolicy(Qt.NoContextMenu)
 
-                layout = QVBoxLayout(self)
-                layout.addWidget(self.tbEigentuemer)
-                self.setLayout(layout)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.tbEigentuemer)
+        self.setLayout(layout)
 
-                self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("infogeom", QByteArray(), type=QByteArray))
+        self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("infogeom", QByteArray(), type=QByteArray))
 
-        def print_(self):
-                printer = QPrinter()
-                dlg = QPrintDialog(printer)
-                if dlg.exec_() == QDialog.Accepted:
-                        self.tbEigentuemer.print_(printer)
+    def print_(self):
+        printer = QPrinter()
+        dlg = QPrintDialog(printer)
+        if dlg.exec_() == QDialog.Accepted:
+            self.tbEigentuemer.print_(printer)
 
-        def contextMenuEvent(self, e):
-                menu = QMenu(self)
-                action = QAction("Drucken", self)
-                action.triggered.connect(self.print_)
-                menu.addAction(action)
-                menu.exec_(e.globalPos())
+    def contextMenuEvent(self, e):
+        menu = QMenu(self)
+        action = QAction("Drucken", self)
+        action.triggered.connect(self.print_)
+        menu.addAction(action)
+        menu.exec_(e.globalPos())
 
-        def closeEvent(self, e):
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                s.setValue("infogeom", self.saveGeometry())
-                QDialog.closeEvent(self, e)
+    def closeEvent(self, e):
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        s.setValue("infogeom", self.saveGeometry())
+        QDialog.closeEvent(self, e)
 
-        def event(self, e):
-                if e.type() == QEvent.WindowActivate:
-                    self.plugin.highlight("gml_id='{}'".format(self.gmlid))
-                return QDialog.event(self, e)
+    def event(self, e):
+        if e.type() == QEvent.WindowActivate:
+            self.plugin.highlight("gml_id='{}'".format(self.gmlid))
+        return QDialog.event(self, e)
 
 
 class About(QDialog, AboutBase):
-        def __init__(self):
-                QDialog.__init__(self)
-                self.setupUi(self)
+    def __init__(self):
+        QDialog.__init__(self)
+        self.setupUi(self)
 
 
 class ALKISPointInfo(QgsMapTool):
-        def __init__(self, plugin):
-                QgsMapTool.__init__(self, plugin.iface.mapCanvas())
-                self.plugin = plugin
-                self.iface = plugin.iface
-                self.cursor = QCursor(QPixmap([
-                    "16 16 3 1",
-                    "      c None",
-                    ".     c #FF0000",
-                    "+     c #FFFFFF",
-                    "                ",
-                    "       +.+      ",
-                    "      ++.++     ",
-                    "     +.....+    ",
-                    "    +.     .+   ",
-                    "   +.   .   .+  ",
-                    "  +.    .    .+ ",
-                    " ++.    .    .++",
-                    " ... ...+... ...",
-                    " ++.    .    .++",
-                    "  +.    .    .+ ",
-                    "   +.   .   .+  ",
-                    "   ++.     .+   ",
-                    "    ++.....+    ",
-                    "      ++.++     ",
-                    "       +.+      "
-                ]))
+    def __init__(self, plugin):
+        QgsMapTool.__init__(self, plugin.iface.mapCanvas())
+        self.plugin = plugin
+        self.iface = plugin.iface
+        self.cursor = QCursor(QPixmap([
+            "16 16 3 1",
+            "      c None",
+            ".     c #FF0000",
+            "+     c #FFFFFF",
+            "                ",
+            "       +.+      ",
+            "      ++.++     ",
+            "     +.....+    ",
+            "    +.     .+   ",
+            "   +.   .   .+  ",
+            "  +.    .    .+ ",
+            " ++.    .    .++",
+            " ... ...+... ...",
+            " ++.    .    .++",
+            "  +.    .    .+ ",
+            "   +.   .   .+  ",
+            "   ++.     .+   ",
+            "    ++.....+    ",
+            "      ++.++     ",
+            "       +.+      "
+        ]))
 
-                self.areaMarkerLayer = None
+        self.areaMarkerLayer = None
 
-        def canvasPressEvent(self, e):
-                if not self.areaMarkerLayer:
-                        (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
-                        if ok:
-                                self.areaMarkerLayer = self.plugin.mapLayer(layerId)
+    def canvasPressEvent(self, e):
+        if not self.areaMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
+            if ok:
+                self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
-                if not self.areaMarkerLayer:
-                        QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+        if not self.areaMarkerLayer:
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
 
-        def canvasMoveEvent(self, e):
-                pass
+    def canvasMoveEvent(self, e):
+        pass
 
-        def canvasReleaseEvent(self, e):
-                point = self.plugin.transform(
-                    self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
-                )
+    def canvasReleaseEvent(self, e):
+        point = self.plugin.transform(
+            self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
+        )
 
-                QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
 
-                fs = self.plugin.highlight(
-                    u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
-                        point.x(), point.y(), self.plugin.getepsg()
-                    )
-                )
+        fs = self.plugin.highlight(
+            u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
+                point.x(), point.y(), self.plugin.getepsg()
+            )
+        )
 
-                if len(fs) == 0:
-                        QApplication.restoreOverrideCursor()
-                        QMessageBox.information(None, u"Fehler", u"Kein Flurstück gefunden.")
-                        return
+        if len(fs) == 0:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.information(None, u"Fehler", u"Kein Flurstück gefunden.")
+            return
 
-                try:
-                        s = QSettings("norBIT", "EDBSgen/PRO")
-                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
-                        sock.send("NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'])
-                        sock.close()
+        try:
+            s = QSettings("norBIT", "EDBSgen/PRO")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
+            sock.send("NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'])
+            sock.close()
 
-                        if win32:
-                                window = win32gui.FindWindow(None, s.value("albWin", "norGIS"))
-                                win32gui.SetForegroundWindow(window)
-                except socket.error:
-                        QMessageBox.information(None, u"Fehler", u"Verbindung zu norGIS schlug fehl.")
+            if win32:
+                window = win32gui.FindWindow(None, s.value("albWin", "norGIS"))
+                win32gui.SetForegroundWindow(window)
+        except socket.error:
+            QMessageBox.information(None, u"Fehler", u"Verbindung zu norGIS schlug fehl.")
 
-                QApplication.restoreOverrideCursor()
+        QApplication.restoreOverrideCursor()
 
 
 class ALKISPolygonInfo(QgsMapTool):
-        def __init__(self, plugin):
-                QgsMapTool.__init__(self, plugin.iface.mapCanvas())
-                self.plugin = plugin
-                self.iface = plugin.iface
-                self.cursor = QCursor(QPixmap([
-                    "16 16 3 1",
-                    "      c None",
-                    ".     c #FF0000",
-                    "+     c #FFFFFF",
-                    "                ",
-                    "       +.+      ",
-                    "      ++.++     ",
-                    "     +.....+    ",
-                    "    +.     .+   ",
-                    "   +.   .   .+  ",
-                    "  +.    .    .+ ",
-                    " ++.    .    .++",
-                    " ... ...+... ...",
-                    " ++.    .    .++",
-                    "  +.    .    .+ ",
-                    "   +.   .   .+  ",
-                    "   ++.     .+   ",
-                    "    ++.....+    ",
-                    "      ++.++     ",
-                    "       +.+      "
-                ]))
+    def __init__(self, plugin):
+        QgsMapTool.__init__(self, plugin.iface.mapCanvas())
+        self.plugin = plugin
+        self.iface = plugin.iface
+        self.cursor = QCursor(QPixmap([
+            "16 16 3 1",
+            "      c None",
+            ".     c #FF0000",
+            "+     c #FFFFFF",
+            "                ",
+            "       +.+      ",
+            "      ++.++     ",
+            "     +.....+    ",
+            "    +.     .+   ",
+            "   +.   .   .+  ",
+            "  +.    .    .+ ",
+            " ++.    .    .++",
+            " ... ...+... ...",
+            " ++.    .    .++",
+            "  +.    .    .+ ",
+            "   +.   .   .+  ",
+            "   ++.     .+   ",
+            "    ++.....+    ",
+            "      ++.++     ",
+            "       +.+      "
+        ]))
 
-                self.rubberBand = QgsRubberBand(self.iface.mapCanvas(), self.plugin.PolygonGeometry)
-                self.areaMarkerLayer = None
+        self.rubberBand = QgsRubberBand(self.iface.mapCanvas(), self.plugin.PolygonGeometry)
+        self.areaMarkerLayer = None
 
-        def canvasPressEvent(self, e):
-                if not self.areaMarkerLayer:
-                        (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
-                        if ok:
-                                self.areaMarkerLayer = self.plugin.mapLayer(layerId)
+    def canvasPressEvent(self, e):
+        if not self.areaMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
+            if ok:
+                self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
-                if not self.areaMarkerLayer:
-                        QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+        if not self.areaMarkerLayer:
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
 
-        def canvasMoveEvent(self, e):
-                if self.rubberBand.numberOfVertices() > 0:
-                    point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
-                    self.rubberBand.movePoint(point)
+    def canvasMoveEvent(self, e):
+        if self.rubberBand.numberOfVertices() > 0:
+            point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
+            self.rubberBand.movePoint(point)
 
-        def canvasReleaseEvent(self, e):
-                point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
-                if e.button() == Qt.LeftButton:
-                        self.rubberBand.addPoint(point)
-                        return
+    def canvasReleaseEvent(self, e):
+        point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
+        if e.button() == Qt.LeftButton:
+            self.rubberBand.addPoint(point)
+            return
 
-                QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
 
-                if self.rubberBand.numberOfVertices() >= 3:
-                        g = self.plugin.transform(
-                            self.rubberBand.asGeometry()
-                        )
+        if self.rubberBand.numberOfVertices() >= 3:
+            g = self.plugin.transform(
+                self.rubberBand.asGeometry()
+            )
 
-                        self.rubberBand.reset(self.plugin.PolygonGeometry)
+            self.rubberBand.reset(self.plugin.PolygonGeometry)
 
-                        fs = self.plugin.highlight(
-                            u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,%d))" % (
-                                ",".join(["%.3lf %.3lf" % (p[0], p[1]) for p in g.asPolygon()[0]]),
-                                self.plugin.getepsg()
-                            )
-                        )
+            fs = self.plugin.highlight(
+                u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,%d))" % (
+                    ",".join(["%.3lf %.3lf" % (p[0], p[1]) for p in g.asPolygon()[0]]),
+                    self.plugin.getepsg()
+                )
+            )
 
-                        if len(fs) == 0:
-                                QApplication.restoreOverrideCursor()
-                                QMessageBox.information(None, u"Fehler", u"Keine Flurstücke gefunden.")
-                                return
-
-                        gmlids = []
-                        for e in fs:
-                                gmlids.append(e['gmlid'])
-
-                        try:
-                                s = QSettings("norBIT", "EDBSgen/PRO")
-                                for i in range(0, len(fs)):
-                                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                                        sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
-                                        sock.send("NORGIS_MAIN#EDBS#ALBKEY#%s#%d#" % (fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1))
-                                        sock.close()
-
-                                if win32:
-                                        window = win32gui.FindWindow(None, s.value("albWin", "norGIS"))
-                                        win32gui.SetForegroundWindow(window)
-
-                        except socket.error:
-                                QMessageBox.information(None, u"Fehler", u"Verbindung zu norGIS schlug fehl.")
-                else:
-                        self.rubberBand.reset(self.plugin.PolygonGeometry)
-
+            if len(fs) == 0:
                 QApplication.restoreOverrideCursor()
+                QMessageBox.information(None, u"Fehler", u"Keine Flurstücke gefunden.")
+                return
+
+            gmlids = []
+            for e in fs:
+                gmlids.append(e['gmlid'])
+
+            try:
+                s = QSettings("norBIT", "EDBSgen/PRO")
+                for i in range(0, len(fs)):
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
+                    sock.send("NORGIS_MAIN#EDBS#ALBKEY#%s#%d#" % (fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1))
+                    sock.close()
+
+                if win32:
+                    window = win32gui.FindWindow(None, s.value("albWin", "norGIS"))
+                    win32gui.SetForegroundWindow(window)
+
+            except socket.error:
+                QMessageBox.information(None, u"Fehler", u"Verbindung zu norGIS schlug fehl.")
+        else:
+            self.rubberBand.reset(self.plugin.PolygonGeometry)
+
+        QApplication.restoreOverrideCursor()
 
 
 class ALKISSearch(QDialog, ALKISSearchBase):
-        def __init__(self, plugin):
-                QDialog.__init__(self)
-                self.setupUi(self)
-                self.plugin = plugin
+    def __init__(self, plugin):
+        QDialog.__init__(self)
+        self.setupUi(self)
+        self.plugin = plugin
 
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                self.cbxSuchmodus.setCurrentIndex(s.value("suchmodus", 0, type=int))
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        self.cbxSuchmodus.setCurrentIndex(s.value("suchmodus", 0, type=int))
 
-                (db, conninfo) = self.plugin.opendb()
-                self.db = db
+        (db, conninfo) = self.plugin.opendb()
+        self.db = db
 
-                qry = QSqlQuery(db)
-                if not qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") or not qry.next() or not qry.value(0):
-                    self.cbxSuchmodus.removeItem(4)
+        qry = QSqlQuery(db)
+        if not qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") or not qry.next() or not qry.value(0):
+            self.cbxSuchmodus.removeItem(4)
 
-                self.buttonBox.addButton(u"Hinzufügen", QDialogButtonBox.ActionRole).clicked.connect(self.addClicked)
-                self.buttonBox.addButton(u"Leeren", QDialogButtonBox.ActionRole).clicked.connect(self.clearClicked)
+        self.buttonBox.addButton(u"Hinzufügen", QDialogButtonBox.ActionRole).clicked.connect(self.addClicked)
+        self.buttonBox.addButton(u"Leeren", QDialogButtonBox.ActionRole).clicked.connect(self.clearClicked)
 
-                self.on_cbxSuchmodus_currentIndexChanged(0)
+        self.on_cbxSuchmodus_currentIndexChanged(0)
 
-        def evaluate(self, add):
-                if not self.plugin.initLayers():
-                        return False
+    def evaluate(self, add):
+        if not self.plugin.initLayers():
+            return False
 
-                text = self.leSuchbegriff.text()
+        text = self.leSuchbegriff.text()
 
-                if self.cbxSuchmodus.currentIndex() < 2:
-                        if text != "":
-                            text = text.replace("'", "''")
-                            if self.cbxSuchmodus.currentIndex() == 0:
-                                # Teiltreffer
-                                text = u"text LIKE '%%%s%%'" % text
-                            else:
-                                # Exakter Treffer
-                                text = u"text='%s'" % text
+        if self.cbxSuchmodus.currentIndex() < 2:
+            if text != "":
+                text = text.replace("'", "''")
+                if self.cbxSuchmodus.currentIndex() == 0:
+                    # Teiltreffer
+                    text = u"text LIKE '%%%s%%'" % text
+                else:
+                    # Exakter Treffer
+                    text = u"text='%s'" % text
 
-                            qry = QSqlQuery(self.db)
+                qry = QSqlQuery(self.db)
 
-                            sql = u"SELECT count(*),st_extent( coalesce(point,line) ) FROM po_labels WHERE {0}".format(text)
-                            if qry.exec_(sql) and qry.next() and qry.value(0) > 0:
-                                self.plugin.zoomToExtent(qry.value(1), self.plugin.pointMarkerLayer.crs())
-                            else:
-                                QMessageBox.information(None, "ALKIS", u"Keine Treffer gefunden.")
-                                return False
-                        else:
-                            text = "false"
+                sql = u"SELECT count(*),st_extent( coalesce(point,line) ) FROM po_labels WHERE {0}".format(text)
+                if qry.exec_(sql) and qry.next() and qry.value(0) > 0:
+                    self.plugin.zoomToExtent(qry.value(1), self.plugin.pointMarkerLayer.crs())
+                else:
+                    QMessageBox.information(None, "ALKIS", u"Keine Treffer gefunden.")
+                    return False
+            else:
+                text = "false"
 
-                        self.plugin.pointMarkerLayer.setSubsetString(text)
-                        self.plugin.lineMarkerLayer.setSubsetString(text)
+            self.plugin.pointMarkerLayer.setSubsetString(text)
+            self.plugin.lineMarkerLayer.setSubsetString(text)
 
-                elif self.cbxSuchmodus.currentIndex() == 2:  # Flurstücksnummer
-                        m = re.search("(\\d+)(-\\d+)?-(\\d+)(/\\d+)?", text)
-                        if m:
-                                g, f, z, n = int(m.group(1)), m.group(2), int(m.group(3)), m.group(4)
-                                f = int(f[1:]) if f else 0
-                                n = int(n[1:]) if n else 0
+        elif self.cbxSuchmodus.currentIndex() == 2:  # Flurstücksnummer
+            m = re.search("(\\d+)(-\\d+)?-(\\d+)(/\\d+)?", text)
+            if m:
+                g, f, z, n = int(m.group(1)), m.group(2), int(m.group(3)), m.group(4)
+                f = int(f[1:]) if f else 0
+                n = int(n[1:]) if n else 0
 
-                                flsnr = "%06d" % g
-                                flsnr += "%03d" % f if f > 0 else "___"
-                                flsnr += "%05d" % z
-                                flsnr += "%04d" % n if n > 0 else "____"
-                                flsnr += "%"
+                flsnr = "%06d" % g
+                flsnr += "%03d" % f if f > 0 else "___"
+                flsnr += "%05d" % z
+                flsnr += "%04d" % n if n > 0 else "____"
+                flsnr += "%"
 
-                                fs = self.plugin.highlight(u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True, add)
-                                if len(fs) == 0:
-                                        QMessageBox.information(None, u"Fehler", u"Kein Flurstück %s gefunden." % flsnr)
-                                        return False
+                fs = self.plugin.highlight(u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True, add)
+                if len(fs) == 0:
+                    QMessageBox.information(None, u"Fehler", u"Kein Flurstück %s gefunden." % flsnr)
+                    return False
 
-                elif self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
-                        m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", text)
-                        if m:
-                                strasse, ha = m.group(1), m.group(2)
-                                fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format(quote(strasse + '%'), quote(ha.upper())), True, add)
-                                if len(fs) == 0:
-                                    QMessageBox.information(None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha))
-                                    return False
+        elif self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
+            m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", text)
+            if m:
+                strasse, ha = m.group(1), m.group(2)
+                fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format(quote(strasse + '%'), quote(ha.upper())), True, add)
+                if len(fs) == 0:
+                    QMessageBox.information(None, u"Fehler", u"Kein Flurstück %s %s gefunden." % (strasse, ha))
+                    return False
 
-                        if self.cbxHNR.isVisible():
-                            hnr = self.cbxHNR.currentText()
-                            if hnr != "Alle":
-                                fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0} AND h.hausnummer={1})".format(quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())), quote(hnr)), True, add)
-                            else:
-                                fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})".format(quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex()))), True, add)
+            if self.cbxHNR.isVisible():
+                hnr = self.cbxHNR.currentText()
+                if hnr != "Alle":
+                    fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0} AND h.hausnummer={1})".format(quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())), quote(hnr)), True, add)
+                else:
+                    fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})".format(quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex()))), True, add)
 
-                            if len(fs) == 0:
-                                QMessageBox.information(None, u"Fehler", u"Keine Flurstücke gefunden.")
-                                return False
+                if len(fs) == 0:
+                    QMessageBox.information(None, u"Fehler", u"Keine Flurstücke gefunden.")
+                    return False
 
-                elif self.cbxSuchmodus.currentIndex() == 4:  # Eigentümer
-                        where = []
+        elif self.cbxSuchmodus.currentIndex() == 4:  # Eigentümer
+            where = []
 
-                        for e in text.split():
-                            where.append("name1 LIKE " + quote('%' + e + '%'))
+            for e in text.split():
+                where.append("name1 LIKE " + quote('%' + e + '%'))
 
-                        fs = self.plugin.highlight(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where), True, add)
+            fs = self.plugin.highlight(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where), True, add)
 
-                        if len(fs) == 0:
-                            QMessageBox.information(None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text)
-                            return False
+            if len(fs) == 0:
+                QMessageBox.information(None, u"Fehler", u"Kein Flurstück mit Eigentümer '%s' gefunden." % text)
+                return False
 
-                return True
+        return True
 
-        def addClicked(self):
-                self.evaluate(True)
+    def addClicked(self):
+        self.evaluate(True)
 
-        def clearClicked(self):
-                self.plugin.clearHighlight()
+    def clearClicked(self):
+        self.plugin.clearHighlight()
 
-        def accept(self):
-                if not self.evaluate(False):
-                    return
+    def accept(self):
+        if not self.evaluate(False):
+            return
 
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                s.setValue("suchmodus", self.cbxSuchmodus.currentIndex())
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        s.setValue("suchmodus", self.cbxSuchmodus.currentIndex())
 
-                QDialog.accept(self)
+        QDialog.accept(self)
 
-        def on_cbxSuchmodus_currentIndexChanged(self, index):
-                self.lblStrassen.setVisible(False)
-                self.cbxStrassen.setVisible(False)
-                self.lblHNR.setVisible(False)
-                self.cbxHNR.setVisible(False)
+    def on_cbxSuchmodus_currentIndexChanged(self, index):
+        self.lblStrassen.setVisible(False)
+        self.cbxStrassen.setVisible(False)
+        self.lblHNR.setVisible(False)
+        self.cbxHNR.setVisible(False)
+        self.pbSearchStr.setVisible(False)
+
+        self.on_leSuchbegriff_textChanged()
+
+    def on_leSuchbegriff_textChanged(self):
+        self.lblStrassen.setVisible(False)
+        self.cbxStrassen.setVisible(False)
+        self.lblHNR.setVisible(False)
+        self.cbxHNR.setVisible(False)
+
+        if self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
+            m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", self.leSuchbegriff.text())
+            if m:
                 self.pbSearchStr.setVisible(False)
+            else:
+                self.pbSearchStr.setVisible(True)
 
-                self.on_leSuchbegriff_textChanged()
+    def on_pbSearchStr_clicked(self):
+        qry = QSqlQuery(self.db)
 
-        def on_leSuchbegriff_textChanged(self):
-                self.lblStrassen.setVisible(False)
-                self.cbxStrassen.setVisible(False)
-                self.lblHNR.setVisible(False)
-                self.cbxHNR.setVisible(False)
+        self.cbxStrassen.clear()
+        if qry.exec_(u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE k.bezeichnung LIKE {0} AND k.endet IS NULL ORDER BY k.bezeichnung || coalesce(', ' || g.bezeichnung,'')".format(quote(self.leSuchbegriff.text() + '%'))):
+            while qry.next():
+                self.cbxStrassen.addItem(qry.value(1), qry.value(0))
 
-                if self.cbxSuchmodus.currentIndex() == 3:  # Straße und Hausnummer
-                    m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", self.leSuchbegriff.text())
-                    if m:
-                        self.pbSearchStr.setVisible(False)
-                    else:
-                        self.pbSearchStr.setVisible(True)
+        self.lblStrassen.setVisible(self.cbxStrassen.count() > 0)
+        self.cbxStrassen.setVisible(self.cbxStrassen.count() > 0)
 
-        def on_pbSearchStr_clicked(self):
-                qry = QSqlQuery(self.db)
+        self.on_cbxStrassen_currentIndexChanged(0)
 
-                self.cbxStrassen.clear()
-                if qry.exec_(u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE k.bezeichnung LIKE {0} AND k.endet IS NULL ORDER BY k.bezeichnung || coalesce(', ' || g.bezeichnung,'')".format(quote(self.leSuchbegriff.text() + '%'))):
-                    while qry.next():
-                        self.cbxStrassen.addItem(qry.value(1), qry.value(0))
+    def on_cbxStrassen_currentIndexChanged(self, index):
+        qry = QSqlQuery(self.db)
 
-                self.lblStrassen.setVisible(self.cbxStrassen.count() > 0)
-                self.cbxStrassen.setVisible(self.cbxStrassen.count() > 0)
+        schluesselgesamt = self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())
 
-                self.on_cbxStrassen_currentIndexChanged(0)
+        self.cbxHNR.clear()
+        self.cbxHNR.addItem("Alle")
+        if qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt))):
+            while qry.next():
+                self.cbxHNR.addItem(qry.value(0))
 
-        def on_cbxStrassen_currentIndexChanged(self, index):
-                qry = QSqlQuery(self.db)
-
-                schluesselgesamt = self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())
-
-                self.cbxHNR.clear()
-                self.cbxHNR.addItem("Alle")
-                if qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt))):
-                    while qry.next():
-                        self.cbxHNR.addItem(qry.value(0))
-
-                self.lblHNR.setVisible(self.cbxHNR.count() > 0)
-                self.cbxHNR.setVisible(self.cbxHNR.count() > 0)
+        self.lblHNR.setVisible(self.cbxHNR.count() > 0)
+        self.cbxHNR.setVisible(self.cbxHNR.count() > 0)
 
 
 class ALKISOwnerInfo(QgsMapTool):
-        def __init__(self, plugin):
-                QgsMapTool.__init__(self, plugin.iface.mapCanvas())
-                self.plugin = plugin
-                self.iface = plugin.iface
-                self.info = []
-                self.cursor = QCursor(QPixmap([
-                    "16 16 3 1",
-                    "      c None",
-                    ".     c #FF0000",
-                    "+     c #FFFFFF",
-                    "                ",
-                    "       +.+      ",
-                    "      ++.++     ",
-                    "     +.....+    ",
-                    "    +.     .+   ",
-                    "   +.   .   .+  ",
-                    "  +.    .    .+ ",
-                    " ++.    .    .++",
-                    " ... ...+... ...",
-                    " ++.    .    .++",
-                    "  +.    .    .+ ",
-                    "   +.   .   .+  ",
-                    "   ++.     .+   ",
-                    "    ++.....+    ",
-                    "      ++.++     ",
-                    "       +.+      "
-                ]))
+    def __init__(self, plugin):
+        QgsMapTool.__init__(self, plugin.iface.mapCanvas())
+        self.plugin = plugin
+        self.iface = plugin.iface
+        self.info = []
+        self.cursor = QCursor(QPixmap([
+            "16 16 3 1",
+            "      c None",
+            ".     c #FF0000",
+            "+     c #FFFFFF",
+            "                ",
+            "       +.+      ",
+            "      ++.++     ",
+            "     +.....+    ",
+            "    +.     .+   ",
+            "   +.   .   .+  ",
+            "  +.    .    .+ ",
+            " ++.    .    .++",
+            " ... ...+... ...",
+            " ++.    .    .++",
+            "  +.    .    .+ ",
+            "   +.   .   .+  ",
+            "   ++.     .+   ",
+            "    ++.....+    ",
+            "      ++.++     ",
+            "       +.+      "
+        ]))
 
-                self.areaMarkerLayer = None
+        self.areaMarkerLayer = None
 
-        def canvasPressEvent(self, e):
-                if not self.areaMarkerLayer:
-                        (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
-                        if ok:
-                                self.areaMarkerLayer = self.plugin.mapLayer(layerId)
+    def canvasPressEvent(self, e):
+        if not self.areaMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
+            if ok:
+                self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
-                if not self.areaMarkerLayer:
-                        QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+        if not self.areaMarkerLayer:
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
 
-        def canvasMoveEvent(self, e):
-                pass
+    def canvasMoveEvent(self, e):
+        pass
 
-        def fetchall(self, db, sql):
-                rows = []
+    def fetchall(self, db, sql):
+        rows = []
 
-                qry = QSqlQuery(db)
+        qry = QSqlQuery(db)
 
-                if qry.exec_(sql):
-                        rec = qry.record()
+        if qry.exec_(sql):
+            rec = qry.record()
 
-                        while qry.next():
-                                row = {}
+            while qry.next():
+                row = {}
 
-                                for i in range(0, rec.count()):
-                                        v = "%s" % qry.value(i)
-                                        if v == "NULL":
-                                                v = ''
-                                        row[rec.fieldName(i)] = v.strip()
+                for i in range(0, rec.count()):
+                    v = "%s" % qry.value(i)
+                    if v == "NULL":
+                        v = ''
+                    row[rec.fieldName(i)] = v.strip()
 
-                                rows.append(row)
-                else:
-                        qDebug("Exec failed: " + qry.lastError().text())
+                rows.append(row)
+        else:
+            qDebug("Exec failed: " + qry.lastError().text())
 
-                return rows
+        return rows
 
-        def canvasReleaseEvent(self, e):
-                point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
+    def canvasReleaseEvent(self, e):
+        point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
 
-                point = self.plugin.transform(point)
+        point = self.plugin.transform(point)
 
-                try:
-                        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
-                        fs = self.plugin.highlight(
-                            u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
-                                point.x(), point.y(), self.plugin.getepsg()
-                            )
-                        )
+            fs = self.plugin.highlight(
+                u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
+                    point.x(), point.y(), self.plugin.getepsg()
+                )
+            )
 
-                        if len(fs) == 0:
-                                QApplication.restoreOverrideCursor()
-                                QMessageBox.information(None, u"Fehler", u"Kein Flurstück gefunden.")
-                                return
-                finally:
-                        QApplication.restoreOverrideCursor()
+            if len(fs) == 0:
+                QApplication.restoreOverrideCursor()
+                QMessageBox.information(None, u"Fehler", u"Kein Flurstück gefunden.")
+                return
+        finally:
+            QApplication.restoreOverrideCursor()
 
-                page = self.getPage(fs)
-                if page is None:
-                        return
+        page = self.getPage(fs)
+        if page is None:
+            return
 
-                info = Info(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
-                info.setAttribute(Qt.WA_DeleteOnClose)
-                info.setModal(False)
-                info.show()
+        info = Info(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
+        info.setAttribute(Qt.WA_DeleteOnClose)
+        info.setModal(False)
+        info.show()
 
-                self.info.append(info)
+        self.info.append(info)
 
-        def getPage(self, fs):
-                (db, conninfo) = self.plugin.opendb()
-                if db is None:
-                        return None
+    def getPage(self, fs):
+        (db, conninfo) = self.plugin.opendb()
+        if db is None:
+            return None
 
-                qry = QSqlQuery(db)
-                if qry.exec_("SELECT 1 FROM pg_attribute WHERE attrelid=(SELECT oid FROM pg_class WHERE relname='eignerart') AND attname='anteil'") and qry.next():
-                        exists_ea_anteil = qry.value(0) == 1
-                else:
-                        exists_ea_anteil = False
+        qry = QSqlQuery(db)
+        if qry.exec_("SELECT 1 FROM pg_attribute WHERE attrelid=(SELECT oid FROM pg_class WHERE relname='eignerart') AND attname='anteil'") and qry.next():
+            exists_ea_anteil = qry.value(0) == 1
+        else:
+            exists_ea_anteil = False
 
-                html = ""
-                for i in range(0, len(fs)):
-                        flsnr = fs[i]['flsnr']
+        html = ""
+        for i in range(0, len(fs)):
+            flsnr = fs[i]['flsnr']
 
-                        best = self.fetchall(db, (
-                            "SELECT " +
-                            "ea.bvnr" +
-                            ",'' as pz" +
-                            ",(SELECT eignerart FROM eign_shl WHERE ea.b=b) as eignerart" +
-                            ",%s as anteil" +
-                            ",ea.ff_stand AS zhist" +
-                            ",b.bestdnr" +
-                            ",b.gbbz" +
-                            ",b.gbblnr" +
-                            ",b.bestfl" +
-                            ",b.ff_stand AS bhist" +
-                            " FROM eignerart ea" +
-                            " JOIN bestand b ON ea.bestdnr = b.bestdnr" +
-                            " WHERE ea.flsnr = '%s'" +
-                            " ORDER BY zhist,bhist,b") % ("ea.anteil" if exists_ea_anteil else "''", flsnr)
-                        )
+            best = self.fetchall(db, (
+                "SELECT " +
+                "ea.bvnr" +
+                ",'' as pz" +
+                ",(SELECT eignerart FROM eign_shl WHERE ea.b=b) as eignerart" +
+                ",%s as anteil" +
+                ",ea.ff_stand AS zhist" +
+                ",b.bestdnr" +
+                ",b.gbbz" +
+                ",b.gbblnr" +
+                ",b.bestfl" +
+                ",b.ff_stand AS bhist" +
+                " FROM eignerart ea" +
+                " JOIN bestand b ON ea.bestdnr = b.bestdnr" +
+                " WHERE ea.flsnr = '%s'" +
+                " ORDER BY zhist,bhist,b") % ("ea.anteil" if exists_ea_anteil else "''", flsnr)
+            )
 
-                        res = self.fetchall(db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr)
-                        if len(res) == 1:
-                                res = res[0]
-                        else:
-                                QMessageBox.information(None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr, repr(fs)))
-                                return None
+            res = self.fetchall(db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr)
+            if len(res) == 1:
+                res = res[0]
+            else:
+                QMessageBox.information(None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr, repr(fs)))
+                return None
 
-                        res['datum'] = QDate.currentDate().toString("d. MMMM yyyy")
-                        res['hist'] = 0
+            res['datum'] = QDate.currentDate().toString("d. MMMM yyyy")
+            res['hist'] = 0
 
-                        if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['strassen', 'str_shl']])) and qry.next() and qry.value(0):
-                            res['str'] = self.fetchall(db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0" % flsnr)
+            if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['strassen', 'str_shl']])) and qry.next() and qry.value(0):
+                res['str'] = self.fetchall(db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0" % flsnr)
 
-                        if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['nutz_21', 'nutz_shl']])) and qry.next() and qry.value(0):
-                            res['nutz'] = self.fetchall(db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr)
+            if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['nutz_21', 'nutz_shl']])) and qry.next() and qry.value(0):
+                res['nutz'] = self.fetchall(db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr)
 
-                        if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['klas_3x', 'kls_shl']])) and qry.next() and qry.value(0):
-                            res['klas'] = self.fetchall(db, "SELECT sum(fl::int) AS fl, min(kls.klf_text) AS klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0 GROUP BY kls.klf" % flsnr)
+            if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['klas_3x', 'kls_shl']])) and qry.next() and qry.value(0):
+                res['klas'] = self.fetchall(db, "SELECT sum(fl::int) AS fl, min(kls.klf_text) AS klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0 GROUP BY kls.klf" % flsnr)
 
-                        if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['ausfst', 'afst_shl']])) and qry.next() and qry.value(0):
-                            res['afst'] = self.fetchall(db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr)
+            if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['ausfst', 'afst_shl']])) and qry.next() and qry.value(0):
+                res['afst'] = self.fetchall(db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr)
 
-                        if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['bestand', 'eignerart', 'eign_shl']])) and qry.next() and qry.value(0):
-                            res['best'] = self.fetchall(db, "SELECT ea.bvnr,'' as pz,(SELECT eignerart FROM eign_shl WHERE ea.b = b) as eignerart,%s as anteil,ea.ff_stand AS zhist,b.bestdnr,b.gbbz,b.gbblnr,b.bestfl,b.ff_stand AS bhist FROM eignerart ea JOIN bestand b ON ea.bestdnr = b.bestdnr WHERE ea.flsnr='%s' ORDER BY zhist,bhist,b" % (
-                                "ea.anteil" if exists_ea_anteil else "''",
-                                flsnr
-                            ))
+            if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['bestand', 'eignerart', 'eign_shl']])) and qry.next() and qry.value(0):
+                res['best'] = self.fetchall(db, "SELECT ea.bvnr,'' as pz,(SELECT eignerart FROM eign_shl WHERE ea.b = b) as eignerart,%s as anteil,ea.ff_stand AS zhist,b.bestdnr,b.gbbz,b.gbblnr,b.bestfl,b.ff_stand AS bhist FROM eignerart ea JOIN bestand b ON ea.bestdnr = b.bestdnr WHERE ea.flsnr='%s' ORDER BY zhist,bhist,b" % (
+                    "ea.anteil" if exists_ea_anteil else "''",
+                    flsnr
+                ))
 
-                            if qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") and qry.next() and qry.value(0):
-                                for b in res['best']:
-                                    b['bse'] = self.fetchall(db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'])
+                if qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") and qry.next() and qry.value(0):
+                    for b in res['best']:
+                        b['bse'] = self.fetchall(db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'])
 
 #                        for k,v in res.iteritems():
 #                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
 
-                        html = u"""
+            html = u"""
 <HTML xmlns="http://www.w3.org/1999/xhtml">
   <HEAD>
       <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -812,8 +812,8 @@ class ALKISOwnerInfo(QgsMapTool):
 </TABLE>
 """ % res
 
-                        if res['blbnr']:
-                                html += u"""
+            if res['blbnr']:
+                html += u"""
 <TABLE class="fls_tab" border="0" width="100%%">
     <TR class="fls_col_names">
         <TD width="21%%"></TD>
@@ -826,8 +826,8 @@ class ALKISOwnerInfo(QgsMapTool):
 </TABLE>
 """ % res
 
-                        if res['lagebez'] or res['anl_verm']:
-                                html += u"""
+            if res['lagebez'] or res['anl_verm']:
+                html += u"""
 <TABLE class="fls_tab" border="0" width="100%%">
     <TR class="fls_col_names">
         <TD width="21%%"></TD>
@@ -842,9 +842,9 @@ class ALKISOwnerInfo(QgsMapTool):
 </TABLE>
 """ % res
 
-                        if 'str' in res:
-                            if res['str']:
-                                html += u"""
+            if 'str' in res:
+                if res['str']:
+                    html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
     <TR class="fls_col_names">
         <TD width="21%"></TD>
@@ -853,87 +853,87 @@ class ALKISOwnerInfo(QgsMapTool):
     </TR>
 """
 
-                                for strres in res['str']:
-                                        html += u"""
+                    for strres in res['str']:
+                        html += u"""
     <TR class="fls_col_values">
         <TD></TD><TD>%(strname)s</TD><TD>%(hausnr)s</TD></TR>
     </TR>
 """ % strres
 
-                                html += u"""
+                    html += u"""
 </TABLE>
 """
 
-                        if 'nutz' in res:
-                            html += u"""
+            if 'nutz' in res:
+                html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
         <TR class="fls_col_names"><TD width="21%"></TD><TD width="69%">Nutzung</TD><TD width="10%">Fl&auml;che</TD></TR>
 """
-                            if res['nutz']:
-                                for nutz in res['nutz']:
-                                    html += u"""
+                if res['nutz']:
+                    for nutz in res['nutz']:
+                        html += u"""
         <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
 """ % nutz
-                            else:
-                                    html += u"""
+                else:
+                    html += u"""
         <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
 """
 
-                        html += u"""
+            html += u"""
 </TABLE>
 """
 
-                        if 'klas' in res:
-                            html += u"""
+            if 'klas' in res:
+                html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
         <TR class="fls_col_names"><TD width="21%"></TD><TD width="69%">Klassifizierung(en)</TD><TD width="10%">Fl&auml;che</TD></TR>
 """
 
-                            if res['klas']:
-                                for klas in res['klas']:
-                                        html += u"""
+                if res['klas']:
+                    for klas in res['klas']:
+                        html += u"""
         <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
 """ % klas
-                            else:
-                                html += u"""
+                else:
+                    html += u"""
         <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
 """
 
-                        html += u"""
+            html += u"""
 </TABLE>
 """
 
-                        if 'afst' in res:
-                            html += u"""
+            if 'afst' in res:
+                html += u"""
 <TABLE border="0" class="fls_tab" width="100%">
         <TR class="fls_col_names"><TD width="21%"></TD><TD width="79%">Ausf&uuml;hrende Stelle(n)</TD></TR>
 """
 
-                            if res['afst']:
-                                for afst in res['afst']:
-                                        html += u"""
+                if res['afst']:
+                    for afst in res['afst']:
+                        html += u"""
         <TR class="fls_col_values"><TD></TD><TD>%(afst_txt)s</TD></TR>
 """ % afst
 
-                            else:
-                                html += u"""
+                else:
+                    html += u"""
         <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
 """
 
-                            html += u"""
+                html += u"""
 </TABLE>
 """
 
-                        if 'best' in res:
-                                if res['best']:
-                                    html += u"""
+            if 'best' in res:
+                if res['best']:
+                    html += u"""
 <br>
 <TABLE border="0" class="fls_bst" width="100%">
         <TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%"></h3></TD></TR>
 """
 
-                                    for best in res['best']:
-                                        html += u"""
+                    for best in res['best']:
+                        html += u"""
         <TR class="fls_col_names">
                 <TD>Bestandsnummer</TD>
                 <TD>Grundbuchbezirk</TD>
@@ -953,16 +953,16 @@ class ALKISOwnerInfo(QgsMapTool):
                 <TD>PZ</TD>
 """ % best
 
-                                        if res['hist']:
-                                                html += u"""
+                        if res['hist']:
+                            html += u"""
                 <TD>Hist. Bestand</TD><TD>Hist. Zuordnung</TD>
 """
-                                        else:
-                                                html += u"""
+                        else:
+                            html += u"""
                 <TD></TD><TD></TD>
 """
 
-                                        html += u"""
+                        html += u"""
         </TR>
         <TR class="fls_col_values">
                 <TD></TD>
@@ -971,49 +971,49 @@ class ALKISOwnerInfo(QgsMapTool):
                 <TD>%(pz)s</TD>
 """ % best
 
-                                        html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['bhist'] else "")
-                                        html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['zhist'] else "")
+                        html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['bhist'] else "")
+                        html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['zhist'] else "")
 
-                                        html += u"""
+                        html += u"""
         </TR>
 """
 
-                                        if 'bse' in best:
-                                            if best['bse']:
-                                                html += u"""
+                        if 'bse' in best:
+                            if best['bse']:
+                                html += u"""
         <TR class="fls_col_names"><TD>Anteil</TD><TD colspan="5">Namensinformation</TD></TR>
 """
 
-                                                for bse in best['bse']:
-                                                    html += u"""
+                                for bse in best['bse']:
+                                    html += u"""
         <TR class="fls_col_values">
                 <TD>%(antverh)s</TD>
                 <TD colspan="5">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
         </TR>
 """ % bse
-                                            else:
-                                                html += u"""
+                            else:
+                                html += u"""
         <p>Kein Eigentümer gefunden.</p>
 """
 
-                                            html += u"""
+                            html += u"""
         <TR><TD colspan="6"><hr class="fls_hr"></TD></TR>
 """
 
-                html += u"""
+        html += u"""
 """
 
-                s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-                footnote = s.value("footnote", "")
-                if footnote:
-                        html += u"""
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        footnote = s.value("footnote", "")
+        if footnote:
+            html += u"""
         <TR><TD colspan="7" class="fls_footnote">%s</TD></TR>
 """ % footnote
 
-                html += u"""
+        html += u"""
         </TABLE>
 </BODY>
 </HTML>
 """
 
-                return html
+        return html

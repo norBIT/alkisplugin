@@ -105,13 +105,13 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
 
     try:
-            config.read(os.path.expanduser("~/.plugin_uploadrc"))
-            if not options.username:
-                options.username = config.get('auth', 'username', None)
-            if not options.password:
-                options.password = config.get('auth', 'password', None)
-    except: 
-            pass
+        config.read(os.path.expanduser("~/.plugin_uploadrc"))
+        if not options.username:
+            options.username = config.get('auth', 'username', None)
+        if not options.password:
+            options.password = config.get('auth', 'password', None)
+    except:
+        pass
 
     if len(args) != 1:
         # fix_print_with_import
