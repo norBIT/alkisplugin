@@ -209,6 +209,18 @@ ORDER BY count(*) DESC
 
 
 class Info(QDialog):
+    info = []
+
+    @classmethod
+    def showInfo(cls, plugin, html, gmlid, parent):
+        info = Info(plugin, html, gmlid, parent)
+        info.setAttribute(Qt.WA_DeleteOnClose)
+        info.setModal(False)
+
+        cls.info.append(info)
+
+        info.show()
+
     def __init__(self, plugin, html, gmlid, parent):
         QDialog.__init__(self, parent)
         self.resize(QSize(740, 580))
@@ -244,6 +256,7 @@ class Info(QDialog):
         s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
         s.setValue("infogeom", self.saveGeometry())
         QDialog.closeEvent(self, e)
+        self.info.remove(self)
 
     def event(self, e):
         if e.type() == QEvent.WindowActivate:
@@ -602,7 +615,6 @@ class ALKISOwnerInfo(QgsMapTool):
         QgsMapTool.__init__(self, plugin.iface.mapCanvas())
         self.plugin = plugin
         self.iface = plugin.iface
-        self.info = []
         self.cursor = QCursor(QPixmap([
             "16 16 3 1",
             "      c None",
@@ -688,12 +700,7 @@ class ALKISOwnerInfo(QgsMapTool):
         if page is None:
             return
 
-        info = Info(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
-        info.setAttribute(Qt.WA_DeleteOnClose)
-        info.setModal(False)
-        info.show()
-
-        self.info.append(info)
+        Info.showInfo(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
 
     def getPage(self, fs):
         (db, conninfo) = self.plugin.opendb()

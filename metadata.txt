@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.19
+version=2.0.20
 qgisMinimumVersion=2.0
 qgisMaximumVersion=3.99
 author=Jürgen E. Fischer
@@ -20,7 +20,14 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.19
+changelog=Änderungen in 2.0.20
+ 
+ * Flurstücksnachweisreferenzen kapseln (fixes #24)
+ * Einrückung vereinheitlicht
+ * Erweiterung auf QGIS3 portiert
+ * Klassenbeschriftung Zaun ergänzt
+ 
+ Änderungen in 2.0.19
  
  * Kontextmenü im Flurstücksnachweis korrigiert (closes #24)
  * plugin_upload.py mit Python2 ausführen
