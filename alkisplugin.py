@@ -124,6 +124,137 @@ def logMessage(s):
     else:
         QtCore.qWarning(s.encode("utf-8"))
 
+class alkissettings(QObject):
+    def __init__(self, plugin):
+        QObject.__init__(self)
+
+        self.plugin = plugin
+
+        self.service = ""
+        self.host = ""
+        self.port = "5432"
+        self.dbname = ""
+        self.schema = "public"
+        self.uid = ""
+        self.pwd = ""
+        self.authcfg = ""
+        self.signaturkatalog = -1
+        self.modellarten = ['DLKM', 'DKKM1000']
+        self.footnote = ""
+        self.umnpath = BASEDIR
+        self.umntemplate = ""
+
+        self.load()
+
+        plugin.iface.projectRead.connect(self.load)
+        plugin.iface.newProjectCreated.connect(self.load)
+
+    def saveSettings(self):
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        s.setValue("service", self.service)
+        s.setValue("host", self.host)
+        s.setValue("port", self.port)
+        s.setValue("dbname", self.dbname)
+        s.setValue("schema", self.schema)
+        s.setValue("uid", self.uid)
+        s.setValue("pwd", self.pwd)
+        s.setValue("authcfg", self.authcfg)
+        s.setValue("signaturkatalog", self.signaturkatalog)
+        s.setValue("modellarten", self.modellarten)
+        s.setValue("footnote", self.footnote)
+        s.setValue("umnpath", self.umnpath)
+        s.setValue("umntemplate", self.umntemplate)
+
+        logMessage("Einstellungen gespeichert.")
+
+    def loadSettings(self):
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        self.service = s.value("service", "")
+        self.host = s.value("host", "")
+        self.port = s.value("port", "5432")
+        self.dbname = s.value("dbname", "")
+        self.schema = s.value("schema", "public")
+        self.uid = s.value("uid", "")
+        self.pwd = s.value("pwd", "")
+        self.authcfg = s.value("authcfg", "")
+
+        try:
+            self.signaturkatalog = int(s.value("signaturkatalog", -1))
+        except:
+            self.signaturkatalog = -1
+
+        self.modellarten = s.value("modellarten", ['DLKM', 'DKKM1000'])
+        self.footnote = s.value("footnote", "")
+        self.umnpath = s.value("umnpath", BASEDIR)
+        self.umntemplate = s.value("umntemplate", "")
+
+        if self.plugin.db and self.plugin.db.isOpen():
+            self.plugin.db.close()
+
+    def saveToProject(self):
+        p = QgsProject.instance()
+        p.writeEntry("alkis", "settings/service", self.service)
+        p.writeEntry("alkis", "settings/host", self.host)
+        p.writeEntry("alkis", "settings/port", self.port)
+        p.writeEntry("alkis", "settings/dbname", self.dbname)
+        p.writeEntry("alkis", "settings/schema", self.schema)
+        p.writeEntry("alkis", "settings/uid", self.uid)
+        p.writeEntry("alkis", "settings/pwd", self.pwd)
+        p.writeEntry("alkis", "settings/authcfg", self.authcfg)
+        p.writeEntry("alkis", "settings/signaturkatalog", self.signaturkatalog)
+        p.writeEntry("alkis", "settings/modellarten", self.modellarten)
+        p.writeEntry("alkis", "settings/footnote", self.footnote)
+        p.writeEntry("alkis", "settings/umnpath", self.umnpath)
+        p.writeEntry("alkis", "settings/umntemplate", self.umntemplate)
+
+        logMessage(u"Einstellungen in Projekt gespeichert.")
+
+    def hasSettings(self):
+        return len(QgsProject.instance().entryList("alkis", "settings")) > 0
+
+    def load(self):
+        p = QgsProject.instance()
+        if len(p.entryList("alkis", "settings"))>0:
+            self.service, ok = p.readEntry("alkis", "settings/service", "")
+            self.host, ok = p.readEntry("alkis", "settings/host", "")
+            self.port, ok = p.readEntry("alkis", "settings/port", "5432")
+            self.dbname, ok = p.readEntry("alkis", "settings/dbname", "")
+            self.schema, ok = p.readEntry("alkis", "settings/schema", "public")
+            self.uid, ok = p.readEntry("alkis", "settings/uid", "")
+            self.pwd, ok = p.readEntry("alkis", "settings/pwd", "")
+            self.authcfg, ok = p.readEntry("alkis", "settings/authcfg", "")
+            self.signaturkatalog, ok = p.readNumEntry("alkis", "settings/signaturkatalog", -1)
+            self.modellarten, ok = p.readListEntry("alkis", "settings/modellarten", ['DLKM', 'DKKM1000'])
+            self.footnote, ok = p.readEntry("alkis", "settings/footnote", "")
+            self.umnpath, ok = p.readEntry("alkis", "settings/umnpath", BASEDIR)
+            self.umntemplate, ok = p.readEntry("alkis", "settings/umntemplate", "")
+
+            logMessage(u"Einstellungen aus Projekt geladen.")
+        else:
+            self.loadSettings()
+
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/pointMarkerLayer")
+            pml = self.plugin.mapLayer(layerId) if ok else None
+            if pml:
+                uri = QgsDataSourceUri(pml.source())
+                self.service = uri.service()
+                self.host = uri.host()
+                self.port = uri.port()
+                self.dbname = uri.dbname()
+                self.schema = uri.schema()
+                self.uid = uri.username()
+                self.pwd = uri.password()
+                self.authcfg = uri.authConfigId()
+
+                logMessage(u"Datenbankeinstellungen aus Punkthervorhebungslayer abgeleitet.")
+
+        self.plugin.pointMarkerLayer = None
+        self.plugin.lineMarkerLayer = None
+        self.plugin.areaMarkerLayer = None
+
+        if self.plugin.db and self.plugin.db.isOpen():
+            self.plugin.db.close()
+
 
 class alkisplugin(QObject):
     showProgress = pyqtSignal(int, int)
@@ -784,6 +915,8 @@ class alkisplugin(QObject):
         self.db = None
         self.conninfo = None
 
+        self.settings = alkissettings(self)
+
         if hasattr(QgsSymbol, "MapUnit"):
             self.MapUnit = QgsSymbol.MapUnit
             self.Millimeter = QgsSymbol.MM
@@ -804,7 +937,7 @@ class alkisplugin(QObject):
         self.importAction = QAction(QIcon("alkis:logo.svg"), "Layer einbinden", self.iface.mainWindow())
         self.importAction.setWhatsThis("ALKIS-Layer einbinden")
         self.importAction.setStatusTip("ALKIS-Layer einbinden")
-        self.importAction.triggered.connect(self.alkisimport)
+        self.importAction.triggered.connect(self.run)
 
         if mapscriptAvailable:
             self.umnAction = QAction(QIcon("alkis:logo.svg"), "UMN-Mapdatei erzeugen...", self.iface.mainWindow())
@@ -980,8 +1113,7 @@ class alkisplugin(QObject):
 
     def setUMNScale(self, layer, d):
         if d.get('umntemplate', 0):
-            s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-            template = s.value("umntemplate", "")
+            template = self.settings.umntemplate
             if template:
                 layer.template = template
                 layer.tolerance = 1
@@ -1003,6 +1135,10 @@ class alkisplugin(QObject):
             return "(%s)" % sn
 
     def run(self):
+        if self.settings.hasSettings() and \
+            QMessageBox.question(None, "ALKIS", "Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok|QMessageBox.Cancel) == QMessageBox.Cancel:
+                return
+
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             self.alkisimport()
@@ -1164,16 +1300,14 @@ class alkisplugin(QObject):
         return True
 
     def alkisimport(self):
+        self.settings.loadSettings()
+
         (db, conninfo) = self.opendb()
         if db is None:
             return
 
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        modelle = s.value("modellarten", ['DLKM', 'DKKM1000'])
-        try:
-            katalog = int(s.value("signaturkatalog", -1))
-        except:
-            katalog = -1
+        modelle = self.settings.modellarten
+        katalog = self.settings.signaturkatalog
 
         self.iface.mapCanvas().setRenderFlag(False)
 
@@ -1720,6 +1854,8 @@ class alkisplugin(QObject):
                     restrictedLayers.append(l)
 
             QgsProject.instance().writeEntry("WMSRestrictedLayers", "/", restrictedLayers)
+
+            self.settings.saveToProject()
         else:
             self.removeGroup(self.alkisGroup)
 
@@ -1747,16 +1883,15 @@ class alkisplugin(QObject):
             return False
 
     def opendb(self, conninfo=None):
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        schema = s.value("schema", "public")
+        schema = self.settings.schema
 
         if not conninfo:
-            service = s.value("service", "")
-            host = s.value("host", "")
-            port = s.value("port", "5432")
-            dbname = s.value("dbname", "")
-            uid = s.value("uid", "")
-            pwd = s.value("pwd", "")
+            service = self.settings.service
+            host = self.settings.host
+            port = self.settings.port
+            dbname = self.settings.dbname
+            uid = self.settings.uid
+            pwd = self.settings.pwd
 
             uri = QgsDataSourceUri()
             if service:
@@ -1765,7 +1900,7 @@ class alkisplugin(QObject):
                 uri.setConnection(host, port, dbname, uid, pwd)
 
             if authAvailable:
-                authcfg = s.value("authcfg", "")
+                authcfg = self.settings.authcfg
                 if authcfg:
                     uri.setAuthConfigId(authcfg)
                 conninfo = uri.connectionInfo(False)
@@ -1835,17 +1970,12 @@ class alkisplugin(QObject):
     def message(self, msg):
         if msg.startswith("ALKISDRAW"):
             (prefix, hatch, window, qry) = msg.split(' ', 3)
-#                       qDebug( u"prefix:%s hatch:%s window:%s qry:%s" % (prefix,hatch,window,qry) )
             if qry.startswith("ids:"):
                 self.highlight("gml_id in (%s)" % qry[4:], True)
             elif qry.startswith("where:"):
                 self.highlight(qry[6:], True)
             elif qry.startswith("select "):
                 self.highlight("gml_id in (%s)" % qry, True)
-#                       else:
-#                               qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
-#               else:
-#                       qDebug( u"ALKIS: Ignorierte Nachricht:%s" % msg )
 
     def clearHighlight(self):
         if not self.pointMarkerLayer:
@@ -1953,6 +2083,7 @@ class alkisplugin(QObject):
         self.iface.mapCanvas().refresh()
 
     def mapfile(self, conninfo=None, dstfile=None):
+        self.settings.loadSettings()
         (db, conninfo) = self.opendb(conninfo)
         if db is None:
             return
@@ -1972,8 +2103,7 @@ class alkisplugin(QObject):
             self.showProgress.connect(self.iface.mainWindow().showProgress)
             self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        schema = s.value("schema", "public")
+        schema = self.settings.schema
 
         if not self.iface:
             if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
@@ -2037,8 +2167,8 @@ class alkisplugin(QObject):
             mapobj.setProjection("init=epsg:%d" % self.epsg)
             mapobj.setExtent(float(x0), float(y0), float(x1), float(y1))
 
-        modelle = s.value("modellarten", ['DLKM', 'DKKM1000'])
-        katalog = int(s.value("signaturkatalog", -1))
+        modelle = self.settings.modellarten
+        katalog = self.settings.signaturkatalog
 
         missing = {}
         symbols = {}
@@ -2435,7 +2565,7 @@ class alkisplugin(QObject):
                         if "norGIS_alkis%s_%d" % (sn, kat) not in symbols:
                             f = NamedTemporaryFile(delete=False)
                             tempname = f.name
-                            f.write("SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" END END".format(sn, kat, s.value("umnpath", BASEDIR) + "/svg"))
+                            f.write("SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" END END".format(sn, kat, self.settings.umnpath + "/svg"))
                             f.close()
 
                             tempsymbolset = mapscript.symbolSetObj(tempname)
@@ -2603,14 +2733,14 @@ END
 
         mapobj.save(dstfile)
 
-        if s.value("umnpath", BASEDIR) != BASEDIR:
+        if self.settings.umnpath != BASEDIR:
             os.rename(dstfile, dstfile + ".bak")
             i = open(dstfile + ".bak", "r")
             o = open(dstfile, "w")
 
             for l in i:
                 if 'FONTSET "' in l:
-                    o.write(u'  FONTSET "%s/fonts/fonts.txt"\n' % s.value("umnpath"))
+                    o.write(u'  FONTSET "%s/fonts/fonts.txt"\n' % self.settings.umnpath)
                 else:
                     o.write(l)
 

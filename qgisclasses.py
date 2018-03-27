@@ -20,7 +20,7 @@
 from builtins import str
 from builtins import range
 
-from qgis.PyQt.QtCore import QSettings, Qt, QDate, QDir, QByteArray, QSize, QEvent
+from qgis.PyQt.QtCore import Qt, QDate, QDir, QByteArray, QSize, QEvent, QSettings, QPoint
 from qgis.PyQt.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMessageBox, QTableWidgetItem, QAction, QMenu, QFileDialog, QTextBrowser, QVBoxLayout
 from qgis.PyQt.QtGui import QCursor, QPixmap
 from qgis.PyQt.QtPrintSupport import QPrintDialog, QPrinter
@@ -75,62 +75,66 @@ class ALKISConf(QDialog, ConfBase):
         self.setupUi(self)
 
         self.plugin = plugin
+        self.settings = plugin.settings
+        self.settings.loadSettings()
 
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        self.leSERVICE.setText(s.value("service", ""))
-        self.leHOST.setText(s.value("host", ""))
-        self.lePORT.setText(s.value("port", "5432"))
-        self.leDBNAME.setText(s.value("dbname", ""))
-        self.leSCHEMA.setText(s.value("schema", "public"))
-        self.leUID.setText(s.value("uid", ""))
-        self.lePWD.setText(s.value("pwd", ""))
+        self.leSERVICE.setText(self.settings.service)
+        self.leHOST.setText(self.settings.host)
+        self.lePORT.setText(self.settings.port)
+        self.leDBNAME.setText(self.settings.dbname)
+        self.leSCHEMA.setText(self.settings.schema)
+        self.leUID.setText(self.settings.uid)
+        self.lePWD.setText(self.settings.pwd)
         self.cbxSignaturkatalog.setEnabled(False)
 
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
             self.authCfgSelect = QgsAuthConfigSelect(self, "postgres")
             self.tabWidget.insertTab(1, self.authCfgSelect, "Konfigurationen")
 
-            authcfg = s.value("authcfg", "")
+            authcfg = self.settings.authcfg
             if authcfg:
                 self.tabWidget.setCurrentIndex(1)
                 self.authCfgSelect.setConfigId(authcfg)
 
-        self.leUMNPath.setText(s.value("umnpath", os.path.dirname(__file__)))
+        self.leUMNPath.setText(self.settings.umnpath)
         self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
-        self.leUMNTemplate.setText(s.value("umntemplate"))
-        self.teFussnote.setPlainText(s.value("footnote", ""))
+        self.leUMNTemplate.setText(self.settings.umntemplate)
+        self.teFussnote.setPlainText(self.settings.footnote)
 
-        self.load(False)
+        self.loadModels(False)
 
         self.bb.accepted.connect(self.accept)
         self.bb.rejected.connect(self.reject)
-        self.bb.addButton("Modelle laden", QDialogButtonBox.ActionRole).clicked.connect(self.load)
+        self.bb.addButton("Modelle laden", QDialogButtonBox.ActionRole).clicked.connect(self.loadModels)
+        self.bb.addButton("Layer einbinden", QDialogButtonBox.ActionRole).clicked.connect(self.loadLayers)
 
-    def load(self, error=True):
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        s.setValue("service", self.leSERVICE.text())
-        s.setValue("host", self.leHOST.text())
-        s.setValue("port", self.lePORT.text())
-        s.setValue("dbname", self.leDBNAME.text())
-        s.setValue("schema", self.leSCHEMA.text())
-        s.setValue("uid", self.leUID.text())
-        s.setValue("pwd", self.lePWD.text())
+    def loadModels(self, error=True):
+        self.settings.service = self.leSERVICE.text()
+        self.settings.host = self.leHOST.text()
+        self.settings.port = self.lePORT.text()
+        self.settings.dbname = self.leDBNAME.text()
+        self.settings.schema = self.leSCHEMA.text()
+        self.settings.uid = self.leUID.text()
+        self.settings.pwd = self.lePWD.text()
 
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
-            s.setValue("authcfg", self.authCfgSelect.configId())
+            self.settings.authcfg = self.authCfgSelect.configId()
 
         self.twModellarten.clearContents()
         self.cbxSignaturkatalog.clear()
 
-        modelle = s.value("modellarten", ['DLKM', 'DKKM1000'])
-        if modelle is None:
-            modelle = ['DLKM', 'DKKM1000']
         (db, conninfo) = self.plugin.opendb()
         if not db:
             if error:
                 QMessageBox.critical(None, "ALKIS", u"Datenbankverbindung schlug fehl.")
 
+            self.settings.load()
+
             return
+
+        modelle = self.settings.modellarten
+        if modelle is None:
+            modelle = ['DLKM', 'DKKM1000']
 
         qry = QSqlQuery(db)
         if qry.exec_("""
@@ -162,7 +166,6 @@ ORDER BY count(*) DESC
             self.twModellarten.resizeColumnsToContents()
             self.twModellarten.setEnabled(True)
         else:
-            modelle = []
             self.twModellarten.clearContents()
             self.twModellarten.setDisabled(True)
 
@@ -173,21 +176,24 @@ ORDER BY count(*) DESC
         else:
             self.cbxSignaturkatalog.addItem(u"Farbe", -1)
 
-        self.cbxSignaturkatalog.setCurrentIndex(max([0, self.cbxSignaturkatalog.findData(s.value("signaturkatalog", -1))]))
+        self.cbxSignaturkatalog.setCurrentIndex(max([0, self.cbxSignaturkatalog.findData(self.settings.signaturkatalog)]))
 
-    def accept(self):
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        s.setValue("service", self.leSERVICE.text())
-        s.setValue("host", self.leHOST.text())
-        s.setValue("port", self.lePORT.text())
-        s.setValue("dbname", self.leDBNAME.text())
-        s.setValue("uid", self.leUID.text())
-        s.setValue("pwd", self.lePWD.text())
+        self.settings.load()
+
+    def saveSettings(self):
+        self.settings.service = self.leSERVICE.text()
+        self.settings.host = self.leHOST.text()
+        self.settings.port = self.lePORT.text()
+        self.settings.dbname = self.leDBNAME.text()
+        self.settings.schema = self.leSCHEMA.text()
+        self.settings.uid = self.leUID.text()
+        self.settings.pwd = self.lePWD.text()
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
-            s.setValue("authcfg", self.authCfgSelect.configId())
-        s.setValue("umnpath", self.leUMNPath.text())
-        s.setValue("umntemplate", self.leUMNTemplate.text())
-        s.setValue("footnote", self.teFussnote.toPlainText())
+            self.settings.authcfg = self.authCfgSelect.configId()
+
+        self.settings.umnpath = self.leUMNPath.text()
+        self.settings.umntemplate = self.leUMNTemplate.text()
+        self.settings.footnote = self.teFussnote.toPlainText()
 
         modelle = []
         if self.twModellarten.isEnabled():
@@ -196,9 +202,20 @@ ORDER BY count(*) DESC
                 if item.checkState() == Qt.Checked:
                     modelle.append(item.text())
 
-        s.setValue("modellarten", modelle)
-        s.setValue("signaturkatalog", self.cbxSignaturkatalog.itemData(self.cbxSignaturkatalog.currentIndex()))
+        self.settings.modellarten = modelle
+        self.settings.signaturkatalog = self.cbxSignaturkatalog.itemData(self.cbxSignaturkatalog.currentIndex())
 
+        self.settings.saveSettings()
+
+    def loadLayers(self):
+        self.saveSettings()
+        self.plugin.run()
+        self.settings.load()
+        QDialog.accept(self)
+
+    def accept(self):
+        self.saveSettings()
+        self.settings.load()
         QDialog.accept(self)
 
     def browseUMNPath(self):
@@ -238,6 +255,7 @@ class Info(QDialog):
         self.setLayout(layout)
 
         self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("infogeom", QByteArray(), type=QByteArray))
+        self.move( self.pos() + QPoint(16,16) * (len(self.info)-1) )
 
     def print_(self):
         printer = QPrinter()
@@ -1010,8 +1028,7 @@ class ALKISOwnerInfo(QgsMapTool):
         html += u"""
 """
 
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        footnote = s.value("footnote", "")
+        footnote = self.plugin.settings.footnote
         if footnote:
             html += u"""
         <TR><TD colspan="7" class="fls_footnote">%s</TD></TR>
