@@ -6,124 +6,321 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>741</width>
-    <height>224</height>
+    <width>653</width>
+    <height>192</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>ALKIS-Suche</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="4" column="0">
-    <widget class="QLabel" name="lblHNR">
-     <property name="text">
-      <string>Hausnummer</string>
-     </property>
-     <property name="buddy">
-      <cstring>cbxHNR</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QLineEdit" name="leSuchbegriff"/>
-   </item>
-   <item row="5" column="0" colspan="2">
+   <item row="6" column="0">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Close|QDialogButtonBox::Save</set>
+      <set>QDialogButtonBox::Close</set>
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label">
+   <item row="5" column="0">
+    <widget class="QLabel" name="lblResult">
      <property name="text">
-      <string>Suchbegriff</string>
-     </property>
-     <property name="buddy">
-      <cstring>leSuchbegriff</cstring>
+      <string>Objekte...</string>
      </property>
     </widget>
    </item>
    <item row="0" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Modus</string>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>3</number>
      </property>
-     <property name="buddy">
-      <cstring>cbxSuchmodus</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="lblStrassen">
-     <property name="text">
-      <string>Straße</string>
-     </property>
-     <property name="buddy">
-      <cstring>cbxStrassen</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <widget class="QPushButton" name="pbSearchStr">
-     <property name="text">
-      <string>...</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1" colspan="2">
-    <widget class="QComboBox" name="cbxSuchmodus">
-     <item>
-      <property name="text">
-       <string>Beschriftungsteiltreffer</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Exakter Beschriftungstreffer</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Flurstücksnummer</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Straße und Hausnummer</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
+     <widget class="QWidget" name="tabLabels">
+      <attribute name="title">
+       <string>Beschriftungen</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="2" column="1">
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="cbTeiltreffer">
+         <property name="text">
+          <string>Auch Teiltreffer</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="leSuchbegriff"/>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="lblStrassen_2">
+         <property name="text">
+          <string>Suchbegriff</string>
+         </property>
+         <property name="buddy">
+          <cstring>leSuchbegriff</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="pbLabelSearch">
+         <property name="text">
+          <string>Suchen</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabGFF">
+      <attribute name="title">
+       <string>Gemarkung/Flur/Flurstück</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="2" column="3">
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="4">
+        <widget class="QComboBox" name="cbxFSN">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QComboBox" name="cbxFSZ">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QComboBox" name="cbxFlur">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="cbxGemarkung">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="lblGemarkung">
+         <property name="text">
+          <string>Gemarkung</string>
+         </property>
+         <property name="buddy">
+          <cstring>cbxGemarkung</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QLabel" name="lblFlur">
+         <property name="text">
+          <string>Flur</string>
+         </property>
+         <property name="buddy">
+          <cstring>cbxFlur</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QLabel" name="lblFlur_2">
+         <property name="text">
+          <string>Zähler</string>
+         </property>
+         <property name="buddy">
+          <cstring>cbxFlur</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4">
+        <widget class="QLabel" name="lblFlur_3">
+         <property name="text">
+          <string>Nenner</string>
+         </property>
+         <property name="buddy">
+          <cstring>cbxFlur</cstring>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabFLSNR">
+      <attribute name="title">
+       <string>Flurstückskennzeichen</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Kennzeichen</string>
+         </property>
+         <property name="buddy">
+          <cstring>cbxGemarkung</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="leFLSNR"/>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="pbSearchFSK">
+         <property name="text">
+          <string>Suchen</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabSTRHNR">
+      <attribute name="title">
+       <string>Straße/Hausnummer</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <item row="0" column="0">
+        <widget class="QLabel" name="lblStrassen">
+         <property name="text">
+          <string>Straße</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="leStr"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="lblHNR_2">
+         <property name="text">
+          <string>Hausnummer</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <spacer name="verticalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="lblStrassen_3">
+         <property name="text">
+          <string>Straße</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="pbSearchStr">
+         <property name="text">
+          <string>Suchen</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1" colspan="2">
+        <widget class="QComboBox" name="cbxStrassen">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1" colspan="2">
+        <widget class="QComboBox" name="cbxHNR">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabEigentuemer">
+      <attribute name="title">
        <string>Eigentümer</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="3" column="1" colspan="2">
-    <widget class="QComboBox" name="cbxStrassen">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="1" colspan="2">
-    <widget class="QComboBox" name="cbxHNR">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_6">
+       <item row="0" column="2">
+        <widget class="QPushButton" name="pbOwnerSearch">
+         <property name="text">
+          <string>Suchen</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="leEigentuemer"/>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="lblStrassen_4">
+         <property name="text">
+          <string>Eigentümer</string>
+         </property>
+         <property name="buddy">
+          <cstring>leSuchbegriff</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <spacer name="verticalSpacer_5">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
   </layout>
  </widget>
  <tabstops>
-  <tabstop>cbxSuchmodus</tabstop>
-  <tabstop>leSuchbegriff</tabstop>
-  <tabstop>cbxStrassen</tabstop>
-  <tabstop>cbxHNR</tabstop>
   <tabstop>buttonBox</tabstop>
  </tabstops>
  <resources/>
@@ -135,8 +332,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>257</x>
-     <y>190</y>
+     <x>275</x>
+     <y>348</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -151,8 +348,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>310</x>
-     <y>190</y>
+     <x>303</x>
+     <y>348</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>

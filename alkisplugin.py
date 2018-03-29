@@ -7,7 +7,7 @@
     alkisplugin.py
     ---------------------
     Date                 : September 2012
-    Copyright            : (C) 2012-2014 by Jürgen Fischer
+    Copyright            : (C) 2012-2018 by Jürgen Fischer
     Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
@@ -565,11 +565,11 @@ class alkisplugin(QObject):
         },
         {
             'name': u"Politische Grenzen",
-            'area': {'min': 0, 'max': 5000},
+            'area': {'min': 10000, 'max': 0},
             'outline': {'min': 0, 'max': 5000},
-            'line': {'min': 0, 'max': 100000},
+            'line': {'min': 0, 'max': 10000},
             'point': {'min': 0, 'max': 5000},
-            'label': {'min': 0, 'max': 5000},
+            'label': {'min': 10000, 'max': 0},
             'classes': {
                 '2010': u'Landkreisgrenze',
                 '2012': u'Flurgrenze',
@@ -1136,7 +1136,7 @@ class alkisplugin(QObject):
 
     def run(self):
         if self.settings.hasSettings() and \
-            QMessageBox.question(None, "ALKIS", "Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok|QMessageBox.Cancel) == QMessageBox.Cancel:
+            QMessageBox.warning(None, "ALKIS", "Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok|QMessageBox.Cancel) == QMessageBox.Cancel:
                 return
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -2002,6 +2002,14 @@ class alkisplugin(QObject):
         # currentLayer = self.iface.activeLayer()
         self.iface.mapCanvas().refresh()
 
+    def highlighted(self):
+        if self.areaMarkerLayer:
+            m = re.search("layer='ax_flurstueck' AND gml_id IN \\('(.*)'\\)", self.areaMarkerLayer.subsetString())
+            if m:
+                return m.group(1).split("','")
+
+        return []
+
     def highlight(self, where, zoomTo=False, add=False):
         fs = []
 
@@ -2044,9 +2052,7 @@ class alkisplugin(QObject):
             gmlids.add(e['gmlid'])
 
         if add:
-            m = re.search("layer='ax_flurstueck' AND gml_id IN \\('(.*)'\\)", self.areaMarkerLayer.subsetString())
-            if m:
-                gmlids = gmlids | set(m.group(1).split("','"))
+            gmlids = gmlids | set(self.highlighted())
 
         self.areaMarkerLayer.setSubsetString("layer='ax_flurstueck' AND gml_id IN ('" + "','".join(gmlids) + "')")
 
