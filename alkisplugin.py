@@ -25,6 +25,7 @@ standard_library.install_aliases()
 from builtins import map
 from builtins import str
 from builtins import range
+from builtins import unicode
 
 import sip
 for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
@@ -67,7 +68,6 @@ if qgisAvailable:
             QgsMarkerLineSymbolLayerV2 as QgsMarkerLineSymbolLayer,
             QgsSymbolV2 as QgsSymbol,
             QgsSimpleLineSymbolLayerV2 as QgsSimpleLineSymbolLayer,
-            QgsSimpleFillSymbolLayerV2 as QgsSimpleFillSymbolLayer,
             QgsCategorizedSymbolRendererV2 as QgsCategorizedSymbolRenderer,
             QgsRendererCategoryV2 as QgsRendererCategory,
             QgsSvgMarkerSymbolLayerV2 as QgsSvgMarkerSymbolLayer,
@@ -88,7 +88,6 @@ if qgisAvailable:
             QgsMarkerLineSymbolLayer,
             QgsSymbol,
             QgsSimpleLineSymbolLayer,
-            QgsSimpleFillSymbolLayer,
             QgsCategorizedSymbolRenderer,
             QgsRendererCategory,
             QgsSvgMarkerSymbolLayer,
@@ -123,6 +122,7 @@ def logMessage(s):
         QgsMessageLog.logMessage(s, "ALKIS")
     else:
         QtCore.qWarning(s.encode("utf-8"))
+
 
 class alkissettings(QObject):
     def __init__(self, plugin):
@@ -180,7 +180,7 @@ class alkissettings(QObject):
 
         try:
             self.signaturkatalog = int(s.value("signaturkatalog", -1))
-        except:
+        except Exception:
             self.signaturkatalog = -1
 
         self.modellarten = s.value("modellarten", ['DLKM', 'DKKM1000'])
@@ -212,9 +212,12 @@ class alkissettings(QObject):
     def hasSettings(self):
         return len(QgsProject.instance().entryList("alkis", "settings")) > 0
 
+    def removeSettings(self):
+        QgsProject.instance().removeEntry("alkis", "settings")
+
     def load(self):
         p = QgsProject.instance()
-        if len(p.entryList("alkis", "settings"))>0:
+        if len(p.entryList("alkis", "settings")) > 0:
             self.service, ok = p.readEntry("alkis", "settings/service", "")
             self.host, ok = p.readEntry("alkis", "settings/host", "")
             self.port, ok = p.readEntry("alkis", "settings/port", "5432")
@@ -372,6 +375,65 @@ class alkisplugin(QObject):
             'line': {'min': 0, 'max': 5000},
             'point': {'min': 0, 'max': 5000},
             'label': {'min': 0, 'max': 5000},
+        },
+        {
+            'name': u"Politische Grenzen",
+            'area': {'min': 0, 'max': None},
+            'outline': {'min': 0, 'max': None},
+            'line': {'min': 0, 'max': 10000},
+            'point': {'min': 0, 'max': 5000},
+            'label': {'min': 0, 'max': None},
+            'filter': [
+                {
+                    'name': u"Grenzen",
+                    'filter': "layer NOT LIKE 'ax_flurstueck%'",
+                    'area': {'min': 0, 'max': 10000},
+                    'outline': {'min': 0, 'max': 10000},
+                    'label': {'min': 0, 'max': 10000},
+                },
+                {
+                    'name': u"Flure",
+                    'filter': "layer LIKE 'ax_flurstueck_flur%'",
+                    'area': {'min': 10000, 'max': 100000},
+                    'outline': {'min': 10000, 'max': 50000},
+                    'label': {'min': 10000, 'max': 50000},
+                },
+                {
+                    'name': u"Gemarkung",
+                    'filter': "layer LIKE 'ax_flurstueck_gemarkung%'",
+                    'area': {'min': 10000, 'max': 150000},
+                    'outline': {'min': 10000, 'max': 150000},
+                    'label': {'min': 10000, 'max': 150000},
+                },
+                {
+                    'name': u"Gemeinde",
+                    'filter': "layer LIKE 'ax_flurstueck_gemeinde%'",
+                    'area': {'min': 10000, 'max': 200000},
+                    'outline': {'min': 10000, 'max': 200000},
+                    'label': {'min': 50000, 'max': 200000},
+                },
+                {
+                    'name': u"Kreis",
+                    'filter': "layer LIKE 'ax_flurstueck_kreis%'",
+                    'area': {'min': 10000, 'max': None},
+                    'outline': {'min': 10000, 'max': None},
+                    'label': {'min': 200000, 'max': 1000000},
+                },
+            ],
+            'classes': {
+                '2010': u'Landkreisgrenze',
+                '2012': u'Flurgrenze',
+                '2014': u'Gemarkungsgrenze',
+                '2016': u'Staatsgrenze',
+                '2018': u'Landesgrenze',
+                '2020': u'Regierungsbezirksgrenze',
+                '2022': u'Gemeindegrenze',
+                '2026': u'Verwaltungsbezirksgrenze',
+                'pg9001': u'Flure',
+                'pg9002': u'Gemarkungen',
+                'pg9003': u'Gemeinden',
+                'pg9004': u'Kreise',
+            },
         },
         {
             'name': u"Rechtliche Festlegungen",
@@ -561,24 +623,6 @@ class alkisplugin(QObject):
                 '3653': u'[3653]',
                 'rn1548': u'Fischtreppe, Sicherheitstor, Sperrwerk',
                 'rn1550': u'Unterirdisches Gewässer',
-            },
-        },
-        {
-            'name': u"Politische Grenzen",
-            'area': {'min': 10000, 'max': 0},
-            'outline': {'min': 0, 'max': 5000},
-            'line': {'min': 0, 'max': 10000},
-            'point': {'min': 0, 'max': 5000},
-            'label': {'min': 10000, 'max': 0},
-            'classes': {
-                '2010': u'Landkreisgrenze',
-                '2012': u'Flurgrenze',
-                '2014': u'Gemarkungsgrenze',
-                '2016': u'Staatsgrenze',
-                '2018': u'Landesgrenze',
-                '2020': u'Regierungsbezirksgrenze',
-                '2022': u'Gemeindegrenze',
-                '2026': u'Verwaltungsbezirksgrenze',
             },
         },
         {
@@ -924,7 +968,7 @@ class alkisplugin(QObject):
             self.LineGeometry = Qgis.Line
             self.PolygonGeometry = Qgis.Polygon
         else:
-            self.MapUnit = QgsUnitTypes.RenderMetersInMapUnits
+            self.MapUnit = QgsUnitTypes.RenderMapUnits
             self.Millimeter = QgsUnitTypes.RenderMillimeters
             self.PointGeometry = QgsWkbTypes.PointGeometry
             self.LineGeometry = QgsWkbTypes.LineGeometry
@@ -976,17 +1020,11 @@ class alkisplugin(QObject):
         self.aboutAction.setStatusTip(u"Über die Erweiterung")
         self.aboutAction.triggered.connect(self.about)
 
-        if hasattr(self.iface, "addPluginToDatabaseMenu"):
-            self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
-            if self.umnAction:
-                self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
-            self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
-            self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
-        else:
-            self.iface.addPluginToMenu("&ALKIS", self.importAction)
-            self.iface.addPluginToMenu("&ALKIS", self.umnAction)
-            self.iface.addPluginToMenu("&ALKIS", self.confAction)
-            self.iface.addPluginToMenu("&ALKIS", self.aboutAction)
+        self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
+        if self.umnAction:
+            self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
+        self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
+        self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
 
         ns = QSettings("norBIT", "EDBSgen/PRO")
         if ns.contains("norGISPort"):
@@ -1010,19 +1048,17 @@ class alkisplugin(QObject):
         if not self.register():
             self.iface.mainWindow().initializationCompleted.connect(self.register)
 
+        try:
+            QgsMapLayerRegistry.instance().layersWillBeRemoved.connect(self.layersRemoved)
+        except NameError:
+            QgsProject.instance().layersWillBeRemoved.connect(self.layersRemoved)
+
     def unload(self):
-        if hasattr(self.iface, "removePluginDatabaseMenu"):
-            self.iface.removePluginDatabaseMenu("&ALKIS", self.importAction)
-            if self.umnAction:
-                self.iface.removePluginDatabaseMenu("&ALKIS", self.umnAction)
-            self.iface.removePluginDatabaseMenu("&ALKIS", self.confAction)
-            self.iface.removePluginDatabaseMenu("&ALKIS", self.aboutAction)
-        else:
-            self.iface.removePluginMenu("&ALKIS", self.importAction)
-            if self.umnAction:
-                self.iface.removePluginMenu("&ALKIS", self.umnAction)
-            self.iface.removePluginMenu("&ALKIS", self.confAction)
-            self.iface.removePluginMenu("&ALKIS", self.aboutAction)
+        self.iface.removePluginDatabaseMenu("&ALKIS", self.importAction)
+        if self.umnAction:
+            self.iface.removePluginDatabaseMenu("&ALKIS", self.umnAction)
+        self.iface.removePluginDatabaseMenu("&ALKIS", self.confAction)
+        self.iface.removePluginDatabaseMenu("&ALKIS", self.aboutAction)
 
         del self.toolbar
 
@@ -1057,6 +1093,45 @@ class alkisplugin(QObject):
         if self.polygonInfoTool is not None:
             self.polygonInfoTool.deleteLater()
             self.polygonInfoTool = None
+
+        try:
+            QgsMapLayerRegistry.instance().layersWillBeRemoved.disconnect(self.layersRemoved)
+        except NameError:
+            QgsProject.instance().layersWillBeRemoved.disconnect(self.layersRemoved)
+
+    def layersRemoved(self, layers):
+        if not self.pointMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/pointMarkerLayer")
+            if ok:
+                self.pointMarkerLayer = self.mapLayer(layerId)
+
+        if self.pointMarkerLayer and (self.pointMarkerLayer in layers or self.pointMarkerLayer.id() in layers):
+            self.pointMarkerLayer = None
+            QgsProject.instance().removeEntry("alkis", "/pointMarkerLayer")
+
+        if not self.lineMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/lineMarkerLayer")
+            if ok:
+                self.lineMarkerLayer = self.mapLayer(layerId)
+
+        if self.lineMarkerLayer and (self.lineMarkerLayer in layers or self.lineMarkerLayer.id() in layers):
+            self.lineMarkerLayer = None
+            QgsProject.instance().removeEntry("alkis", "/lineMarkerLayer")
+
+        if not self.areaMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
+            if ok:
+                self.areaMarkerLayer = self.mapLayer(layerId)
+
+        if not self.areaMarkerLayer:
+            logMessage(u"Keinen Flächenmarkierungslayer gefunden.")
+            return
+
+        if self.areaMarkerLayer in layers or self.areaMarkerLayer.id() in layers:
+            QgsProject.instance().removeEntry("alkis", "/areaMarkerLayer")
+            self.areaMarkerLayer = None
+            self.settings.removeSettings()
+            logMessage(u"ALKIS-Layer entfernt.")
 
     def conf(self):
         dlg = ALKISConf(self)
@@ -1135,8 +1210,7 @@ class alkisplugin(QObject):
             return "(%s)" % sn
 
     def run(self):
-        if self.settings.hasSettings() and \
-            QMessageBox.warning(None, "ALKIS", "Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok|QMessageBox.Cancel) == QMessageBox.Cancel:
+        if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", u"Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok | QMessageBox.Cancel) == QMessageBox.Cancel:
                 return
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -1153,149 +1227,125 @@ class alkisplugin(QObject):
     def setStricharten(self, db, sym, kat, sn, outline):
         lqry = QSqlQuery(db)
 
-        if hasattr(QgsMarkerLineSymbolLayer, "setOffsetAlongLine"):
-            sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"
-                   u" FROM alkis_linien ln"
-                   u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer{0}"
-                   u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
-                   u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-                   u" LEFT OUTER JOIN alkis_farben ON {1}.farbe=alkis_farben.id"
-                   u" WHERE ln.signaturnummer='{2}'{3}").format(
-                       "" if kat < 0 else u" AND l.katalog=%d" % kat,
-                       u"ln" if kat < 0 else u"l",
-                       sn,
-                       "" if kat < 0 else u" AND ln.katalog=%d" % kat
-            )
+        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"
+               u" FROM alkis_linien ln"
+               u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer{0}"
+               u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
+               u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+               u" LEFT OUTER JOIN alkis_farben ON {1}.farbe=alkis_farben.id"
+               u" WHERE ln.signaturnummer='{2}'{3}").format(
+                   "" if kat < 0 else u" AND l.katalog=%d" % kat,
+                   u"ln" if kat < 0 else u"l",
+                   sn,
+                   "" if kat < 0 else u" AND ln.katalog=%d" % kat
+        )
 
-            if lqry.exec_(sql):
-                stricharten = []
+        if lqry.exec_(sql):
+            stricharten = []
 
-                maxStrichstaerke = -1
+            maxStrichstaerke = None
 
-                while lqry.next():
-                    try:
-                        abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, c = \
-                            lqry.value(0), lqry.value(1), float(lqry.value(2)), \
-                            float(lqry.value(3)), float(lqry.value(4)), lqry.value(5), \
-                            QColor(int(lqry.value(6)), int(lqry.value(7)), lqry.value(8))
-                    except TypeError as e:
-                        logMessage(u"Signaturnummer %s: Ausnahme %s\nSQL:%s" % (sn, str(e), sql))
-                        continue
+            while lqry.next():
+                try:
+                    abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, c = \
+                        lqry.value(0), lqry.value(1), float(lqry.value(2)), \
+                        float(lqry.value(3)), float(lqry.value(4)), lqry.value(5), \
+                        QColor(int(lqry.value(6)), int(lqry.value(7)), lqry.value(8))
+                except TypeError as e:
+                    logMessage(u"Signaturnummer %s: Ausnahme %s\nSQL:%s" % (sn, str(e), sql))
+                    continue
 
-                    if strichstaerke > maxStrichstaerke:
-                        maxStrichstaerke = strichstaerke
+                if maxStrichstaerke is None or abs(strichstaerke) > abs(maxStrichstaerke):
+                    maxStrichstaerke = strichstaerke
 
-                    if abstaende:
-                        if abstaende.startswith("{") and abstaende.endswith("}"):
-                            abstaende = [float(x) / 100 for x in abstaende[1:-1].split(",")]
+                if abstaende:
+                    if abstaende.startswith("{") and abstaende.endswith("}"):
+                        abstaende = [float(x) / 100 for x in abstaende[1:-1].split(",")]
+                    else:
+                        abstaende = [float(abstaende) / 100]
+                else:
+                    abstaende = []
+
+                gesamtl = 0
+                for abstand in abstaende:
+                    gesamtl += laenge + abstand
+
+                stricharten.append([abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c])
+
+            gesamtl0 = None
+            leinzug = None
+            for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
+                if gesamtl0 is None:
+                    gesamtl0 = gesamtl
+                elif gesamtl0 != gesamtl:
+                    raise BaseException(u"Signaturnummer %s: Stricharten nicht gleich lang (%lf vs %lf)" % (sn, gesamtl0, gesamtl))
+
+                if laenge > 0:
+                    if leinzug is None:
+                        leinzug = einzug
+                    elif leinzug != einzug:
+                        # raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
+                        logMessage(u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug))
+                        return False
+
+            for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
+                if abstaende and laenge == 0:
+                    # Marker line
+                    if leinzug:
+                        if einzug > leinzug:
+                            einzug -= leinzug
                         else:
-                            abstaende = [float(abstaende) / 100]
-                    else:
-                        abstaende = []
+                            einzug += gesamtl - leinzug
 
-                    gesamtl = 0
                     for abstand in abstaende:
-                        gesamtl += laenge + abstand
-
-                    stricharten.append([abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c])
-
-                gesamtl0 = None
-                leinzug = None
-                for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
-                    if gesamtl0 is None:
-                        gesamtl0 = gesamtl
-                    elif gesamtl0 != gesamtl:
-                        raise BaseException(u"Signaturnummer %s: Stricharten nicht gleich lang (%lf vs %lf)" % (sn, gesamtl0, gesamtl))
-
-                    if laenge > 0:
-                        if leinzug is None:
-                            leinzug = einzug
-                        elif leinzug != einzug:
-                            # raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
-                            logMessage(u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug))
-                            return False
-
-                for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
-                    if abstaende and laenge == 0:
-                        # Marker line
-                        if leinzug:
-                            if einzug > leinzug:
-                                einzug -= leinzug
-                            else:
-                                einzug += gesamtl - leinzug
-
-                        for abstand in abstaende:
-                            sl = QgsMarkerLineSymbolLayer(False, gesamtl)
-                            sl.setPlacement(QgsMarkerLineSymbolLayer.Interval)
-                            sl.setIntervalUnit(self.MapUnit)
-                            sl.setOffsetAlongLine(einzug)
-                            sl.setOffsetAlongLineUnit(self.MapUnit)
-                            sl.subSymbol().symbolLayer(0).setSize(strichstaerke)
-                            sl.subSymbol().symbolLayer(0).setSizeUnit(self.MapUnit)
-                            try:
-                                sl.subSymbol().symbolLayer(0).setOutlineStyle(Qt.NoPen)
-                            except AttributeError:
-                                sl.subSymbol().symbolLayer(0).setStrokeStyle(Qt.NoPen)
-                            sl.subSymbol().symbolLayer(0).setColor(c)
-                            sl.setWidth(strichstaerke)
-                            sl.setWidthUnit(self.MapUnit)
-                            einzug += abstand
-                            sym.appendSymbolLayer(sl)
-                    else:
-                        # Simple line
-                        sl = QgsSimpleLineSymbolLayer(c, strichstaerke, Qt.SolidLine)
-
-                        if abstaende:
-                            dashvector = []
-                            for abstand in abstaende:
-                                dashvector.extend([laenge, abstand])
-                            sl.setUseCustomDashPattern(True)
-                            sl.setCustomDashVector(dashvector)
-                            sl.setCustomDashPatternUnit(self.MapUnit)
-
-                        sl.setPenCapStyle(Qt.FlatCap if abschluss == "Abgeschnitten" else Qt.RoundCap)
-                        sl.setPenJoinStyle(Qt.MiterJoin if abschluss == "Spitz" else Qt.RoundJoin)
+                        sl = QgsMarkerLineSymbolLayer(False, gesamtl)
+                        sl.setPlacement(QgsMarkerLineSymbolLayer.Interval)
+                        sl.setIntervalUnit(self.MapUnit)
+                        sl.setOffsetAlongLine(einzug)
+                        sl.setOffsetAlongLineUnit(self.MapUnit)
+                        sl.subSymbol().symbolLayer(0).setSize(abs(strichstaerke))
+                        sl.subSymbol().symbolLayer(0).setSizeUnit(self.MapUnit if strichstaerke >= 0 else self.Millimeter)
+                        try:
+                            sl.subSymbol().symbolLayer(0).setOutlineStyle(Qt.NoPen)
+                        except AttributeError:
+                            sl.subSymbol().symbolLayer(0).setStrokeStyle(Qt.NoPen)
+                        sl.subSymbol().symbolLayer(0).setColor(c)
                         sl.setWidth(strichstaerke)
                         sl.setWidthUnit(self.MapUnit)
-
+                        einzug += abstand
                         sym.appendSymbolLayer(sl)
-
-                if sym.symbolLayerCount() == 1:
-                    logMessage(u"Signaturnummer %s: Keine Linienarten erzeugt." % sn)
-                    return False
-
-                if outline:
-                    sym.deleteSymbolLayer(0)
                 else:
-                    sl = QgsSimpleLineSymbolLayer(QColor(0, 0, 0, 0) if hasBlendSource else Qt.white, maxStrichstaerke * 1.01, Qt.SolidLine)
-                    sl.setWidthUnit(self.MapUnit)
-                    sym.changeSymbolLayer(0, sl)
-            else:
-                logMessage(u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, sql, lqry.lastError().text()))
+                    # Simple line
+                    sl = QgsSimpleLineSymbolLayer(c, strichstaerke, Qt.SolidLine)
+
+                    if abstaende:
+                        dashvector = []
+                        for abstand in abstaende:
+                            dashvector.extend([laenge, abstand])
+                        sl.setUseCustomDashPattern(True)
+                        sl.setCustomDashVector(dashvector)
+                        sl.setCustomDashPatternUnit(self.MapUnit)
+
+                    sl.setPenCapStyle(Qt.FlatCap if abschluss == "Abgeschnitten" else Qt.RoundCap)
+                    sl.setPenJoinStyle(Qt.MiterJoin if abschluss == "Spitz" else Qt.RoundJoin)
+                    sl.setWidth(abs(strichstaerke))
+                    sl.setWidthUnit(self.MapUnit if strichstaerke >= 0 else self.Millimeter)
+
+                    sym.appendSymbolLayer(sl)
+
+            if sym.symbolLayerCount() == 1:
+                logMessage(u"Signaturnummer %s: Keine Linienarten erzeugt." % sn)
                 return False
+
+            if outline:
+                sym.deleteSymbolLayer(0)
+            else:
+                sl = QgsSimpleLineSymbolLayer(QColor(0, 0, 0, 0) if hasBlendSource else Qt.white, maxStrichstaerke * 1.01, Qt.SolidLine)
+                sl.setWidthUnit(self.MapUnit)
+                sym.changeSymbolLayer(0, sl)
         else:
-            sql = (u"SELECT coalesce(strichstaerke/100,0)"
-                   u" FROM alkis_linien ln"
-                   u" LEFT OUTER JOIN alkis_linie l ON l.signaturnummer=ln.signaturnummer{0}"
-                   u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
-                   u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-                   u" WHERE ln.signaturnummer='{1}'{2}").format(
-                       "" if kat < 0 else " AND l.katalog=%d" % kat,
-                       sn,
-                       "" if kat < 0 else " AND ln.katalog=%d" % kat,
-            )
-
-            if lqry.exec_(sql) and lqry.next():
-                if sym.type() == QgsSymbol.Fill:
-                    sym.changeSymbolLayer(0, QgsSimpleFillSymbolLayer(c, Qt.NoBrush, c, Qt.SolidLine, float(lqry.value(0))))
-                else:
-                    sym.setWidth(float(lqry.value(0)))
-                    sym.setColor(c)
-
-                sym.setOutputUnit(self.MapUnit)
-            else:
-                logMessage(u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, sql, lqry.lastError().text()))
-                return False
+            logMessage(u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, sql, lqry.lastError().text()))
+            return False
 
         return True
 
@@ -1368,6 +1418,10 @@ class alkisplugin(QObject):
                 name = f.get('name', t)
                 tname = t
 
+                for k in ['area', 'outline', 'line', 'point', 'label']:
+                    if k not in f:
+                        f[k] = d[k]
+
                 nLayers = 0
                 if len(d['filter']) > 1:
                     thisGroup = self.addGroup(name, False, themeGroup)
@@ -1426,7 +1480,7 @@ class alkisplugin(QObject):
                         )
                         layer.setReadOnly()
                         self.setRenderer(layer, r)
-                        self.setScale(layer, d['area'])
+                        self.setScale(layer, f['area'])
                         self.refreshLayer(layer)
 
                         self.addLayer(layer, thisGroup)
@@ -1476,7 +1530,7 @@ class alkisplugin(QObject):
                         self.setRenderer(layer, r)
                         if hasBlendSource:
                             layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
-                        self.setScale(layer, d['outline'])
+                        self.setScale(layer, f['outline'])
                         self.refreshLayer(layer)
 
                         self.addLayer(layer, thisGroup)
@@ -1530,7 +1584,7 @@ class alkisplugin(QObject):
                         if hasBlendSource:
                             layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
                         layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
-                        self.setScale(layer, d['line'])
+                        self.setScale(layer, f['line'])
                         self.refreshLayer(layer)
 
                         self.addLayer(layer, thisGroup)
@@ -1604,7 +1658,7 @@ class alkisplugin(QObject):
                         )
                         layer.setReadOnly()
                         self.setRenderer(layer, r)
-                        self.setScale(layer, d['point'])
+                        self.setScale(layer, f['point'])
                         self.refreshLayer(layer)
 
                         self.addLayer(layer, thisGroup)
@@ -1618,6 +1672,7 @@ class alkisplugin(QObject):
 
                 n = 0
                 labelGroup = None
+                layer = None
                 for i in range(2):
                     geom = "point" if i == 0 else "line"
                     geomtype = "MULTIPOINT" if i == 0 else "MULTILINESTRING"
@@ -1633,8 +1688,8 @@ class alkisplugin(QObject):
 
                     if n == 1:
                         labelGroup = self.addGroup("Beschriftungen", False, thisGroup)
-
                         self.addLayer(layer, labelGroup)
+                        layer = None
 
                     uri = (
                         u"{0} estimatedmetadata=true key='ogc_fid' type={1} srid={2} table="
@@ -1643,7 +1698,8 @@ class alkisplugin(QObject):
                         u" ogc_fid"
                         u",layer"
                         # FIXME: Faktor 1.3225 empirisch bestimmt (QGIS: Schriftgröße mit ascent/decent; ALKIS: reine Schriftgröße)
-                        u",0.25*coalesce(skalierung,1)*s.grad_pt*1.3225 AS tsize"
+                        u",CASE WHEN grad_pt<0 THEN abs(s.grad_pt) ELSE 0.25*coalesce(skalierung,1)*s.grad_pt*1.3225 END AS tsize"
+                        u",CASE WHEN grad_pt<0 THEN 'Point' ELSE 'MapUnit' END AS tunit"
                         u",text"
                         u",CASE coalesce(po_labels.horizontaleausrichtung,s.horizontaleausrichtung)"
                         u" WHEN 'linksbündig' THEN 'Left'"
@@ -1660,6 +1716,7 @@ class alkisplugin(QObject):
                         u",CASE WHEN s.stil LIKE '%Fett%' THEN 1 ELSE 0 END AS bold"
                         u",coalesce(sperrung_pt*0.25,0) AS fontsperrung"
                         u",replace(f.umn,' ',',') AS tcolor"
+                        u",CASE WHEN grad_pt<0 THEN 0 ELSE 1 END AS tshow"
                         u",{3}"
                         u" FROM {7}.po_labels"
                         u" LEFT OUTER JOIN {7}.alkis_schriften s ON po_labels.signaturnummer=s.signaturnummer{4}"
@@ -1685,7 +1742,7 @@ class alkisplugin(QObject):
                     layer.setReadOnly()
                     self.setShortName(layer)
 
-                    self.setScale(layer, d['label'])
+                    self.setScale(layer, f['label'])
 
                     sym = QgsSymbol.defaultSymbol(self.PointGeometry if geom == "point" else self.LineGeometry)
                     if geom == "point":
@@ -1695,23 +1752,21 @@ class alkisplugin(QObject):
                     self.setRenderer(layer, QgsSingleSymbolRenderer(sym))
                     self.refreshLayer(layer)
 
-                    self.addLayer(layer, thisGroup)
-
                     lyr = QgsPalLayerSettings()
                     lyr.fieldName = "text"
                     lyr.isExpression = False
                     lyr.enabled = True
-                    lyr.displayAll = True
+                    # lyr.displayAll = True
                     if qgis3:
                         tf = QgsTextFormat()
                         tf.font().setPointSizeF(2.5)
                         tf.font().setFamily("Arial")
-                        tf.setSizeUnit(QgsUnitTypes.RenderMetersInMapUnits)
+                        tf.setSizeUnit(self.MapUnit)
 
                         bs = QgsTextBufferSettings()
                         bs.setEnabled(True)
                         bs.setSize(0.125)
-                        bs.setSizeUnit(QgsUnitTypes.RenderMetersInMapUnits)
+                        bs.setSizeUnit(self.MapUnit)
                         tf.setBuffer(bs)
 
                         lyr.setFormat(tf)
@@ -1736,6 +1791,7 @@ class alkisplugin(QObject):
                     if qgis3:
                         c = QgsPropertyCollection()
                         c.setProperty(QgsPalLayerSettings.Size, QgsProperty.fromField("tsize"))
+                        c.setProperty(QgsPalLayerSettings.FontSizeUnit, QgsProperty.fromField("tunit"))
                         c.setProperty(QgsPalLayerSettings.Family, QgsProperty.fromField("family"))
                         c.setProperty(QgsPalLayerSettings.Italic, QgsProperty.fromField("italic"))
                         c.setProperty(QgsPalLayerSettings.Bold, QgsProperty.fromField("bold"))
@@ -1748,12 +1804,14 @@ class alkisplugin(QObject):
                             c.setProperty(QgsPalLayerSettings.PositionY, QgsProperty.fromField("ty"))
 
                         c.setProperty(QgsPalLayerSettings.LabelRotation, QgsProperty.fromExpression("-tangle"))
+                        c.setProperty(QgsPalLayerSettings.AlwaysShow, QgsProperty.fromField("tshow"))
                         lyr.setDataDefinedProperties(c)
 
                         layer.setLabeling(QgsVectorLayerSimpleLabeling(lyr))
                         layer.setLabelsEnabled(True)
                     else:
                         lyr.setDataDefinedProperty(QgsPalLayerSettings.Size, True, False, "", "tsize")
+                        lyr.setDataDefinedProperty(QgsPalLayerSettings.FontSizeUnit, True, False, "", "tunit")
                         lyr.setDataDefinedProperty(QgsPalLayerSettings.Family, True, False, "", "family")
                         lyr.setDataDefinedProperty(QgsPalLayerSettings.Italic, True, False, "", "italic")
                         lyr.setDataDefinedProperty(QgsPalLayerSettings.Bold, True, False, "", "bold")
@@ -1766,6 +1824,7 @@ class alkisplugin(QObject):
                             lyr.setDataDefinedProperty(QgsPalLayerSettings.PositionY, True, False, "", "ty")
 
                         lyr.setDataDefinedProperty(QgsPalLayerSettings.Rotation, True, False, "", "tangle")
+                        lyr.setDataDefinedProperty(QgsPalLayerSettings.AlwaysShow, True, False, "", "tshow")
 
                         lyr.writeToLayer(layer)
 
@@ -1773,9 +1832,13 @@ class alkisplugin(QObject):
 
                     if labelGroup:
                         self.addLayer(layer, labelGroup)
+                        layer = None
 
                     n += 1
                     nLayers += 1
+
+                if layer:
+                    self.addLayer(layer, thisGroup)
 
                 if nLayers > 0:
                     self.setGroupExpanded(thisGroup, False)
@@ -2205,6 +2268,10 @@ class alkisplugin(QObject):
                 if f.get('filter', None):
                     where += " AND (%s)" % f['filter']
 
+                for k in ['area', 'outline', 'line', 'point', 'label']:
+                    if k not in f:
+                        f[k] = d[k]
+
                 self.progress(iThema, u"Flächen", 0)
 
                 # 1 Polylinien
@@ -2247,7 +2314,7 @@ class alkisplugin(QObject):
                 layer.setMetaData(u"gml_include_items", "all")
                 layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, d['area'])
+                self.setUMNScale(layer, f['area'])
 
                 sql = (u"SELECT DISTINCT"
                        u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
@@ -2338,7 +2405,7 @@ class alkisplugin(QObject):
                 layer.setMetaData(u"gml_include_items", "all")
                 layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, d['outline'])
+                self.setUMNScale(layer, f['outline'])
 
                 sql = (u"SELECT DISTINCT"
                        u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
@@ -2425,7 +2492,7 @@ class alkisplugin(QObject):
                 layer.setMetaData(u"gml_include_items", "all")
                 layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, d['line'])
+                self.setUMNScale(layer, f['line'])
 
                 sql = (u"SELECT DISTINCT"
                        u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
@@ -2529,7 +2596,7 @@ class alkisplugin(QObject):
                 layer.setMetaData(u"gml_include_items", "all")
                 layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
                 layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, d['point'])
+                self.setUMNScale(layer, f['point'])
 
                 self.progress(iThema, "Punkte", 3)
 
@@ -2623,7 +2690,7 @@ class alkisplugin(QObject):
                     layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
                     layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
                     layer.setMetaData(u"norGIS_zindex", "999")
-                    self.setUMNScale(layer, d['label'])
+                    self.setUMNScale(layer, f['label'])
 
                     data = (u"geom FROM (SELECT"
                             u" ogc_fid"
@@ -2775,7 +2842,7 @@ END
         if lqry.exec_(sql):
             stricharten = []
 
-            maxStrichstaerke = -1
+            maxStrichstaerke = None
 
             while lqry.next():
                 abschluss, scheitel, strichstaerke, laenge, einzug, abstaende = \
@@ -2785,7 +2852,7 @@ END
                 if kat >= 0:
                     c = [int(lqry.value(6)), int(lqry.value(7)), int(lqry.value(8))]
 
-                if strichstaerke > maxStrichstaerke:
+                if maxStrichstaerke is None or abs(strichstaerke) > abs(maxStrichstaerke):
                     maxStrichstaerke = strichstaerke
 
                 if abstaende:
@@ -2849,8 +2916,13 @@ END
 
                 style.linecap = mapscript.MS_CJC_SQUARE if abschluss == "Abgeschnitten" else mapscript.MS_CJC_ROUND
                 style.linejoin = mapscript.MS_CJC_MITER if abschluss == "Spitz" else mapscript.MS_CJC_ROUND
-                style.width = strichstaerke
-                style.size = strichstaerke
+                if strichstaerke < 0:
+                    style.sizeunits = mapscript.MS_PIXELS
+                    style.width = abs(strichstaerke)
+                    style.size = abs(strichstaerke)
+                else:
+                    style.width = strichstaerke
+                    style.size = strichstaerke
 
                 if isinstance(c, list):
                     r, g, b = c
@@ -2912,10 +2984,10 @@ END
             j = idx[oidx]
             del idx[oidx]
 
-            l = mapobj.getLayer(j)
+            layer = mapobj.getLayer(j)
             mapobj.removeLayer(j)
 
-            if mapobj.insertLayer(l, i if i < mapobj.numlayers else -1) < 0:
+            if mapobj.insertLayer(layer, i if i < mapobj.numlayers else -1) < 0:
                 raise BaseException(u"Konnte Layer %d nicht wieder hinzufügen" % i)
 
             for k in list(idx.keys()):

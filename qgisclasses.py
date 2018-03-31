@@ -108,6 +108,12 @@ class ALKISConf(QDialog, ConfBase):
         self.bb.addButton("Modelle laden", QDialogButtonBox.ActionRole).clicked.connect(self.loadModels)
         self.bb.addButton("Layer einbinden", QDialogButtonBox.ActionRole).clicked.connect(self.loadLayers)
 
+        self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("confgeom", QByteArray(), type=QByteArray))
+
+    def done(self, r):
+        QSettings("norBIT", "norGIS-ALKIS-Erweiterung").setValue("confgeom", self.saveGeometry())
+        return QDialog.done(self, r)
+
     def loadModels(self, error=True):
         self.settings.service = self.leSERVICE.text()
         self.settings.host = self.leHOST.text()
@@ -271,8 +277,7 @@ class Info(QDialog):
         menu.exec_(e.globalPos())
 
     def closeEvent(self, e):
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        s.setValue("infogeom", self.saveGeometry())
+        QSettings("norBIT", "norGIS-ALKIS-Erweiterung").setValue("infogeom", self.saveGeometry())
         QDialog.closeEvent(self, e)
         self.info.remove(self)
 
@@ -502,6 +507,12 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.lblResult.setText(u"{} Objekte bereits gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
 
+        self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("searchgeom", QByteArray(), type=QByteArray))
+
+    def done(self, r):
+        QSettings("norBIT", "norGIS-ALKIS-Erweiterung").setValue("searchgeom", self.saveGeometry())
+        return QDialog.done(self, r)
+
     #
     # Beschriftungen
     #
@@ -511,7 +522,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
     #
 
     def on_cbxGemarkung_currentIndexChanged(self, index):
-        qDebug("on_cbxGemarkung_currentIndexChanged: index={}".format(self.cbxGemarkung.currentIndex()))
+        # qDebug(u"on_cbxGemarkung_currentIndexChanged: index={}".format(self.cbxGemarkung.currentIndex()))
         if self.cbxGemarkung.currentIndex() < 0:
             self.cbxFlur.setEnabled(False)
         else:
@@ -533,7 +544,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.cbxFlur.setCurrentIndex(-1 if self.cbxFlur.count() > 1 else 0)
 
     def on_cbxFlur_currentIndexChanged(self, index):
-        qDebug("on_cbxFlur_currentIndexChanged: index={}".format(self.cbxFlur.currentIndex()))
+        # qDebug(u"on_cbxFlur_currentIndexChanged: index={}".format(self.cbxFlur.currentIndex()))
         if self.cbxFlur.currentIndex() < 0:
             self.cbxFSZ.setEnabled(False)
         else:
@@ -562,7 +573,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.cbxFSZ.setCurrentIndex(-1 if self.cbxFSZ.count() > 1 else 0)
 
     def on_cbxFSZ_currentIndexChanged(self, index):
-        qDebug("on_cbxFSZ_currentIndexChanged: index={}".format(self.cbxFSZ.currentIndex()))
+        # qDebug(u"on_cbxFSZ_currentIndexChanged: index={}".format(self.cbxFSZ.currentIndex()))
         if self.cbxFSZ.currentIndex() < 0:
             self.cbxFSN.setEnabled(False)
         else:
@@ -594,7 +605,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             self.loadFS()
 
     def on_cbxFSN_currentIndexChanged(self, index):
-        qDebug("on_cbxFSN_currentIndexChanged: index={}".format(self.cbxFSN.currentIndex()))
+        # qDebug(u"on_cbxFSN_currentIndexChanged: index={}".format(self.cbxFSN.currentIndex()))
         self.loadFS()
 
     def loadFS(self):
@@ -625,7 +636,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
     #
 
     def on_pbSearchStr_clicked(self):
-        qDebug("on_pbSearchStr_clicked: text={}".format(self.leStr.text()))
+        # qDebug("on_pbSearchStr_clicked: text={}".format(self.leStr.text()))
         qry = QSqlQuery(self.db)
 
         self.cbxStrassen.blockSignals(True)
@@ -642,7 +653,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.on_cbxStrassen_currentIndexChanged(self.cbxStrassen.currentIndex())
 
     def on_cbxStrassen_currentIndexChanged(self, index):
-        qDebug("on_cbxStrassen_currentIndexChanged: index={} text={}".format(self.cbxStrassen.currentIndex(), self.cbxStrassen.currentText()))
+        # qDebug(u"on_cbxStrassen_currentIndexChanged: index={} text={}".format(self.cbxStrassen.currentIndex(), self.cbxStrassen.currentText()))
         qry = QSqlQuery(self.db)
 
         schluesselgesamt = self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())
@@ -660,7 +671,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.cbxHNR.setCurrentIndex(0 if self.cbxHNR.count() == 1 else -1)
 
     def on_cbxHNR_currentIndexChanged(self, index):
-        qDebug("on_cbxHNR_currentIndexChanged: index={}".format(self.cbxHNR.currentIndex()))
+        # qDebug(u"on_cbxHNR_currentIndexChanged: index={}".format(self.cbxHNR.currentIndex()))
         if self.cbxHNR.currentIndex() >= 0:
             self.evaluate()
         else:
@@ -964,9 +975,9 @@ class ALKISOwnerInfo(QgsMapTool):
   <BODY>
 <style>
 .fls_tab{width:100%%;empty-cells:show}
-.fls_headline{font-weight:bold;font-size:24px;}
+.fls_headline{font-weight:bold;font-size:4em;}
 .fls_headline_col{background-color:#EEEEEE;width:100%%;height:30px;text-align:left;}
-.fls_time        {background-color:#EEEEEE;font-weight:bold;font-size:24;text-align:right;width:100%%}
+.fls_time        {background-color:#EEEEEE;font-weight:bold;font-size:4em;text-align:right;width:100%%}
 .fls_col_names{font-weight:bold;}
 .fls_col_values{vertical-align:top;}
 .fls_bst{width:100%%;empty-cells:show}

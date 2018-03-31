@@ -12,15 +12,24 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.20
-qgisMinimumVersion=2.0
-qgisMaximumVersion=3.99
+version=2.0.21
+qgisMinimumVersion=2.14
+qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
 email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.20
+changelog=Änderungen in 2.0.21
+ 
+ * Unterstützung für verfeinerte Darstellung der politischen Grenzen im Modell norGIS
+ * Suchdialog auf Reiter umgestellt und Suche nach Gemarkung/Flur/Flurstück ergänzt
+ * Copyright-Jahre aktualisiert
+ * Datenbankkonfiguration in Projekt speichern und daraus wiederherstellen
+ * Layer einbinden auch im Konfigurationsdialog anbieten
+ * Flurstücksnachweisdialoge staffeln
+ 
+ Änderungen in 2.0.20
  
  * Flurstücksnachweisreferenzen kapseln (fixes #24)
  * Einrückung vereinheitlicht
