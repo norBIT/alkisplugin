@@ -357,7 +357,7 @@ class ALKISPointInfo(QgsMapTool):
             s = QSettings("norBIT", "EDBSgen/PRO")
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
-            sock.send("NORGIS_MAIN#EDBS#ALBKEY#%s#" % fs[0]['flsnr'])
+            sock.send("NORGIS_MAIN#EDBS#ALBKEY#{}#".format(fs[0]['flsnr']).encode("utf-8"))
             sock.close()
 
             if win32:
@@ -450,7 +450,7 @@ class ALKISPolygonInfo(QgsMapTool):
                 for i in range(0, len(fs)):
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
-                    sock.send("NORGIS_MAIN#EDBS#ALBKEY#%s#%d#" % (fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1))
+                    sock.send("NORGIS_MAIN#EDBS#ALBKEY#{}#{}#".format(fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1).encode("utf-8"))
                     sock.close()
 
                 if win32:
