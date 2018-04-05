@@ -243,7 +243,7 @@ class alkissettings(QObject):
                 self.service = uri.service()
                 self.host = uri.host()
                 self.port = uri.port()
-                self.dbname = uri.dbname()
+                self.dbname = uri.database()
                 self.schema = uri.schema()
                 self.uid = uri.username()
                 self.pwd = uri.password()
