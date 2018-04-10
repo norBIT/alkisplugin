@@ -485,17 +485,6 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.buttonBox.addButton(u"Hinzufügen", QDialogButtonBox.ActionRole).clicked.connect(self.addClicked)
         self.buttonBox.addButton(u"Leeren", QDialogButtonBox.ActionRole).clicked.connect(self.clearClicked)
 
-        self.cbxGemarkung.blockSignals(True)
-        self.cbxGemarkung.clear()
-        if qry.exec_("SELECT gemashl,gemarkung||' ('||gemashl||', '||gemname||')' FROM gema_shl JOIN gem_shl USING (gemshl) ORDER BY gemarkung,gemname"):
-            while qry.next():
-                self.cbxGemarkung.addItem(qry.value(1), qry.value(0))
-
-            self.cbxGemarkung.setEnabled(self.cbxGemarkung.count() > 0)
-
-        self.cbxGemarkung.blockSignals(False)
-        self.cbxGemarkung.setCurrentIndex(-1)
-
         self.cbxStrassen.setEnabled(False)
         self.cbxHNR.setEnabled(False)
 
@@ -509,124 +498,91 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("searchgeom", QByteArray(), type=QByteArray))
 
+        self.cbxGemarkung.currentIndexChanged.connect(self.gfzn)
+        self.cbxFlur.currentIndexChanged.connect(self.gfzn)
+        self.cbxFSZ.currentIndexChanged.connect(self.gfzn)
+        self.cbxFSN.currentIndexChanged.connect(self.gfzn)
+        self.gfzn()
+
     def done(self, r):
         QSettings("norBIT", "norGIS-ALKIS-Erweiterung").setValue("searchgeom", self.saveGeometry())
         return QDialog.done(self, r)
 
     #
-    # Beschriftungen
-    #
-
-    #
     # Gemarkung/Flur/Flurstück
     #
 
-    def on_cbxGemarkung_currentIndexChanged(self, index):
-        # qDebug(u"on_cbxGemarkung_currentIndexChanged: index={}".format(self.cbxGemarkung.currentIndex()))
-        if self.cbxGemarkung.currentIndex() < 0:
-            self.cbxFlur.setEnabled(False)
-        else:
-            qry = QSqlQuery(self.db)
+    def gfzn(self):
+        g = self.cbxGemarkung.itemData(self.cbxGemarkung.currentIndex()) if self.cbxGemarkung.currentIndex() >= 0 else None
+        f = self.cbxFlur.itemData(self.cbxFlur.currentIndex()) if self.cbxFlur.currentIndex() >= 0 else None
+        z = self.cbxFSZ.itemData(self.cbxFSZ.currentIndex()) if self.cbxFSZ.currentIndex() >= 0 else None
+        n = self.cbxFSN.itemData(self.cbxFSN.currentIndex()) if self.cbxFSN.currentIndex() >= 0 else None
 
-            self.cbxFlur.blockSignals(True)
-            self.cbxFlur.clear()
-            if qry.exec_("SELECT flr FROM flurst WHERE gemashl='{}' GROUP BY flr ORDER BY flr".format(
-                self.cbxGemarkung.itemData(self.cbxGemarkung.currentIndex())
-            )):
-                while qry.next():
-                    self.cbxFlur.addItem(qry.value(0), qry.value(0))
-                if self.cbxFlur.count() > 1:
-                    self.cbxFlur.addItem("Alle", "")
+        where = []
+        if g is not None and g != "":
+            where.append("gemashl='%s'" % g)
 
-            self.cbxFlur.blockSignals(False)
-            self.cbxFlur.setEnabled(self.cbxFlur.count() > 0)
+        if f is not None and f != "":
+            where.append("flr='%s'" % f)
 
-        self.cbxFlur.setCurrentIndex(-1 if self.cbxFlur.count() > 1 else 0)
+        if z is not None and n is not None and z != "" and n != "":
+            where.append("flsnrk='%s/%s'" % (z, n))
+        elif z is not None and z != "":
+            where.append("flsnrk LIKE '%s/%%'" % z)
+        elif n is not None and n != "":
+            where.append("flsnrk LIKE '%%/%s'" % n)
 
-    def on_cbxFlur_currentIndexChanged(self, index):
-        # qDebug(u"on_cbxFlur_currentIndexChanged: index={}".format(self.cbxFlur.currentIndex()))
-        if self.cbxFlur.currentIndex() < 0:
-            self.cbxFSZ.setEnabled(False)
-        else:
-            data = self.cbxFlur.itemData(self.cbxFlur.currentIndex())
-            if data == "":
-                self.cbxFSZ.setEnabled(False)
-                self.loadFS()
-            else:
-                qry = QSqlQuery(self.db)
-
-                self.cbxFSZ.blockSignals(True)
-                self.cbxFSZ.clear()
-                if qry.exec_("SELECT split_part(flsnrk,'/',1) FROM flurst WHERE gemashl='%s' AND flr='%s' GROUP BY split_part(flsnrk,'/',1) ORDER BY split_part(flsnrk,'/',1)" % (
-                    self.cbxGemarkung.itemData(self.cbxGemarkung.currentIndex()),
-                    data
-                )):
-                    while qry.next():
-                        self.cbxFSZ.addItem(qry.value(0), qry.value(0))
-
-                    if self.cbxFSZ.count() > 1:
-                        self.cbxFSZ.addItem("Alle", "")
-
-                self.cbxFSZ.blockSignals(False)
-                self.cbxFSZ.setEnabled(self.cbxFSZ.count() > 0)
-
-        self.cbxFSZ.setCurrentIndex(-1 if self.cbxFSZ.count() > 1 else 0)
-
-    def on_cbxFSZ_currentIndexChanged(self, index):
-        # qDebug(u"on_cbxFSZ_currentIndexChanged: index={}".format(self.cbxFSZ.currentIndex()))
-        if self.cbxFSZ.currentIndex() < 0:
-            self.cbxFSN.setEnabled(False)
-        else:
-            data = self.cbxFSZ.itemData(self.cbxFSZ.currentIndex())
-            if data == "":
-                self.cbxFSN.setEnabled(False)
-                self.loadFS()
-            else:
-                qry = QSqlQuery(self.db)
-
-                self.cbxFSN.blockSignals(True)
-                self.cbxFSN.clear()
-                if qry.exec_("SELECT split_part(flsnrk,'/',2) FROM flurst WHERE gemashl='%s' AND flr='%s' AND flsnrk LIKE '%s/%%' GROUP BY split_part(flsnrk,'/',2) ORDER BY split_part(flsnrk,'/',2)" % (
-                    self.cbxGemarkung.itemData(self.cbxGemarkung.currentIndex()),
-                    self.cbxFlur.itemData(self.cbxFlur.currentIndex()),
-                    data
-                )):
-                    self.cbxFSN.clear()
-                    while qry.next():
-                        self.cbxFSN.addItem(qry.value(0), qry.value(0))
-                    if self.cbxFSN.count() > 1:
-                        self.cbxFSN.addItem("Alle", "")
-
-                self.cbxFSN.blockSignals(False)
-                self.cbxFSN.setEnabled(self.cbxFSN.count() > 0)
-
-        self.cbxFSN.setCurrentIndex(-1 if self.cbxFSN.count() > 1 else 0)
-        if self.cbxFSN.count() == 1:
-            self.loadFS()
-
-    def on_cbxFSN_currentIndexChanged(self, index):
-        # qDebug(u"on_cbxFSN_currentIndexChanged: index={}".format(self.cbxFSN.currentIndex()))
-        self.loadFS()
-
-    def loadFS(self):
-        g = self.cbxGemarkung.itemData(self.cbxGemarkung.currentIndex())
-        f = self.cbxFlur.itemData(self.cbxFlur.currentIndex())
-        z = self.cbxFSZ.itemData(self.cbxFSZ.currentIndex())
-        n = self.cbxFSN.itemData(self.cbxFSN.currentIndex())
-
-        where = "gemashl='%s'" % g
-        if f != "":
-            where += " AND flr='%s'" % f
-            if z != "":
-                if n is not None and n != "":
-                    where += " AND flsnrk='%s/%s'" % (z, n)
-                else:
-                    where += " AND flsnrk LIKE '%s/%%'" % z
+        where = u" WHERE {}".format(u" AND ".join(where)) if where else ""
 
         qry = QSqlQuery(self.db)
 
+        qDebug(u"WHERE:{}".format(where))
+
+        for cbx, sql, val in [
+            [
+                self.cbxGemarkung,
+                "SELECT {0} FROM gema_shl a LEFT OUTER JOIN gem_shl b USING (gemshl){1} GROUP BY {0} ORDER BY {0}".format(
+                    "a.gemashl,a.gemarkung||' ('||a.gemashl||coalesce(', '||b.gemname,'')||')'",
+                    u" JOIN flurst c USING (gemashl){0}".format(where) if where != "" else ""
+                ),
+                g,
+            ],
+            [
+                self.cbxFlur,
+                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("flr", where),
+                f,
+            ],
+            [
+                self.cbxFSZ,
+                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("split_part(flsnrk,'/',1)", where),
+                z,
+            ],
+            [
+                self.cbxFSN,
+                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("split_part(flsnrk,'/',2)", where),
+                n,
+            ],
+        ]:
+            cbx.blockSignals(True)
+            cbx.clear()
+            cbx.addItem("Alle", "")
+
+            qDebug(u"SQL:{} [{}]".format(sql, val))
+
+            if qry.exec_(sql):
+                d = 0 if qry.record().count() == 1 else 1
+
+                while qry.next():
+                    cbx.addItem(qry.value(d), qry.value(0))
+
+            cbx.setCurrentIndex(cbx.findData(val))
+            cbx.blockSignals(False)
+
+        if where == "":
+            return
+
         hits = 0
-        if qry.exec_("SELECT count(*) FROM flurst WHERE %s" % where) and qry.next():
+        if qry.exec_(u"SELECT count(*) FROM flurst{}".format(where)) and qry.next():
             hits = qry.value(0)
 
         self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")

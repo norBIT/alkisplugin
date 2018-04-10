@@ -232,7 +232,7 @@ class alkissettings(QObject):
             self.umnpath, ok = p.readEntry("alkis", "settings/umnpath", BASEDIR)
             self.umntemplate, ok = p.readEntry("alkis", "settings/umntemplate", "")
 
-            logMessage(u"Einstellungen aus Projekt geladen.")
+            # logMessage(u"Einstellungen aus Projekt geladen.")
         else:
             self.loadSettings()
 
@@ -429,10 +429,10 @@ class alkisplugin(QObject):
                 '2020': u'Regierungsbezirksgrenze',
                 '2022': u'Gemeindegrenze',
                 '2026': u'Verwaltungsbezirksgrenze',
-                'pg9001': u'Flure',
-                'pg9002': u'Gemarkungen',
-                'pg9003': u'Gemeinden',
-                'pg9004': u'Kreise',
+                'pg-flur': u'Flure',
+                'pg-gemarkung': u'Gemarkungen',
+                'pg-gemeinde': u'Gemeinden',
+                'pg-kreis': u'Kreise',
             },
         },
         {

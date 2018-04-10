@@ -34,7 +34,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>3</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tabLabels">
       <attribute name="title">
@@ -186,7 +186,7 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
+       <item row="2" column="1">
         <spacer name="verticalSpacer_2">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -206,6 +206,16 @@
         <widget class="QPushButton" name="pbSearchFSK">
          <property name="text">
           <string>Suchen</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="3">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>gemarkungsnr(-flur)-zaehler(/nenner)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
