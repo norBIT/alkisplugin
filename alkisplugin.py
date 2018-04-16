@@ -3091,7 +3091,10 @@ END
                 dst = self.areaMarkerLayer.crs()
 
         if src and dst and src != dst:
-            t = QgsCoordinateTransform(src, dst, QgsProject.instance())
+            if not hasattr(self.iface.mapCanvas(), 'hasCrsTransformEnabled'):
+                t = QgsCoordinateTransform(src, dst, QgsProject.instance())
+            else:
+                t = QgsCoordinateTransform(src, dst)
 
             if t:
                 if hasattr(o, "transform"):
