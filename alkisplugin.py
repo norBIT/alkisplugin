@@ -43,7 +43,12 @@ import os
 import re
 
 
-BASEDIR = os.path.dirname(__file__)
+try:
+    import sys
+    from builtins import unicode
+    BASEDIR = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
+except TypeError:
+    BASEDIR = os.path.dirname(__file__)
 
 qgisAvailable = False
 authAvailable = False
