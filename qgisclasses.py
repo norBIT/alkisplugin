@@ -39,9 +39,13 @@ import operator
 
 try:
     import win32gui
+    import win32api
+    username = win32api.GetUserNameEx(win32api.NameSamCompatible)
     win32 = True
 except ImportError:
+    import getpass
     win32 = False
+    username = u"{}@{}".format( getpass.getuser(), socket.gethostname())
 
 d = os.path.dirname(__file__)
 QDir.addSearchPath("alkis", d)
@@ -830,8 +834,9 @@ class ALKISOwnerInfo(QgsMapTool):
 
     def canvasReleaseEvent(self, e):
         point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
-
         point = self.plugin.transform(point)
+
+        self.point = "POINT(%.3lf %.3lf)" % (point.x(), point.y())
 
         try:
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -861,6 +866,31 @@ class ALKISOwnerInfo(QgsMapTool):
             return None
 
         qry = QSqlQuery(db)
+
+        log = False
+        if qry.exec_("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')"):
+            if qry.next() and qry.value(0):
+                qDebug(u"Protokollierung aktiv.")
+                log = True
+            else:
+                qDebug(u"Einfügerecht zur Protokollierung fehlt.")
+        elif qry.exec_("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])"):
+            qDebug(u"Protokolltabelle angelegt.")
+            log = True
+        else:
+            qDebug(u"Protokolltabelle konnte nicht angelegt werden.")
+
+        if log:
+            if not qry.prepare("INSERT INTO postnas_search_logging(datum, username, requestType, search, result) VALUES (now(),?,'eigentuemerInfo',?,?)"):
+                qDebug(u"Protokolleintrag konnte nicht ergänzt werden")
+            else:
+                qry.addBindValue(username)
+                qry.addBindValue(self.point)
+                qry.addBindValue(u"{%s}" % ",".join([fs[i]['flsnr'] for i in range(0, len(fs))]))
+
+                if not qry.exec_():
+                    qDebug(u"Protokolleintrag konnte nicht ergänzt werden")
+
         if qry.exec_("SELECT 1 FROM pg_attribute WHERE attrelid=(SELECT oid FROM pg_class WHERE relname='eignerart') AND attname='anteil'") and qry.next():
             exists_ea_anteil = qry.value(0) == 1
         else:
