@@ -39,13 +39,9 @@ import operator
 
 try:
     import win32gui
-    import win32api
-    username = win32api.GetUserNameEx(win32api.NameSamCompatible)
     win32 = True
 except ImportError:
-    import getpass
     win32 = False
-    username = u"{}@{}".format( getpass.getuser(), socket.gethostname())
 
 d = os.path.dirname(__file__)
 QDir.addSearchPath("alkis", d)
@@ -71,7 +67,6 @@ def quote(x, prefix='E'):
         return u"%s'%s'" % (prefix, str(x))
     else:
         return u"'%s'" % str(x)
-
 
 class ALKISConf(QDialog, ConfBase):
     def __init__(self, plugin):
@@ -287,7 +282,7 @@ class Info(QDialog):
 
     def event(self, e):
         if e.type() == QEvent.WindowActivate:
-            self.plugin.highlight("gml_id='{}'".format(self.gmlid))
+            self.plugin.highlight(where="gml_id='{}'".format(self.gmlid))
         return QDialog.event(self, e)
 
 
@@ -334,7 +329,7 @@ class ALKISPointInfo(QgsMapTool):
                 self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
 
     def canvasMoveEvent(self, e):
         pass
@@ -347,7 +342,7 @@ class ALKISPointInfo(QgsMapTool):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
         fs = self.plugin.highlight(
-            u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
+            where=u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
                 point.x(), point.y(), self.plugin.getepsg()
             )
         )
@@ -411,7 +406,7 @@ class ALKISPolygonInfo(QgsMapTool):
                 self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
 
     def canvasMoveEvent(self, e):
         if self.rubberBand.numberOfVertices() > 0:
@@ -434,7 +429,7 @@ class ALKISPolygonInfo(QgsMapTool):
             self.rubberBand.reset(self.plugin.PolygonGeometry)
 
             fs = self.plugin.highlight(
-                u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,%d))" % (
+                where=u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,%d))" % (
                     ",".join(["%.3lf %.3lf" % (p[0], p[1]) for p in g.asPolygon()[0]]),
                     self.plugin.getepsg()
                 )
@@ -509,7 +504,9 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.gfzn()
 
     def done(self, r):
-        QSettings("norBIT", "norGIS-ALKIS-Erweiterung").setValue("searchgeom", self.saveGeometry())
+        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
+        s.setValue("searchgeom", self.saveGeometry())
+        s.setValue("suchmodus", self.tabWidget.currentIndex())
         return QDialog.done(self, r)
 
     #
@@ -685,7 +682,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                         flsnr += n
             flsnr += "%"
 
-            fs = self.plugin.highlight(u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True)
+            fs = self.plugin.highlight(where=u"flurstueckskennzeichen LIKE %s" % quote(flsnr), zoomTo=True)
 
         elif self.tabWidget.currentWidget() == self.tabFLSNR:
             hits = 0
@@ -702,7 +699,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 flsnr += "%04d" % n if n > 0 else "____"
                 flsnr += "%"
 
-                fs = self.plugin.highlight(u"flurstueckskennzeichen LIKE %s" % quote(flsnr), True)
+                fs = self.plugin.highlight(where=u"flurstueckskennzeichen LIKE %s" % quote(flsnr), zoomTo=True)
                 hits = len(fs)
 
             self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")
@@ -713,7 +710,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", text)
                 if m:
                     strasse, ha = m.group(1), m.group(2)
-                    fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format(quote(strasse + '%'), quote(ha.upper())), True)
+                    fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format(quote(strasse + '%'), quote(ha.upper())), zoomTo=True)
                     if len(fs) > 0:
                         self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)))
                     else:
@@ -727,11 +724,11 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                     sql += u" OR EXISTS (SELECT * FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.zeigtauf AND k.schluesselgesamt={0})"
 
                 fs = self.plugin.highlight(
-                    sql.format(
+                    where=sql.format(
                         quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())),
                         ' AND h.hausnummer={0}'.format(quote(hnr)) if hnr != "Alle" else ""
                     ),
-                    True
+                    zoomTo=True
                 )
                 self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
 
@@ -741,7 +738,16 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 where.append("name1 LIKE " + quote('%' + e + '%'))
 
             if where:
-                fs = self.plugin.highlight(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where), True)
+                fs = self.plugin.retrieve(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where))
+                if len(fs) == 0:
+                    qDebug(u"Kein Flurstück gefunden")
+                    return False
+
+                if not self.plugin.logQuery("eigentuemerSuche", self.leEigentuemer.text(), [i['flsnr'] for i in fs]):
+                    self.lblResult.setText(u"Flurstücke werden ohne Protokollierung nicht angezeigt.")
+                    return False
+
+                fs = self.plugin.highlight(fs=fs, zoomTo=True)
 
                 self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
 
@@ -766,9 +772,6 @@ class ALKISSearch(QDialog, ALKISSearchBase):
     def accept(self):
         if not self.evaluate():
             return
-
-        s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        s.setValue("suchmodus", self.tabWidget.currentIndex())
 
         QDialog.accept(self)
 
@@ -810,7 +813,7 @@ class ALKISOwnerInfo(QgsMapTool):
                 self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
 
     def canvasMoveEvent(self, e):
         pass
@@ -842,29 +845,31 @@ class ALKISOwnerInfo(QgsMapTool):
         point = self.iface.mapCanvas().getCoordinateTransform().toMapCoordinates(e.x(), e.y())
         point = self.plugin.transform(point)
 
-        self.point = "POINT(%.3lf %.3lf)" % (point.x(), point.y())
+        p = "POINT(%.3lf %.3lf)" % (point.x(), point.y())
 
         try:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
-            fs = self.plugin.highlight(
-                u"st_contains(wkb_geometry,st_geomfromtext('POINT(%.3lf %.3lf)'::text,%d))" % (
-                    point.x(), point.y(), self.plugin.getepsg()
-                )
-            )
+            fs = self.plugin.retrieve(u"st_contains(wkb_geometry,st_geomfromtext('{}'::text,{}))".format(
+                p, self.plugin.getepsg()
+            ))
+
+            if not self.plugin.logQuery("eigentuemerInfo", p, [i['flsnr'] for i in fs]):
+                 QMessageBox.information(None, u"Hinweis", u"Flurstücke werden ohne Protokollierung nicht angezeigt.")
+                 return False
 
             if len(fs) == 0:
-                QApplication.restoreOverrideCursor()
-                QMessageBox.information(None, u"Fehler", u"Kein Flurstück gefunden.")
-                return
+                QMessageBox.information(None, u"Hinweis", u"Kein Flurstück gefunden.")
+                return False
+
+            fs = self.plugin.highlight(fs=fs, zoomTo=False)
+
         finally:
             QApplication.restoreOverrideCursor()
 
         page = self.getPage(fs)
-        if page is None:
-            return
-
-        Info.showInfo(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
+        if page is not None:
+            Info.showInfo(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
 
     def getPage(self, fs):
         (db, conninfo) = self.plugin.opendb()
@@ -872,32 +877,7 @@ class ALKISOwnerInfo(QgsMapTool):
             return None
 
         qry = QSqlQuery(db)
-
-        log = False
-        if qry.exec_("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')"):
-            if qry.next() and qry.value(0):
-                qDebug(u"Protokollierung aktiv.")
-                log = True
-            else:
-                qDebug(u"Einfügerecht zur Protokollierung fehlt.")
-        elif qry.exec_("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])"):
-            qDebug(u"Protokolltabelle angelegt.")
-            log = True
-        else:
-            qDebug(u"Protokolltabelle konnte nicht angelegt werden.")
-
-        if log:
-            if not qry.prepare("INSERT INTO postnas_search_logging(datum, username, requestType, search, result) VALUES (now(),?,'eigentuemerInfo',?,?)"):
-                qDebug(u"Protokolleintrag konnte nicht ergänzt werden")
-            else:
-                qry.addBindValue(username)
-                qry.addBindValue(self.point)
-                qry.addBindValue(u"{%s}" % ",".join([fs[i]['flsnr'] for i in range(0, len(fs))]))
-
-                if not qry.exec_():
-                    qDebug(u"Protokolleintrag konnte nicht ergänzt werden")
-
-        if qry.exec_("SELECT 1 FROM pg_attribute WHERE attrelid=(SELECT oid FROM pg_class WHERE relname='eignerart') AND attname='anteil'") and qry.next():
+        if qry.exec_("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='eignerart' AND column_name='anteil'".format(quote(self.plugin.settings.schema))) and qry.next():
             exists_ea_anteil = qry.value(0) == 1
         else:
             exists_ea_anteil = False

@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.27
+version=2.0.28
 qgisMinimumVersion=2.14
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
@@ -20,7 +20,17 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.27
+changelog=Änderungen in 2.0.28
+ 
+ * Auch Suche nach Eigentümern protokollieren (followup fed886fdf)
+   Optional mit Abfrage eine Aktenzeichens, wenn die Protokolltabelle eine
+   solche Spalte enthält.
+ * Straßensuche: Bei allen Hausnummern auch Lagebezeichnung ohne Hausnummern
+   berücksichtigen
+ * Fix für Mapfile-Export
+ * Anpassungen an QGIS 3.2
+ 
+ Änderungen in 2.0.27
  
  * Protokollierung für Eigentümerabfragen ergänzt (Tabelle identisch zu PostNAS_Search)
  

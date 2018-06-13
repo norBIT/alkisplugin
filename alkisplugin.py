@@ -32,7 +32,7 @@ for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVar
     sip.setapi(c, 2)
 
 from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
-from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog
+from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog
 from qgis.PyQt.QtGui import QIcon, QColor, QPainter
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.PyQt import QtCore
@@ -41,7 +41,6 @@ from tempfile import NamedTemporaryFile
 
 import os
 import re
-
 
 try:
     import sys
@@ -111,23 +110,27 @@ if qgisAvailable:
     from .qgisclasses import About, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
 try:
+    import win32api
+    USERNAME = win32api.GetUserNameEx(win32api.NameSamCompatible)
+except ImportError:
+    import getpass
+    USERNAME = u"{}@{}".format(getpass.getuser(), socket.gethostname())
+
+try:
     import mapscript
     from mapscript import fromstring
     mapscriptAvailable = True
 except ImportError:
     mapscriptAvailable = False
 
-
 def qDebug(s):
     QtCore.qDebug(s.encode('ascii', 'ignore'))
-
 
 def logMessage(s):
     if qgisAvailable:
         QgsMessageLog.logMessage(s, "ALKIS")
     else:
         QtCore.qWarning(s.encode("utf-8"))
-
 
 class alkissettings(QObject):
     def __init__(self, plugin):
@@ -964,6 +967,8 @@ class alkisplugin(QObject):
         self.db = None
         self.conninfo = None
 
+        self.az = None
+
         self.settings = alkissettings(self)
 
         if hasattr(QgsSymbol, "MapUnit"):
@@ -1399,9 +1404,9 @@ class alkisplugin(QObject):
                 if crs.authid() == "":
                     crs.saveAsUserCRS("ALKIS %d" % self.epsg)
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery()))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), qry.executedQuery()))
             else:
-                QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), qry.executedQuery()))
+                QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), qry.executedQuery()))
                 return
 
         nGroups = 0
@@ -1494,7 +1499,7 @@ class alkisplugin(QObject):
                     else:
                         del r
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 self.progress(iThema, "Grenzen", 1)
@@ -1544,7 +1549,7 @@ class alkisplugin(QObject):
                     else:
                         del r
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 self.progress(iThema, "Linien", 2)
@@ -1598,7 +1603,7 @@ class alkisplugin(QObject):
                     else:
                         del r
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 self.progress(iThema, "Punkte", 3)
@@ -1672,7 +1677,7 @@ class alkisplugin(QObject):
                     else:
                         del r
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 n = 0
@@ -1683,7 +1688,7 @@ class alkisplugin(QObject):
                     geomtype = "MULTIPOINT" if i == 0 else "MULTILINESTRING"
 
                     if not qry.exec_("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)):
-                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                         continue
 
                     self.progress(iThema, "Beschriftungen (%d)" % (i + 1), 4 + i)
@@ -2039,11 +2044,11 @@ class alkisplugin(QObject):
         if msg.startswith("ALKISDRAW"):
             (prefix, hatch, window, qry) = msg.split(' ', 3)
             if qry.startswith("ids:"):
-                self.highlight("gml_id in (%s)" % qry[4:], True)
+                self.highlight(where="gml_id in (%s)" % qry[4:], zoomTo=True)
             elif qry.startswith("where:"):
-                self.highlight(qry[6:], True)
+                self.highlight(where=qry[6:], zoomTo=True)
             elif qry.startswith("select "):
-                self.highlight("gml_id in (%s)" % qry, True)
+                self.highlight(where="gml_id in (%s)" % qry, zoomTo=True)
 
     def clearHighlight(self):
         if self.pointMarkerLayer is None:
@@ -2052,7 +2057,7 @@ class alkisplugin(QObject):
                 self.pointMarkerLayer = self.mapLayer(layerId)
 
         if self.pointMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!\n")
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!")
             return
 
         self.pointMarkerLayer.setSubsetString("false")
@@ -2063,7 +2068,7 @@ class alkisplugin(QObject):
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
             return
 
         self.areaMarkerLayer.setSubsetString("false")
@@ -2078,7 +2083,10 @@ class alkisplugin(QObject):
 
         return []
 
-    def highlight(self, where, zoomTo=False, add=False):
+    def retrieve(self, where):
+        if not isinstance(where, list):
+            where = [where]
+
         fs = []
 
         if self.areaMarkerLayer is None:
@@ -2087,7 +2095,7 @@ class alkisplugin(QObject):
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
             return fs
 
         (db, conninfo) = self.opendb()
@@ -2102,7 +2110,7 @@ class alkisplugin(QObject):
                 u",alkis_flsnr(ax_flurstueck)"
                 u" FROM ax_flurstueck"
                 u" WHERE endet IS NULL"
-                u" AND (%s)" % where
+                u" AND (%s)" % u" AND ".join(where)
         ):
             QMessageBox.critical(None, "Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % (qry.lastQuery(), qry.lastError().text()))
             return fs
@@ -2112,8 +2120,23 @@ class alkisplugin(QObject):
         while qry.next():
             fs.append({'gmlid': qry.value(0), 'flsnr': qry.value(1)})
 
-        if len(fs) == 0:
-            return fs
+        return fs
+
+    def highlight(self, where='', fs=[], zoomTo=False, add=False):
+        if not self.areaMarkerLayer:
+            (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
+            if ok:
+                self.areaMarkerLayer = self.mapLayer(layerId)
+
+        if not self.areaMarkerLayer:
+            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
+            return []
+
+        if (fs and where) or (not fs and not where):
+            raise BaseException("fs xor where")
+
+        if not fs:
+            fs = self.retrieve(where)
 
         gmlids = set()
         for e in fs:
@@ -2128,6 +2151,11 @@ class alkisplugin(QObject):
 
         self.iface.mapCanvas().refresh()
 
+        (db, conninfo) = self.opendb()
+        if db is None:
+            return fs
+
+        qry = QSqlQuery(db)
         if zoomTo and qry.exec_(u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next():
             self.zoomToExtent(qry.value(0), self.areaMarkerLayer.crs())
 
@@ -2146,7 +2174,7 @@ class alkisplugin(QObject):
             crs = QgsCoordinateReferenceSystem(epsg)
 
             if not crs.isValid():
-                QMessageBox.critical(None, "ALKIS", u"Ungültiges Koordinatensystem %d\n" % epsg)
+                QMessageBox.critical(None, "ALKIS", u"Ungültiges Koordinatensystem %d" % epsg)
                 return
 
         rect = self.transform(rect, crs, self.destinationCrs())
@@ -2368,7 +2396,7 @@ class alkisplugin(QObject):
                             maxprio = prio
 
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 if layer.numclasses > 0:
@@ -2455,7 +2483,7 @@ class alkisplugin(QObject):
                             maxprio = prio
 
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 if layer.numclasses > 0:
@@ -2557,7 +2585,7 @@ class alkisplugin(QObject):
                             nStyles += cl.numstyles
 
                 else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s\n" % (qry.lastError().text(), sql))
+                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
                 if layer.numclasses > 0:
@@ -3108,6 +3136,58 @@ END
                     o = t.transform(o)
 
         return o
+
+    def logQuery(self, requestType, search, result):
+        (db, conninfo) = self.opendb()
+        if db is None:
+            return
+
+        qry = QSqlQuery(db)
+
+        if qry.exec_("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')"):
+            if not qry.next() or not qry.value(0):
+                qDebug(u"Einfügerecht zur Protokollierung fehlt.")
+                return True
+
+            qDebug(u"Protokollierung aktiv.")
+
+        elif qry.exec_("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])"):
+            qDebug(u"Protokolltabelle angelegt.")
+
+        else:
+            qDebug(u"Protokolltabelle konnte nicht angelegt werden.")
+            return True
+
+        mitAZ = qry.exec_("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='postnas_search_logging' AND column_name='aktenzeichen'".format(self.settings.schema.replace("'", "''"))) and qry.next()
+
+        if mitAZ:
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            az, ok = QInputDialog.getText(None, u"Grund der Abfrage", u"Aktenzeichen:", text=self.az)
+            QApplication.restoreOverrideCursor()
+            if not ok:
+                return False
+
+            self.az = az
+
+        if not qry.prepare("INSERT INTO postnas_search_logging(datum, username, requestType, search, result{}) VALUES (now(),?,?,?,?{})".format(
+            ', aktenzeichen' if mitAZ else '',
+            ',?' if mitAZ else ''
+        )):
+            logMessage(u"Protokolleintrag konnte nicht vorbereitet werden")
+            return False
+
+        qry.addBindValue(USERNAME)
+        qry.addBindValue(requestType)
+        qry.addBindValue(search)
+        qry.addBindValue(u"{%s}" % u",".join(result))
+        if mitAZ:
+            qry.addBindValue(self.az)
+
+        if not qry.exec_():
+            logMessage(u"Protokolleintrag konnte nicht ergänzt werden")
+            return False
+
+        return True
 
 
 if __name__ == '__main__':
