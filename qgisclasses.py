@@ -328,12 +328,12 @@ class ALKISPointInfo(QgsMapTool):
         self.areaMarkerLayer = None
 
     def canvasPressEvent(self, e):
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
             if ok:
                 self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
 
     def canvasMoveEvent(self, e):
@@ -405,12 +405,12 @@ class ALKISPolygonInfo(QgsMapTool):
         self.areaMarkerLayer = None
 
     def canvasPressEvent(self, e):
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
             if ok:
                 self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
 
     def canvasMoveEvent(self, e):
@@ -798,12 +798,12 @@ class ALKISOwnerInfo(QgsMapTool):
         self.areaMarkerLayer = None
 
     def canvasPressEvent(self, e):
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
             if ok:
                 self.areaMarkerLayer = self.plugin.mapLayer(layerId)
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
 
     def canvasMoveEvent(self, e):

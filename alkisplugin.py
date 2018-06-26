@@ -1105,30 +1105,30 @@ class alkisplugin(QObject):
             QgsProject.instance().layersWillBeRemoved.disconnect(self.layersRemoved)
 
     def layersRemoved(self, layers):
-        if not self.pointMarkerLayer:
+        if self.pointMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/pointMarkerLayer")
             if ok:
                 self.pointMarkerLayer = self.mapLayer(layerId)
 
-        if self.pointMarkerLayer and (self.pointMarkerLayer in layers or self.pointMarkerLayer.id() in layers):
+        if self.pointMarkerLayer is not None and (self.pointMarkerLayer in layers or self.pointMarkerLayer.id() in layers):
             self.pointMarkerLayer = None
             QgsProject.instance().removeEntry("alkis", "/pointMarkerLayer")
 
-        if not self.lineMarkerLayer:
+        if self.lineMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/lineMarkerLayer")
             if ok:
                 self.lineMarkerLayer = self.mapLayer(layerId)
 
-        if self.lineMarkerLayer and (self.lineMarkerLayer in layers or self.lineMarkerLayer.id() in layers):
+        if self.lineMarkerLayer is not None and (self.lineMarkerLayer in layers or self.lineMarkerLayer.id() in layers):
             self.lineMarkerLayer = None
             QgsProject.instance().removeEntry("alkis", "/lineMarkerLayer")
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
             if ok:
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             logMessage(u"Keinen Flächenmarkierungslayer gefunden.")
             return
 
@@ -1147,21 +1147,21 @@ class alkisplugin(QObject):
         dlg.exec_()
 
     def initLayers(self):
-        if not self.pointMarkerLayer:
+        if self.pointMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/pointMarkerLayer")
             if ok:
                 self.pointMarkerLayer = self.mapLayer(layerId)
 
-        if not self.pointMarkerLayer:
+        if self.pointMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!")
             return False
 
-        if not self.lineMarkerLayer:
+        if self.lineMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/lineMarkerLayer")
             if ok:
                 self.lineMarkerLayer = self.mapLayer(layerId)
 
-        if not self.lineMarkerLayer:
+        if self.lineMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Linienmarkierungslayer nicht gefunden!")
             return False
 
@@ -1842,7 +1842,7 @@ class alkisplugin(QObject):
                     n += 1
                     nLayers += 1
 
-                if layer:
+                if layer is not None:
                     self.addLayer(layer, thisGroup)
 
                 if nLayers > 0:
@@ -2046,23 +2046,23 @@ class alkisplugin(QObject):
                 self.highlight("gml_id in (%s)" % qry, True)
 
     def clearHighlight(self):
-        if not self.pointMarkerLayer:
+        if self.pointMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/pointMarkerLayer")
             if ok:
                 self.pointMarkerLayer = self.mapLayer(layerId)
 
-        if not self.pointMarkerLayer:
+        if self.pointMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!\n")
             return
 
         self.pointMarkerLayer.setSubsetString("false")
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
             if ok:
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
             return
 
@@ -2071,7 +2071,7 @@ class alkisplugin(QObject):
         self.iface.mapCanvas().refresh()
 
     def highlighted(self):
-        if self.areaMarkerLayer:
+        if self.areaMarkerLayer is not None:
             m = re.search("layer='ax_flurstueck' AND gml_id IN \\('(.*)'\\)", self.areaMarkerLayer.subsetString())
             if m:
                 return m.group(1).split("','")
@@ -2081,12 +2081,12 @@ class alkisplugin(QObject):
     def highlight(self, where, zoomTo=False, add=False):
         fs = []
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
             if ok:
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
-        if not self.areaMarkerLayer:
+        if self.areaMarkerLayer is None:
             QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!\n")
             return fs
 
@@ -3092,7 +3092,7 @@ END
         if src is None:
             src = self.destinationCrs()
         if dst is None:
-            if self.areaMarkerLayer:
+            if self.areaMarkerLayer is not None:
                 dst = self.areaMarkerLayer.crs()
 
         if src and dst and src != dst:
