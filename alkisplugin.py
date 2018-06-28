@@ -2169,7 +2169,7 @@ class alkisplugin(QObject):
             if not self.iface or not self.iface:
                 raise BaseException("Destination file missing.")
 
-            dstfile, __ = QFileDialog.getSaveFileName(None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)")
+            dstfile = QFileDialog.getSaveFileName(None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)")
             if dstfile is None:
                 return
 
