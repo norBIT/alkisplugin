@@ -114,6 +114,7 @@ try:
     USERNAME = win32api.GetUserNameEx(win32api.NameSamCompatible)
 except ImportError:
     import getpass
+    import socket
     USERNAME = u"{}@{}".format(getpass.getuser(), socket.gethostname())
 
 try:
