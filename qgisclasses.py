@@ -648,7 +648,6 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         if self.tabWidget.currentWidget() == self.tabLabels:
             text = self.leSuchbegriff.text()
             if text != "":
-                text = text.replace("'", "''")
                 if self.cbTeiltreffer.isChecked():
                     # Teiltreffer
                     text = u"text LIKE %s" % quote("%%%s%%" % text)
@@ -722,11 +721,18 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
             if self.cbxHNR.isEnabled():
                 hnr = self.cbxHNR.currentText()
-                if hnr != "Alle":
-                    fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0} AND h.hausnummer={1})".format(quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())), quote(hnr)), True)
-                else:
-                    fs = self.plugin.highlight(u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})".format(quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex()))), True)
 
+                sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0}{1})"
+                if hnr == "Alle":
+                    sql += u" OR EXISTS (SELECT * FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.zeigtauf AND k.schluesselgesamt={0})"
+
+                fs = self.plugin.highlight(
+                    sql.format(
+                        quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())),
+                        ' AND h.hausnummer={0}'.format(quote(hnr)) if hnr != "Alle" else ""
+                    ),
+                    True
+                )
                 self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
 
         elif self.tabWidget.currentWidget() == self.tabEigentuemer:
