@@ -22,7 +22,7 @@ from builtins import range
 
 from qgis.PyQt.QtCore import Qt, QDate, QDir, QByteArray, QSize, QEvent, QSettings, QPoint
 from qgis.PyQt.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMessageBox, QTableWidgetItem, QAction, QMenu, QFileDialog, QTextBrowser, QVBoxLayout
-from qgis.PyQt.QtGui import QCursor, QPixmap
+from qgis.PyQt.QtGui import QCursor, QPixmap, QIntValidator
 from qgis.PyQt.QtPrintSupport import QPrintDialog, QPrinter
 from qgis.PyQt.QtSql import QSqlQuery
 from qgis.PyQt import uic
@@ -473,6 +473,11 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
         self.tabWidget.setCurrentIndex(s.value("suchmodus", 0, type=int))
 
+        v = QIntValidator()
+        v.setBottom(1)
+        self.leHighlightThreshold.setValidator(v)
+        self.leHighlightThreshold.setText(str(s.value("highlightThreshold", 1000)))
+
         (db, conninfo) = self.plugin.opendb()
         self.db = db
 
@@ -480,9 +485,15 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         if not qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") or not qry.next() or not qry.value(0):
             self.tabWidget.removeTab(self.tabEigentuemer)
 
-        self.buttonBox.addButton(u"Ersetzen", QDialogButtonBox.ActionRole).clicked.connect(self.replaceClicked)
-        self.buttonBox.addButton(u"Hinzufügen", QDialogButtonBox.ActionRole).clicked.connect(self.addClicked)
-        self.buttonBox.addButton(u"Leeren", QDialogButtonBox.ActionRole).clicked.connect(self.clearClicked)
+        self.replaceButton = self.buttonBox.addButton(u"Ersetzen", QDialogButtonBox.ActionRole)
+        self.addButton = self.buttonBox.addButton(u"Hinzufügen", QDialogButtonBox.ActionRole)
+        self.removeButton = self.buttonBox.addButton(u"Entfernen", QDialogButtonBox.ActionRole)
+        self.clearButton = self.buttonBox.addButton(u"Leeren", QDialogButtonBox.ActionRole)
+
+        self.replaceButton.clicked.connect(self.replaceClicked)
+        self.addButton.clicked.connect(self.addClicked)
+        self.removeButton.clicked.connect(self.removeClicked)
+        self.clearButton.clicked.connect(self.clearClicked)
 
         self.cbxStrassen.setEnabled(False)
         self.cbxHNR.setEnabled(False)
@@ -492,6 +503,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.pbSearchFSK.clicked.connect(self.evaluate)
 
         self.highlighted = set(self.plugin.highlighted())
+        self.updateButtons()
 
         self.lblResult.setText(u"{} Objekte bereits gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
 
@@ -507,6 +519,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
         s.setValue("searchgeom", self.saveGeometry())
         s.setValue("suchmodus", self.tabWidget.currentIndex())
+        s.setValue("highlightThreshold", int(self.leHighlightThreshold.text()))
         return QDialog.done(self, r)
 
     #
@@ -537,7 +550,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         qry = QSqlQuery(self.db)
 
-        qDebug(u"WHERE:{}".format(where))
+        # qDebug(u"WHERE:{}".format(where))
 
         for cbx, sql, val in [
             [
@@ -568,7 +581,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             cbx.clear()
             cbx.addItem("Alle", "")
 
-            qDebug(u"SQL:{} [{}]".format(sql, val))
+            # qDebug(u"SQL:{} [{}]".format(sql, val))
 
             if qry.exec_(sql):
                 d = 0 if qry.record().count() == 1 else 1
@@ -586,7 +599,11 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         if qry.exec_(u"SELECT count(*) FROM flurst{}".format(where)) and qry.next():
             hits = qry.value(0)
 
-        self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")
+        if hits>0 and hits<int(self.leHighlightThreshold.text()):
+            self.evaluate()
+        else:
+            self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")
+
 
     #
     # Straße/Hausnummer
@@ -634,9 +651,30 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         else:
             self.lblResult.setText(u"")
 
+    def on_tabWidget_currentChanged(self, idx):
+        self.updateButtons()
+
     #
     # Allgemein
     #
+
+    def updateButtons(self, selection=[]):
+        if self.tabWidget.currentWidget() == self.tabLabels:
+            if not self.plugin.initLayers():
+                return
+
+            self.addButton.setEnabled(False)
+            self.removeButton.setEnabled(False)
+            self.replaceButton.setEnabled(False)
+            self.clearButton.setEnabled(self.plugin.pointMarkerLayer.subsetString() != "false")
+            return
+
+        hits = len(selection)>0
+        highlighted = len(self.highlighted)>0
+        self.addButton.setEnabled(hits)
+        self.removeButton.setEnabled(hits and highlighted)
+        self.replaceButton.setEnabled(hits and highlighted)
+        self.clearButton.setEnabled(highlighted)
 
     def evaluate(self):
         if not self.plugin.initLayers():
@@ -667,22 +705,25 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             self.plugin.pointMarkerLayer.setSubsetString(text)
             self.plugin.lineMarkerLayer.setSubsetString(text)
 
+            self.updateButtons()
+
         elif self.tabWidget.currentWidget() == self.tabGFF:
             g = self.cbxGemarkung.itemData(self.cbxGemarkung.currentIndex())
             f = self.cbxFlur.itemData(self.cbxFlur.currentIndex())
             z = self.cbxFSZ.itemData(self.cbxFSZ.currentIndex())
             n = self.cbxFSN.itemData(self.cbxFSN.currentIndex())
 
-            flsnr = g
-            if f is not None and f != "":
-                flsnr += f
-                if z is not None and z != "":
-                    flsnr += z
-                    if n != "":
-                        flsnr += n
-            flsnr += "%"
+            flsnr = ""
+            flsnr += ("%" if g is None or g == "" else g) + "-"
+            flsnr += ("%" if f is None or f == "" else f) + "-"
+            flsnr += ("%" if z is None or z == "" else z) + "/"
+            flsnr += ("%" if n is None or n == "" else n)
 
-            fs = self.plugin.highlight(where=u"flurstueckskennzeichen LIKE %s" % quote(flsnr), zoomTo=True)
+            # qDebug(u"flsnr:{}".format(flsnr))
+            fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM fs WHERE gml_id=fs_obj AND alb_key LIKE %s)" % quote(flsnr), zoomTo=True)
+
+            self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
+            self.updateButtons(fs)
 
         elif self.tabWidget.currentWidget() == self.tabFLSNR:
             hits = 0
@@ -704,6 +745,8 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
             self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")
 
+            self.updateButtons(fs)
+
         elif self.tabWidget.currentWidget() == self.tabSTRHNR:
             text = self.leStr.text()
             if text != "":
@@ -715,6 +758,8 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                         self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)))
                     else:
                         self.lblResult.setText(u"Keine Flurstücke gefunden")
+
+                    self.updateButtons(fs)
 
             if self.cbxHNR.isEnabled():
                 hnr = self.cbxHNR.currentText()
@@ -731,6 +776,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                     zoomTo=True
                 )
                 self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
+                self.updateButtons(fs)
 
         elif self.tabWidget.currentWidget() == self.tabEigentuemer:
             where = []
@@ -741,39 +787,55 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 fs = self.plugin.retrieve(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where))
                 if len(fs) == 0:
                     qDebug(u"Kein Flurstück gefunden")
+                    self.updateButtons()
                     return False
 
                 if not self.plugin.logQuery("eigentuemerSuche", self.leEigentuemer.text(), [i['flsnr'] for i in fs]):
                     self.lblResult.setText(u"Flurstücke werden ohne Protokollierung nicht angezeigt.")
+                    self.updateButtons()
                     return False
 
                 fs = self.plugin.highlight(fs=fs, zoomTo=True)
-
                 self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
+                self.updateButtons(fs)
 
         return True
 
     def addClicked(self):
         self.evaluate()
         self.highlighted |= set(self.plugin.highlighted())
-        self.plugin.highlight("gml_id IN ('" + "','".join(self.highlighted) + "')", True)
+        self.plugin.highlight(where="gml_id IN ('" + "','".join(self.highlighted) + "')", zoomTo=True)
         self.lblResult.setText(u"{} Objekte gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
+        self.updateButtons()
+
+    def removeClicked(self):
+        self.evaluate()
+        self.highlighted -= set(self.plugin.highlighted())
+        self.plugin.highlight(where="gml_id IN ('" + "','".join(self.highlighted) + "')", zoomTo=True)
+        self.lblResult.setText(u"Nun {} Objekte gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
+        self.updateButtons()
 
     def clearClicked(self):
-        self.plugin.clearHighlight()
+        if self.tabWidget.currentWidget() == self.tabLabels:
+            self.plugin.pointMarkerLayer.setSubsetString("false")
+        else:
+            self.plugin.areaMarkerLayer.setSubsetString("false")
+            self.highlighted = set()
+
         self.lblResult.setText(u"Auswahl gelöscht.")
-        self.highlighted = set()
+        self.updateButtons()
 
     def replaceClicked(self):
         self.evaluate()
         self.highlighted = set(self.plugin.highlighted())
         self.lblResult.setText(u"{} Objekte gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
+        self.updateButtons()
 
-    def accept(self):
-        if not self.evaluate():
-            return
+    def reject(self):
+        if len(self.highlighted)>0:
+            fs = self.plugin.highlight(where="gml_id IN ('" + "','".join(self.highlighted) + "')", zoomTo=True)
 
-        QDialog.accept(self)
+        QDialog.reject(self)
 
 
 class ALKISOwnerInfo(QgsMapTool):

@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.29
+version=2.0.30
 qgisMinimumVersion=2.14
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
@@ -20,7 +20,18 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.29
+changelog=Änderungen in 2.0.30
+ 
+ Sucherweiterungen:
+ * Bei Gemarkung/Flur/Flurstückssuche Fundorte in der Karte anzeigen (mit Schwellwert)
+ * Treffermenge Beschriftung / flurstücke werden nun getrennt behandelt
+ * Gefundene Flurstücke können von der Fundmenge auch abgezogen werden.
+ * Hinzufügen/Ersetzen/Entfernen/Leeren nun kontextsensitiv
+ * Übernahme der Ergebnisse aus Gemarkung/Flur/Flurstückssuche korrigiert
+ * Wiederherstellung der Hervorhebung der Fundmenge, wenn letzter Fund
+   nicht hinzugefügt/ersetzt wird.
+ 
+ Änderungen in 2.0.29
  
  * Linux: fix 1ee0073a
  

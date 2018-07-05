@@ -2157,12 +2157,15 @@ class alkisplugin(QObject):
             return fs
 
         qry = QSqlQuery(db)
-        if zoomTo and qry.exec_(u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next():
+        if zoomTo and qry.exec_(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1)>0:
             self.zoomToExtent(qry.value(0), self.areaMarkerLayer.crs())
 
         return fs
 
     def zoomToExtent(self, bb, crs):
+        if bb is None:
+            return
+
         bb = bb[4:-1]
         (p0, p1) = bb.split(",")
         (x0, y0) = p0.split(" ")
