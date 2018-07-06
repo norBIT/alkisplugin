@@ -1485,7 +1485,7 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=\"%s\".po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.schema, where),
+                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
                             u"Flächen (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1533,7 +1533,7 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=\"%s\".po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.schema, where),
+                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
                             u"Grenzen (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1586,7 +1586,7 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=\"%s\".po_lines (line) sql=%s" % (conninfo, self.epsg, self.schema, where),
+                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_lines (line) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
                             u"Linien (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1663,7 +1663,7 @@ class alkisplugin(QObject):
                     qDebug(u"classes: %d" % n)
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.schema, where),
+                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),
                             u"Punkte (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1740,7 +1740,7 @@ class alkisplugin(QObject):
                         "" if katalog < 0 else " AND s.katalog=%d" % katalog,
                         where,
                         geom,
-                        self.schema
+                        self.quotedschema().replace(u'"', u'\\"')
                     )
 
                     qDebug(u"URI: %s" % uri)
@@ -1867,7 +1867,7 @@ class alkisplugin(QObject):
             self.setGroupVisible(self.alkisGroup, False)
 
             self.pointMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"%s\".po_labels (point) sql=false" % (conninfo, self.epsg, self.schema),
+                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=%s.po_labels (point) sql=false" % (conninfo, self.epsg, self.quotedschema()),
                 u"Punktmarkierung",
                 "postgres", layeropts
             )
@@ -1885,7 +1885,7 @@ class alkisplugin(QObject):
             self.addLayer(self.pointMarkerLayer, markerGroup)
 
             self.lineMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=\"%s\".po_labels (line) sql=false" % (conninfo, self.epsg, self.schema),
+                u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_labels (line) sql=false" % (conninfo, self.epsg, self.quotedschema()),
                 u"Linienmarkierung",
                 "postgres", layeropts
             )
@@ -1901,7 +1901,7 @@ class alkisplugin(QObject):
             self.addLayer(self.lineMarkerLayer, markerGroup)
 
             self.areaMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=\"%s\".po_polygons (polygon) sql=false" % (conninfo, self.epsg, self.schema),
+                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=false" % (conninfo, self.epsg, self.quotedschema()),
                 u"Flächenmarkierung",
                 "postgres", layeropts
             )
@@ -2209,13 +2209,11 @@ class alkisplugin(QObject):
             self.showProgress.connect(self.iface.mainWindow().showProgress)
             self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
-        schema = self.settings.schema
-
         if not self.iface:
             if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
                 raise BaseException("Could not prepare search path update.")
 
-            qry.addBindValue(schema)
+            qry.addBindValue(self.schema)
 
             if not qry.exec_():
                 raise BaseException("Could not set search path.")
@@ -2330,7 +2328,7 @@ class alkisplugin(QObject):
                 layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                 iLayer += 1
 
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM \"%s\".po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (schema, where, self.epsg)).encode("utf-8")
+                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
                 layer.classitem = "signaturnummer"
                 layer.setProjection("init=epsg:%d" % self.epsg)
                 layer.connectiontype = mapscript.MS_POSTGIS
@@ -2421,7 +2419,7 @@ class alkisplugin(QObject):
                 layer.name = "l%d" % iLayer
                 layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                 iLayer += 1
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM \"%s\".po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (schema, where, self.epsg)).encode("utf-8")
+                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
                 layer.classitem = "signaturnummer"
                 layer.setProjection("init=epsg:%d" % self.epsg)
                 layer.connection = conninfo
@@ -2508,7 +2506,7 @@ class alkisplugin(QObject):
                 layer.name = "l%d" % iLayer
                 layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                 iLayer += 1
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM \"%s\".po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (schema, where, self.epsg)).encode("utf-8")
+                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
                 layer.classitem = "signaturnummer"
                 layer.setProjection("init=epsg:%d" % self.epsg)
                 layer.connection = conninfo
@@ -2612,7 +2610,7 @@ class alkisplugin(QObject):
                 layer.name = "l%d" % iLayer
                 layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                 iLayer += 1
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM \"%s\".po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (schema, where, self.epsg)).encode("utf-8")
+                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
                 layer.classitem = "signaturnummer"
                 layer.setProjection("init=epsg:%d" % self.epsg)
                 layer.connection = conninfo
@@ -2673,10 +2671,10 @@ class alkisplugin(QObject):
                             h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
 
                         if "norGIS_alkis%s_%d" % (sn, kat) not in symbols:
-                            f = NamedTemporaryFile(delete=False)
-                            tempname = f.name
-                            f.write("SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" END END".format(sn, kat, self.settings.umnpath + "/svg"))
-                            f.close()
+                            symbolf = NamedTemporaryFile(delete=False)
+                            tempname = symbolf.name
+                            symbolf.write("SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" END END".format(sn, kat, self.settings.umnpath + "/svg"))
+                            symbolf.close()
 
                             tempsymbolset = mapscript.symbolSetObj(tempname)
                             os.unlink(tempname)
@@ -2765,13 +2763,13 @@ class alkisplugin(QObject):
                         data += u",st_offsetcurve(line,0.125*skalierung*grad_pt,'') AS geom"
                         where += " AND line IS NOT NULL"
 
-                    data += (u" FROM \"{0}\".po_labels l"
-                             u" JOIN alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
-                             u" JOIN alkis_farben f ON s.farbe=f.id"
+                    data += (u" FROM {0}.po_labels l"
+                             u" JOIN {0}.alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
+                             u" JOIN {0}.alkis_farben f ON s.farbe=f.id"
                              u" WHERE {2} AND NOT point IS NULL"
                              u") AS foo USING UNIQUE ogc_fid USING SRID={3}"
                              ).format(
-                                 schema,
+                                 self.quotedschema(),
                                  "" if katalog < 0 else " AND s.katalog=%d" % katalog,
                                  where,
                                  self.epsg)
@@ -3036,6 +3034,9 @@ END
         if db is None:
             return None
         return self.schema
+
+    def quotedschema(self):
+        return u'"{}"'.format(self.schema.replace(u'"', u'""'))
 
     def getepsg(self):
         (db, conninfo) = self.opendb()

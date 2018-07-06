@@ -670,7 +670,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             return
 
         hits = len(selection)>0
-        highlighted = len(self.highlighted)>0
+        highlighted = len(self.plugin.highlighted)>0
         self.addButton.setEnabled(hits)
         self.removeButton.setEnabled(hits and highlighted)
         self.replaceButton.setEnabled(hits and highlighted)
