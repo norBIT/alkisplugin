@@ -471,7 +471,6 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.plugin = plugin
 
         s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        self.tabWidget.setCurrentIndex(s.value("suchmodus", 0, type=int))
 
         v = QIntValidator()
         v.setBottom(1)
@@ -503,11 +502,12 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.pbSearchFSK.clicked.connect(self.evaluate)
 
         self.highlighted = set(self.plugin.highlighted())
-        self.updateButtons()
 
         self.lblResult.setText(u"{} Objekte bereits gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
 
         self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("searchgeom", QByteArray(), type=QByteArray))
+
+        self.tabWidget.setCurrentIndex(s.value("suchmodus", 0, type=int))
 
         self.cbxGemarkung.currentIndexChanged.connect(self.gfzn)
         self.cbxFlur.currentIndexChanged.connect(self.gfzn)
@@ -670,7 +670,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             return
 
         hits = len(selection)>0
-        highlighted = len(self.plugin.highlighted)>0
+        highlighted = len(self.highlighted)>0
         self.addButton.setEnabled(hits)
         self.removeButton.setEnabled(hits and highlighted)
         self.replaceButton.setEnabled(hits and highlighted)
@@ -827,7 +827,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
     def replaceClicked(self):
         self.evaluate()
-        self.highlighted = set(self.plugin.highlighted())
+        self.highlighted = set(self.highlighted)
         self.lblResult.setText(u"{} Objekte gewählt.".format(len(self.highlighted)) if len(self.highlighted) > 0 else "")
         self.updateButtons()
 
