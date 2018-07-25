@@ -2032,7 +2032,8 @@ class alkisplugin(QObject):
             if qry.exec_(u"SELECT find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text)".format(schema.replace("'", "''"))) and qry.next():
                 self.epsg = int(qry.value(0))
             else:
-                QMessageBox.warning(None, "ALKIS", u"Fehler: Schema {} nicht gefunden!".format(schema))
+                QMessageBox.warning(None, "ALKIS", u"Fehler: Keine Daten im Schema {} gefunden!".format(schema))
+                return (None, None)
 
             self.schema = schema
 

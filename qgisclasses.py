@@ -133,6 +133,10 @@ class ALKISConf(QDialog, ConfBase):
             if error:
                 QMessageBox.critical(None, "ALKIS", u"Datenbankverbindung schlug fehl.")
 
+            self.twModellarten.clearContents()
+            self.twModellarten.setDisabled(True)
+            self.twModellarten.setRowCount(0)
+
             self.settings.load()
 
             return
@@ -173,6 +177,7 @@ ORDER BY count(*) DESC
         else:
             self.twModellarten.clearContents()
             self.twModellarten.setDisabled(True)
+            self.twModellarten.setRowCount(0)
 
         if qry.exec_("SELECT id,name FROM alkis_signaturkataloge"):
             while qry.next():
