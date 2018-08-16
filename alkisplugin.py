@@ -2767,7 +2767,7 @@ class alkisplugin(QObject):
                     data += (u" FROM {0}.po_labels l"
                              u" JOIN {0}.alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
                              u" JOIN {0}.alkis_farben f ON s.farbe=f.id"
-                             u" WHERE {2} AND NOT point IS NULL"
+                             u" WHERE {2}"
                              u") AS foo USING UNIQUE ogc_fid USING SRID={3}"
                              ).format(
                                  self.quotedschema(),
