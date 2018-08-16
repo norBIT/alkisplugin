@@ -2745,6 +2745,7 @@ class alkisplugin(QObject):
                             u",0.25/0.0254*skalierung*grad_pt AS size_umn"
                             )
 
+                    lwhere = where
                     if geom == "point":
                         data += (u",CASE coalesce(l.vertikaleausrichtung,s.vertikaleausrichtung) "
                                  u" WHEN 'oben' THEN 'L'"
@@ -2758,10 +2759,10 @@ class alkisplugin(QObject):
                                  u",drehwinkel_grad"
                                  u",point AS geom"
                                  )
-                        where += " AND point IS NOT NULL"
+                        lwhere += " AND point IS NOT NULL"
                     else:
                         data += u",st_offsetcurve(line,0.125*skalierung*grad_pt,'') AS geom"
-                        where += " AND line IS NOT NULL"
+                        lwhere += " AND line IS NOT NULL"
 
                     data += (u" FROM {0}.po_labels l"
                              u" JOIN {0}.alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
@@ -2771,7 +2772,7 @@ class alkisplugin(QObject):
                              ).format(
                                  self.quotedschema(),
                                  "" if katalog < 0 else " AND s.katalog=%d" % katalog,
-                                 where,
+                                 lwhere,
                                  self.epsg)
 
                     layer.data = data.encode("utf-8")
