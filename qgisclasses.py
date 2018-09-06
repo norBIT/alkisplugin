@@ -68,6 +68,7 @@ def quote(x, prefix='E'):
     else:
         return u"'%s'" % str(x)
 
+
 class ALKISConf(QDialog, ConfBase):
     def __init__(self, plugin):
         QDialog.__init__(self)
@@ -146,18 +147,22 @@ class ALKISConf(QDialog, ConfBase):
             modelle = ['DLKM', 'DKKM1000']
 
         qry = QSqlQuery(db)
-        if qry.exec_("""
+        if qry.exec_("SELECT 1 FROM information_schema.tables WHERE table_schema={} AND table_name='po_modelle'".format(quote(self.plugin.settings.schema))) and qry.next():
+            sql = "SELECT modell,n FROM po_modelle ORDER BY n DESC"
+        else:
+            sql = """
 SELECT modell,count(*)
 FROM (
 SELECT unnest(modell) AS modell FROM po_points   UNION ALL
 SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
 SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
-SELECT unnest(modell) AS modell from po_lines    UNION ALL
 SELECT unnest(modell) AS modell from po_labels
 ) AS foo
 GROUP BY modell
 ORDER BY count(*) DESC
-"""):
+"""
+
+        if qry.exec_(sql):
             res = {}
             while qry.next():
                 res[qry.value(0)] = qry.value(1)
@@ -604,11 +609,10 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         if qry.exec_(u"SELECT count(*) FROM flurst{}".format(where)) and qry.next():
             hits = qry.value(0)
 
-        if hits>0 and hits<int(self.leHighlightThreshold.text()):
+        if hits > 0 and hits < int(self.leHighlightThreshold.text()):
             self.evaluate()
         else:
             self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")
-
 
     #
     # Straße/Hausnummer
@@ -674,8 +678,8 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             self.clearButton.setEnabled(self.plugin.pointMarkerLayer.subsetString() != "false")
             return
 
-        hits = len(selection)>0
-        highlighted = len(self.highlighted)>0
+        hits = len(selection) > 0
+        highlighted = len(self.highlighted) > 0
         self.addButton.setEnabled(hits)
         self.removeButton.setEnabled(hits and highlighted)
         self.replaceButton.setEnabled(hits and highlighted)
@@ -837,8 +841,8 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         self.updateButtons()
 
     def reject(self):
-        if len(self.highlighted)>0:
-            fs = self.plugin.highlight(where="gml_id IN ('" + "','".join(self.highlighted) + "')", zoomTo=True)
+        if len(self.highlighted) > 0:
+            self.plugin.highlight(where="gml_id IN ('" + "','".join(self.highlighted) + "')", zoomTo=True)
 
         QDialog.reject(self)
 
@@ -922,8 +926,8 @@ class ALKISOwnerInfo(QgsMapTool):
             ))
 
             if not self.plugin.logQuery("eigentuemerInfo", p, [i['flsnr'] for i in fs]):
-                 QMessageBox.information(None, u"Hinweis", u"Flurstücke werden ohne Protokollierung nicht angezeigt.")
-                 return False
+                QMessageBox.information(None, u"Hinweis", u"Flurstücke werden ohne Protokollierung nicht angezeigt.")
+                return False
 
             if len(fs) == 0:
                 QMessageBox.information(None, u"Hinweis", u"Kein Flurstück gefunden.")
@@ -944,7 +948,7 @@ class ALKISOwnerInfo(QgsMapTool):
             return None
 
         qry = QSqlQuery(db)
-        if qry.exec_("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='eignerart' AND column_name='anteil'".format(quote(self.plugin.settings.schema))) and qry.next():
+        if qry.exec_("SELECT 1 FROM information_schema.columns WHERE table_schema={} AND table_name='eignerart' AND column_name='anteil'".format(quote(self.plugin.settings.schema))) and qry.next():
             exists_ea_anteil = qry.value(0) == 1
         else:
             exists_ea_anteil = False

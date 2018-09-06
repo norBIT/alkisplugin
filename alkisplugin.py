@@ -32,7 +32,7 @@ for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVar
     sip.setapi(c, 2)
 
 from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
-from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog
+from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
 from qgis.PyQt.QtGui import QIcon, QColor, QPainter
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.PyQt import QtCore
@@ -52,6 +52,7 @@ except TypeError:
 qgisAvailable = False
 authAvailable = False
 hasBlendSource = False
+hasProxyTask = False
 
 try:
     import qgis.core
@@ -107,6 +108,12 @@ if qgisAvailable:
         hasBlendSource = True
         qgis3 = True
 
+        try:
+            from qgis.core import QgsProxyProgressTask
+            hasProxyTask = True
+        except ImportError:
+            pass
+
     from .qgisclasses import About, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
 try:
@@ -124,14 +131,17 @@ try:
 except ImportError:
     mapscriptAvailable = False
 
+
 def qDebug(s):
     QtCore.qDebug(s.encode('ascii', 'ignore'))
+
 
 def logMessage(s):
     if qgisAvailable:
         QgsMessageLog.logMessage(s, "ALKIS")
     else:
         QtCore.qWarning(s.encode("utf-8"))
+
 
 class alkissettings(QObject):
     def __init__(self, plugin):
@@ -318,6 +328,7 @@ class alkisplugin(QObject):
                 '1301': u'Wohngebäude',
                 '1304': u'Anderes Gebäude',
                 '1305': u'Mauer',
+                '2510': u'Mauer',
                 '1309': u'Gebäude für öffentliche Zwecke',
                 '1501': u'Aussichtsturm',
                 'rn1501': u'Anderes Gebäude',
@@ -964,6 +975,7 @@ class alkisplugin(QObject):
         self.lineMarkerLayer = None
         self.areaMarkerLayer = None
         self.alkisGroup = None
+        self.proxyTask = None
 
         self.db = None
         self.conninfo = None
@@ -995,14 +1007,14 @@ class alkisplugin(QObject):
         self.importAction.triggered.connect(self.run)
 
         if mapscriptAvailable:
-            self.umnAction = QAction(QIcon("alkis:logo.svg"), "UMN-Mapdatei erzeugen...", self.iface.mainWindow())
+            self.umnAction = QAction(QIcon("alkis:logo.svg"), u"UMN-Mapdatei erzeugen…", self.iface.mainWindow())
             self.umnAction.setWhatsThis("UMN-Mapserver-Datei erzeugen")
             self.umnAction.setStatusTip("UMN-Mapserver-Datei erzeugen")
             self.umnAction.triggered.connect(self.mapfile)
         else:
             self.umnAction = None
 
-        self.searchAction = QAction(QIcon("alkis:find.svg"), "Suchen...", self.iface.mainWindow())
+        self.searchAction = QAction(QIcon("alkis:find.svg"), u"Suchen…", self.iface.mainWindow())
         self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
         self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
         self.searchAction.triggered.connect(self.search)
@@ -1021,7 +1033,7 @@ class alkisplugin(QObject):
         self.clearAction.triggered.connect(self.clearHighlight)
         self.toolbar.addAction(self.clearAction)
 
-        self.confAction = QAction(QIcon("alkis:logo.svg"), "Konfiguration...", self.iface.mainWindow())
+        self.confAction = QAction(QIcon("alkis:logo.svg"), u"Konfiguration…", self.iface.mainWindow())
         self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
         self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
         self.confAction.triggered.connect(self.conf)
@@ -1232,8 +1244,37 @@ class alkisplugin(QObject):
 
     def progress(self, i, m, s):
         self.showStatusMessage.emit(u"%s/%s" % (alkisplugin.themen[i]['name'], m))
-        self.showProgress.emit(i * 5 + s, len(alkisplugin.themen) * 5)
-        QCoreApplication.processEvents()
+
+        if hasProxyTask:
+            if self.proxyTask is None:
+                self.proxyTask = QgsProxyProgressTask(u"Lade ALKIS-Layer…")
+                QgsApplication.taskManager().addTask(self.proxyTask)
+
+            self.proxyTask.setProxyProgress((i * 5 + s) / (len(alkisplugin.themen) * 5) * 100)
+
+            if (i * 5 + s) >= len(alkisplugin.themen) * 5:
+                self.proxyTask.finalize(True)
+                self.proxyTask.deleteLater()
+                self.proxyTask = None
+
+        else:
+            self.showProgress.emit(i * 5 + s, len(alkisplugin.themen) * 5)
+            QCoreApplication.processEvents()
+
+    def doShowProgress(self, i, n):
+        b = self.iface.mainWindow().findChild(QProgressBar, "mProgressBar")
+        if b is None:
+            return
+
+        if i >= n:
+            b.reset()
+            b.hide()
+        else:
+            if not b.isVisible():
+                b.show()
+
+            b.setMaximum(n)
+            b.setValue(i)
 
     def setStricharten(self, db, sym, kat, sn, outline):
         lqry = QSqlQuery(db)
@@ -1395,7 +1436,11 @@ class alkisplugin(QObject):
 
         markerGroup = self.addGroup("Markierungen", False, self.alkisGroup)
 
-        self.showProgress.connect(self.iface.mainWindow().showProgress)
+        if not hasProxyTask:
+            if hasattr(self.iface.mainWindow(), "showProgress"):
+                self.showProgress.connect(self.iface.mainWindow().showProgress)
+            else:
+                self.showProgress.connect(self.doShowProgress)
         self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
         if self.epsg > 100000:
@@ -2158,7 +2203,7 @@ class alkisplugin(QObject):
             return fs
 
         qry = QSqlQuery(db)
-        if zoomTo and qry.exec_(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1)>0:
+        if zoomTo and qry.exec_(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1) > 0:
             self.zoomToExtent(qry.value(0), self.areaMarkerLayer.crs())
 
         return fs
@@ -2207,7 +2252,10 @@ class alkisplugin(QObject):
                 return
 
         if self.iface:
-            self.showProgress.connect(self.iface.mainWindow().showProgress)
+            if hasattr(self.iface.mainWindow(), "showProgress"):
+                self.showProgress.connect(self.iface.mainWindow().showProgress)
+            else:
+                self.showProgress.connect(self.doShowProgress)
             self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
         if not self.iface:
