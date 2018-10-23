@@ -482,7 +482,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         qry = QSqlQuery(db)
         if not qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") or not qry.next() or not qry.value(0):
-            self.tabWidget.removeTab(self.tabEigentuemer)
+            self.tabWidget.removeTab(self.tabWidget.indexOf(self.tabEigentuemer))
 
         self.replaceButton = self.buttonBox.addButton(u"Ersetzen", QDialogButtonBox.ActionRole)
         self.addButton = self.buttonBox.addButton(u"Hinzufügen", QDialogButtonBox.ActionRole)
