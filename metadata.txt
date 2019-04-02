@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.34
+version=2.0.35
 qgisMinimumVersion=2.14
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
@@ -20,7 +20,13 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.34
+changelog=Änderungen in 2.0.35
+ 
+ mapfile export:
+ * SYMBOL/ANCHORPOINT statt STYLE/OFFSET verwenden
+ * Weitere Anpassungen für PyQt5 & QGIS3
+ 
+ Änderungen in 2.0.34
  
  * Modelle ggf. aus vorberechneter Tabelle laden
  * [QGIS3.3] Taskmanager für Fortschrittsanzeige verwenden

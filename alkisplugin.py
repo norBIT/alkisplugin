@@ -26,6 +26,7 @@ from builtins import map
 from builtins import str
 from builtins import range
 from builtins import unicode
+from io import open
 
 import sip
 for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
@@ -37,14 +38,13 @@ from qgis.PyQt.QtGui import QIcon, QColor, QPainter
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.PyQt import QtCore
 
-from tempfile import NamedTemporaryFile
+from tempfile import mkstemp
 
 import os
 import re
 
 try:
     import sys
-    from builtins import unicode
     BASEDIR = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
 except TypeError:
     BASEDIR = os.path.dirname(__file__)
@@ -2234,678 +2234,719 @@ class alkisplugin(QObject):
         self.iface.mapCanvas().setExtent(rect)
         self.iface.mapCanvas().refresh()
 
+    def setLayerData(self, layer, data):
+        if int(sys.version[0]) < 3:
+            layer.data = data.encode("utf-8")
+        else:
+            layer.data = data
+
+    def setLayerMetaData(self, layer, k, v):
+        if int(sys.version[0]) < 3:
+            layer.setMetaData(k, v.encode("utf-8"))
+        else:
+            layer.setMetaData(k, v)
+
+    def setClassName(self, c, name):
+        if int(sys.version[0]) < 3:
+            c.name = name.encode("utf-8")
+        else:
+            c.name = name
+
     def mapfile(self, conninfo=None, dstfile=None):
-        self.settings.loadSettings()
-        (db, conninfo) = self.opendb(conninfo)
-        if db is None:
-            return
 
-        qry = QSqlQuery(db)
-        qry2 = QSqlQuery(db)
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
-        if dstfile is None:
-            if not self.iface or not self.iface:
-                raise BaseException("Destination file missing.")
-
-            dstfile = QFileDialog.getSaveFileName(None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)")
-            if dstfile is None:
+            self.settings.loadSettings()
+            (db, conninfo) = self.opendb(conninfo)
+            if db is None:
                 return
 
-        if self.iface:
-            if hasattr(self.iface.mainWindow(), "showProgress"):
-                self.showProgress.connect(self.iface.mainWindow().showProgress)
-            else:
-                self.showProgress.connect(self.doShowProgress)
-            self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
+            qry = QSqlQuery(db)
+            qry2 = QSqlQuery(db)
 
-        if not self.iface:
-            if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
-                raise BaseException("Could not prepare search path update.")
+            if dstfile is None:
+                if not self.iface or not self.iface:
+                    raise BaseException("Destination file missing.")
 
-            qry.addBindValue(self.schema)
+                try:
+                    QApplication.setOverrideCursor(Qt.ArrowCursor)
+                    dstfile = QFileDialog.getSaveFileName(None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)")
+                finally:
+                    QApplication.restoreOverrideCursor()
 
-            if not qry.exec_():
-                raise BaseException("Could not set search path.")
+                if dstfile is None:
+                    return
 
-        mapobj = mapscript.mapObj()
-        mapobj.name = "ALKIS"
-        mapobj.setFontSet(os.path.join(BASEDIR, "fonts", "fonts.txt"))
+                if isinstance(dstfile, tuple):
+                    dstfile = dstfile[0]
 
-        mapobj.outputformat.driver = "GD/PNG"
-        mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
+            if self.iface:
+                if hasattr(self.iface.mainWindow(), "showProgress"):
+                    self.showProgress.connect(self.iface.mainWindow().showProgress)
+                else:
+                    self.showProgress.connect(self.doShowProgress)
+                self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
-        mapobj.legend.label.type = mapscript.MS_TRUETYPE
-        mapobj.legend.label.font = 'arial'
+            if not self.iface:
+                if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
+                    raise BaseException("Could not prepare search path update.")
 
-        mapobj.maxsize = 20480
-        mapobj.setSize(400, 400)
-        try:
-            mapobj.web.metadata.set(u"wms_title", "ALKIS")
-            mapobj.web.metadata.set(u"wms_enable_request", "*")
-            mapobj.web.metadata.set(u"wfs_enable_request", "*")
-            mapobj.web.metadata.set(u"ows_enable_request", "*")
-            mapobj.web.metadata.set(u"wms_feature_info_mime_type", "text/html")
-            mapobj.web.metadata.set(u"wms_encoding", "UTF-8")
-        except AttributeError as e:
-            mapobj.web.metadata[u"wms_title"] = "ALKIS"
-            mapobj.web.metadata[u"wms_enable_request"] = "*"
-            mapobj.web.metadata[u"wfs_enable_request"] = "*"
-            mapobj.web.metadata[u"ows_enable_request"] = "*"
-            mapobj.web.metadata[u"wms_feature_info_mime_type"] = "text/html"
-            mapobj.web.metadata[u"wms_encoding"] = "UTF-8"
+                qry.addBindValue(self.schema)
 
-        symbol = mapscript.symbolObj("0")
-        symbol.inmapfile = True
-        symbol.type = mapscript.MS_SYMBOL_ELLIPSE
-        symbol.filled = mapscript.MS_TRUE
-        line = mapscript.lineObj()
-        p = mapscript.pointObj()
-        p.x = 1
-        p.y = 1
-        line.add(p)
-        if line.add(p) != mapscript.MS_SUCCESS:
-            raise BaseException("failed to add point %d" % p)
+                if not qry.exec_():
+                    raise BaseException("Could not set search path.")
 
-        if symbol.setPoints(line) != 2:
-            raise BaseException("failed to add all %d points" % line.numpoints)
+            mapobj = mapscript.mapObj()
+            mapobj.name = "ALKIS"
+            mapobj.setFontSet(os.path.join(BASEDIR, "fonts", "fonts.txt"))
 
-        if mapobj.symbolset.appendSymbol(symbol) < 0:
-            raise BaseException("symbol not added.")
+            mapobj.outputformat.driver = "GD/PNG"
+            mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
 
-        if qry.exec_(u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck") and qry.next():
-            bb = qry.value(0)[4:-1]
-            (p0, p1) = bb.split(",")
-            (x0, y0) = p0.split(" ")
-            (x1, y1) = p1.split(" ")
-            mapobj.setProjection("init=epsg:%d" % self.epsg)
-            mapobj.setExtent(float(x0), float(y0), float(x1), float(y1))
+            mapobj.legend.label.type = mapscript.MS_TRUETYPE
+            mapobj.legend.label.font = 'arial'
 
-        modelle = self.settings.modellarten
-        katalog = self.settings.signaturkatalog
+            mapobj.maxsize = 20480
+            mapobj.setSize(400, 400)
+            try:
+                mapobj.web.metadata.set(u"wms_title", "ALKIS")
+                mapobj.web.metadata.set(u"wms_enable_request", "*")
+                mapobj.web.metadata.set(u"wfs_enable_request", "*")
+                mapobj.web.metadata.set(u"ows_enable_request", "*")
+                mapobj.web.metadata.set(u"wms_feature_info_mime_type", "text/html")
+                mapobj.web.metadata.set(u"wms_encoding", "UTF-8")
+            except AttributeError:
+                mapobj.web.metadata[u"wms_title"] = "ALKIS"
+                mapobj.web.metadata[u"wms_enable_request"] = "*"
+                mapobj.web.metadata[u"wfs_enable_request"] = "*"
+                mapobj.web.metadata[u"ows_enable_request"] = "*"
+                mapobj.web.metadata[u"wms_feature_info_mime_type"] = "text/html"
+                mapobj.web.metadata[u"wms_encoding"] = "UTF-8"
 
-        missing = {}
-        symbols = {}
+            symbol = mapscript.symbolObj("0")
+            symbol.inmapfile = True
+            symbol.type = mapscript.MS_SYMBOL_ELLIPSE
+            symbol.filled = mapscript.MS_TRUE
+            line = mapscript.lineObj()
+            p = mapscript.pointObj()
+            p.x = 1
+            p.y = 1
+            line.add(p)
+            if line.add(p) != mapscript.MS_SUCCESS:
+                raise BaseException("failed to add point %d" % p)
 
-        iThema = -1
-        iLayer = 0
-        for d in alkisplugin.themen:
-            iThema += 1
-            thema = d['name']
+            if symbol.setPoints(line) != 2:
+                raise BaseException("failed to add all %d points" % line.numpoints)
 
-            if 'filter' not in d:
-                d['filter'] = [{'name': None, 'filter': None}]
+            if mapobj.symbolset.appendSymbol(symbol) < 0:
+                raise BaseException("symbol not added.")
 
-            qDebug(u"Thema: %s" % thema)
+            if qry.exec_(u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck") and qry.next():
+                bb = qry.value(0)[4:-1]
+                (p0, p1) = bb.split(",")
+                (x0, y0) = p0.split(" ")
+                (x1, y1) = p1.split(" ")
+                mapobj.setProjection("init=epsg:%d" % self.epsg)
+                mapobj.setExtent(float(x0), float(y0), float(x1), float(y1))
 
-            for f in d['filter']:
-                name = f.get('name', thema)
-                tname = thema
+            modelle = self.settings.modellarten
+            katalog = self.settings.signaturkatalog
 
-                where = "thema='%s'" % thema
+            missing = {}
+            symbols = {}
 
-                if len(modelle) > 0:
-                    where += " AND modell && ARRAY['%s']::varchar[]" % "','".join(modelle)
+            iThema = -1
+            iLayer = 0
+            for d in alkisplugin.themen:
+                iThema += 1
+                thema = d['name']
 
-                if f.get('name', None):
-                    tname += " / " + f['name']
+                if 'filter' not in d:
+                    d['filter'] = [{'name': None, 'filter': None}]
 
-                if f.get('filter', None):
-                    where += " AND (%s)" % f['filter']
+                qDebug(u"Thema: %s" % thema)
 
-                for k in ['area', 'outline', 'line', 'point', 'label']:
-                    if k not in f:
-                        f[k] = d[k]
+                for f in d['filter']:
+                    name = f.get('name', thema)
+                    tname = thema
 
-                self.progress(iThema, u"Flächen", 0)
+                    where = u"thema='%s'" % thema
+                    if len(modelle) > 0:
+                        where += u" AND modell && ARRAY['%s']::varchar[]" % "','".join(modelle)
 
-                # 1 Polylinien
-                # 1.1 Flächen
-                # 1.2 Randlinien
-                # 2 Linien
-                # 3 Punkte
-                # 4 Beschriftungen
+                    if f.get('name', None):
+                        tname += u" / " + f['name']
 
-                group = []
-                layer = None
-                sprio = None
-                minprio = None
-                maxprio = None
-                nclasses = None
+                    if f.get('filter', None):
+                        where += u" AND (%s)" % f['filter']
 
-                layer = mapscript.layerObj(mapobj)
-                layer.name = "l%d" % iLayer
-                layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                iLayer += 1
+                    for k in ['area', 'outline', 'line', 'point', 'label']:
+                        if k not in f:
+                            f[k] = d[k]
 
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
-                layer.classitem = "signaturnummer"
-                layer.setProjection("init=epsg:%d" % self.epsg)
-                layer.connectiontype = mapscript.MS_POSTGIS
-                layer.connection = conninfo
-                layer.symbolscaledenom = 1000
-                layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                layer.type = mapscript.MS_LAYER_POLYGON
-                layer.sizeunits = mapscript.MS_INCHES
-                layer.status = mapscript.MS_OFF
-                layer.tileitem = None
-                layer.setMetaData(u"norGIS_label", (u"ALKIS / %s / Flächen" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_layer_group", (u"/%s" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_title", u"Flächen".encode("utf-8"))
-                layer.setMetaData(u"wfs_title", u"Flächen".encode("utf-8"))
-                layer.setMetaData(u"gml_geom_type", "multipolygon")
-                layer.setMetaData(u"gml_geometries", "geom")
-                layer.setMetaData(u"gml_featureid", "ogc_fid")
-                layer.setMetaData(u"gml_include_items", "all")
-                layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
-                layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, f['area'])
+                    self.progress(iThema, u"Flächen", 0)
 
-                sql = (u"SELECT DISTINCT"
-                       u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
-                       u" FROM alkis_flaechen"
-                       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                       u" WHERE EXISTS ("
-                       u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
-                       u"){1}"
-                       u" ORDER BY darstellungsprioritaet"
-                       ).format(
-                           where,
-                           "" if katalog < 0 else " AND katalog=%d" % katalog
-                )
-                # qDebug( "SQL: %s" % sql )
+                    # 1 Polylinien
+                    # 1.1 Flächen
+                    # 1.2 Randlinien
+                    # 2 Linien
+                    # 3 Punkte
+                    # 4 Beschriftungen
 
-                if qry.exec_(sql):
-                    sprio = 0
-                    nclasses = 0
+                    group = []
+                    layer = None
+                    sprio = None
                     minprio = None
                     maxprio = None
-
-                    while qry.next():
-                        sn = qry.value(0)
-                        color = qry.value(1)
-                        prio = qry.value(2)
-                        name = qry.value(3)
-
-                        cl = mapscript.classObj(layer)
-                        cl.setExpression(sn)
-                        cl.name = d['classes'].get(sn, name).encode("utf-8")
-
-                        style = mapscript.styleObj()
-                        if color:
-                            r, g, b = color.split(" ")
-                            style.color.setRGB(int(r), int(g), int(b))
-                        else:
-                            style.color.setRGB(0, 0, 0)
-
-                        cl.insertStyle(style)
-
-                        nclasses += 1
-                        sprio += prio
-                        if not minprio or prio < minprio:
-                            minprio = prio
-                        if not maxprio or prio > maxprio:
-                            maxprio = prio
-
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                    break
-
-                if layer.numclasses > 0:
-                    layer.setMetaData("norGIS_zindex", "%d" % (sprio / nclasses))
-                    layer.setMetaData("norGIS_minprio", "%d" % minprio)
-                    layer.setMetaData("norGIS_maxprio", "%d" % maxprio)
-
-                    group.append(layer.name)
-                else:
-                    mapobj.removeLayer(layer.index)
-
-                self.progress(iThema, "Grenzen", 1)
-
-                #
-                # 1.2 Randlinien
-                #
-                layer = mapscript.layerObj(mapobj)
-                layer.name = "l%d" % iLayer
-                layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                iLayer += 1
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
-                layer.classitem = "signaturnummer"
-                layer.setProjection("init=epsg:%d" % self.epsg)
-                layer.connection = conninfo
-                layer.connectiontype = mapscript.MS_POSTGIS
-                layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                # layer.symbolscaledenom = 1000
-                layer.sizeunits = mapscript.MS_METERS
-                layer.type = mapscript.MS_LAYER_POLYGON
-                layer.status = mapscript.MS_OFF
-                layer.tileitem = None
-                layer.setMetaData("norGIS_label", (u"ALKIS / %s / Grenzen" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_layer_group", (u"/%s" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_title", u"Grenzen")
-                layer.setMetaData(u"wfs_title", u"Grenzen")
-                layer.setMetaData(u"gml_geom_type", "multiline")
-                layer.setMetaData(u"gml_geometries", "geom")
-                layer.setMetaData(u"gml_featureid", "ogc_fid")
-                layer.setMetaData(u"gml_include_items", "all")
-                layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
-                layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, f['outline'])
-
-                sql = (u"SELECT DISTINCT"
-                       u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
-                       u" FROM alkis_linien ln{0}"
-                       u" LEFT OUTER JOIN alkis_farben f ON {1}.farbe=f.id"
-                       u" WHERE EXISTS ("
-                       u"SELECT * FROM po_polygons WHERE {2} AND po_polygons.sn_randlinie=ln.signaturnummer"
-                       u"){3}"
-                       u" ORDER BY darstellungsprioritaet"
-                       ).format(
-                           "" if katalog < 0 else u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
-                           "ln" if katalog < 0 else "l",
-                           where,
-                           "" if katalog < 0 else " AND ln.katalog=%d" % katalog
-                )
-
-                # qDebug( "SQL: %s" % sql )
-                if qry.exec_(sql):
-                    sprio = 0
-                    nclasses = 0
-                    minprio = None
-                    maxprio = None
-
-                    while qry.next():
-                        sn = qry.value(0)
-                        color = qry.value(1)
-                        prio = qry.value(2)
-                        name = qry.value(3)
-
-                        cl = mapscript.classObj(layer)
-                        cl.setExpression(sn)
-                        cl.name = d['classes'].get(sn, name).encode("utf-8")
-
-                        if not self.addLineStyles(db, cl, katalog, sn, color, True):
-                            layer.removeClass(layer.numclasses - 1)
-
-                        nclasses += 1
-                        sprio += prio
-                        if not minprio or prio < minprio:
-                            minprio = prio
-                        if not maxprio or prio > maxprio:
-                            maxprio = prio
-
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                    break
-
-                if layer.numclasses > 0:
-                    layer.setMetaData("norGIS_zindex", "%d" % (sprio / nclasses))
-                    layer.setMetaData("norGIS_minprio", "%d" % minprio)
-                    layer.setMetaData("norGIS_maxprio", "%d" % maxprio)
-
-                    group.append(layer.name)
-                else:
-                    mapobj.removeLayer(layer.index)
-
-                self.progress(iThema, "Linien", 2)
-
-                #
-                # 2 Linien
-                #
-                layer = mapscript.layerObj(mapobj)
-                layer.name = "l%d" % iLayer
-                layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                iLayer += 1
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
-                layer.classitem = "signaturnummer"
-                layer.setProjection("init=epsg:%d" % self.epsg)
-                layer.connection = conninfo
-                layer.connectiontype = mapscript.MS_POSTGIS
-                layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                # layer.symbolscaledenom = 1000
-                layer.sizeunits = mapscript.MS_METERS
-                layer.type = mapscript.MS_LAYER_LINE
-                layer.status = mapscript.MS_OFF
-                layer.tileitem = None
-                layer.setMetaData("norGIS_label", (u"ALKIS / %s / Linien" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_layer_group", (u"/%s" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_title", u"Linien")
-                layer.setMetaData(u"wfs_title", u"Linien")
-                layer.setMetaData(u"gml_geom_type", "multiline")
-                layer.setMetaData(u"gml_geometries", "geom")
-                layer.setMetaData(u"gml_featureid", "ogc_fid")
-                layer.setMetaData(u"gml_include_items", "all")
-                layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
-                layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, f['line'])
-
-                sql = (u"SELECT DISTINCT"
-                       u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
-                       u" FROM alkis_linien ln{0}"
-                       u" JOIN alkis_farben f ON {1}.farbe=f.id"
-                       u" WHERE EXISTS ("
-                       u"SELECT * FROM po_lines WHERE {2} AND po_lines.signaturnummer=ln.signaturnummer"
-                       u"){3}"
-                       u" ORDER BY darstellungsprioritaet"
-                       ).format(
-                           "" if katalog < 0 else u" JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
-                           "ln" if katalog < 0 else "l",
-                           where,
-                           "" if katalog < 0 else u" AND ln.katalog=%d" % katalog
-                )
-                # qDebug( "SQL: %s" % sql )
-                if qry.exec_(sql):
-                    sprio = 0
-                    nclasses = 0
-                    minprio = None
-                    maxprio = None
-
-                    while qry.next():
-                        sn = qry.value(0)
-                        color = qry.value(1)
-                        prio = qry.value(2)
-                        name = qry.value(3)
-
-                        cl = mapscript.classObj(layer)
-                        cl.setExpression(sn)
-                        cl.name = d['classes'].get(sn, name).encode("utf-8")
-
-                        if not self.addLineStyles(db, cl, katalog, sn, color, False):
-                            layer.removeClass(layer.numclasses - 1)
-
-                        nclasses += 1
-                        sprio += prio
-                        if not minprio or prio < minprio:
-                            minprio = prio
-                        if not maxprio or prio > maxprio:
-                            maxprio = prio
-
-                    # style caching (https://github.com/mapserver/mapserver/issues/4612) berücksichtigen
-                    haveMultipleStyles = False
-                    for i in range(layer.numclasses):
-                        cl = layer.getClass(i)
-                        if cl.numstyles > 0:
-                            haveMultipleStyles = True
-                            break
-
-                    if haveMultipleStyles:
-                        nStyles = 0
-                        for i in range(layer.numclasses):
-                            cl = layer.getClass(i)
-                            for j in range(nStyles):
-                                cl.insertStyle(mapscript.styleObj(), 0)   # Leeren Style einfügen
-                            nStyles += cl.numstyles
-
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                    break
-
-                if layer.numclasses > 0:
-                    layer.setMetaData("norGIS_zindex", "%d" % (sprio / nclasses))
-                    layer.setMetaData("norGIS_minprio", "%d" % minprio)
-                    layer.setMetaData("norGIS_maxprio", "%d" % maxprio)
-
-                    group.append(layer.name)
-                else:
-                    n = mapobj.numlayers
-                    mapobj.removeLayer(layer.index)
-                    if n == mapobj.numlayers:
-                        raise BaseException("No layer removed")
-
-                #
-                # 3 Punkte (TODO: Darstellungspriorität)
-                #
-
-                layer = mapscript.layerObj(mapobj)
-                layer.name = "l%d" % iLayer
-                layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                iLayer += 1
-                layer.data = (u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg)).encode("utf-8")
-                layer.classitem = "signaturnummer"
-                layer.setProjection("init=epsg:%d" % self.epsg)
-                layer.connection = conninfo
-                layer.connectiontype = mapscript.MS_POSTGIS
-                layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                layer.symbolscaledenom = 1000
-                layer.sizeunits = mapscript.MS_METERS
-                layer.type = mapscript.MS_LAYER_POINT
-                layer.status = mapscript.MS_OFF
-                layer.tileitem = None
-                layer.setMetaData("norGIS_label", (u"ALKIS / %s / Punkte" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_layer_group", (u"/%s" % tname).encode("utf-8"))
-                layer.setMetaData(u"wms_title", u"Punkte")
-                layer.setMetaData(u"wfs_title", u"Punkte")
-                layer.setMetaData(u"gml_geom_type", "multipoint")
-                layer.setMetaData(u"gml_geometries", "geom")
-                layer.setMetaData(u"gml_featureid", "ogc_fid")
-                layer.setMetaData(u"gml_include_items", "all")
-                layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
-                layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                self.setUMNScale(layer, f['point'])
-
-                self.progress(iThema, "Punkte", 3)
-
-                kat = max([1, katalog])
-
-                sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where
-                # qDebug( "SQL: %s" % sql )
-                if qry.exec_(sql):
-                    while qry.next():
-                        sn = qry.value(0)
-                        if not sn:
-                            logMessage(u"Leere Signaturnummer in po_points:%s" % thema)
-                            continue
-
-                        path = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
-
-                        if "norGIS_alkis%s_%d" % (sn, kat) not in symbols and not os.path.isfile(path):
-                            if sn != '6000':
-                                logMessage("Symbol alkis%s_%d.svg nicht gefunden" % (sn, kat))
-                                missing["norGIS_alkis%s" % sn] = 1
-                            continue
-
-                        cl = mapscript.classObj(layer)
-                        cl.setExpression(sn)
-                        cl.name = d['classes'].get(sn, "(%s)" % sn).encode("utf-8")
-
-                        x, y, h = 0, 0, 1
-                        if qry2.exec_("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
-                            x = (qry2.value(0) + qry2.value(2)) / 2
-                            y = (qry2.value(1) + qry2.value(3)) / 2
-                            # w = qry2.value(2) - qry2.value(0)
-                            h = qry2.value(3) - qry2.value(1)
-                        elif sn not in alkisplugin.exts:
-                            x = (alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx']) / 2
-                            y = (alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy']) / 2
-                            # w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
-                            h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
-
-                        if "norGIS_alkis%s_%d" % (sn, kat) not in symbols:
-                            symbolf = NamedTemporaryFile(delete=False)
-                            tempname = symbolf.name
-                            symbolf.write("SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" END END".format(sn, kat, self.settings.umnpath + "/svg"))
-                            symbolf.close()
-
-                            tempsymbolset = mapscript.symbolSetObj(tempname)
-                            os.unlink(tempname)
-
-                            sym = tempsymbolset.getSymbolByName("norGIS_alkis%s_%d" % (sn, kat))
-                            sym.inmapfile = True
-                            if mapobj.symbolset.appendSymbol(sym) < 0:
-                                raise BaseException("symbol not added.")
-
-                            del tempsymbolset
-                            symbols["norGIS_alkis%s_%d" % (sn, kat)] = 1
-
-                        stylestring = "STYLE ANGLE [drehwinkel_grad] OFFSET %lf %lf SIZE %lf SYMBOL \"norGIS_alkis%s_%d\" MINSIZE 1 END" % (x, y, h, sn, kat)
-                        style = fromstring(stylestring)
-                        cl.insertStyle(style)
-
-                if layer.numclasses > 0:
-                    group.append(layer.name)
-                else:
-                    mapobj.removeLayer(layer.index)
-
-                #
-                # 4 Beschriftungen (TODO: Darstellungspriorität)
-                #
-
-                lgroup = []
-
-                for j in range(2):
-                    geom = "point" if j == 0 else "line"
-
-                    if not qry.exec_("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:
-                        continue
-
-                    self.progress(iThema, "Beschriftungen (%d)" % (j + 1), 4 + j)
+                    nclasses = None
 
                     layer = mapscript.layerObj(mapobj)
                     layer.name = "l%d" % iLayer
                     layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                     iLayer += 1
-                    layer.setMetaData(u"norGIS_label", (u"ALKIS / %s / Beschriftungen" % tname).encode("utf-8"))
-                    layer.setMetaData(u"wms_layer_group", (u"/%s" % tname).encode("utf-8"))
-                    layer.setMetaData(u"wms_title", u"Beschriftungen (%s)" % ("Punkte" if j == 0 else "Linien"))
-                    layer.setMetaData(u"wfs_title", u"Beschriftungen (%s)" % ("Punkte" if j == 0 else "Linien"))
-                    layer.setMetaData(u"gml_geom_type", "multipoint")
-                    layer.setMetaData(u"gml_geometries", "geom")
-                    layer.setMetaData(u"gml_featureid", "ogc_fid")
-                    layer.setMetaData(u"gml_include_items", "all")
-                    layer.setMetaData(u"wms_srs", alkisplugin.defcrs)
-                    layer.setMetaData(u"wfs_srs", alkisplugin.defcrs)
-                    layer.setMetaData(u"norGIS_zindex", "999")
-                    self.setUMNScale(layer, f['label'])
 
-                    data = (u"geom FROM (SELECT"
-                            u" ogc_fid"
-                            u",gml_id"
-                            u",text"
-                            u",f.umn AS color_umn"
-                            u",lower(art) || coalesce('-'||effekt,'') ||"
-                            u"CASE"
-                            u" WHEN stil='Kursiv' THEN '-italic'"
-                            u" WHEN stil='Fett' THEN '-bold'"
-                            u" WHEN stil='Fett, Kursiv' THEN '-bold-italic'"
-                            u" ELSE ''"
-                            u" END || CASE"
-                            u" WHEN coalesce(fontsperrung,0)=0 THEN ''"
-                            u" ELSE '-'||(fontsperrung/0.25)::int"
-                            u" END AS font_umn"
-                            u",0.25/0.0254*skalierung*grad_pt AS size_umn"
-                            )
-
-                    lwhere = where
-                    if geom == "point":
-                        data += (u",CASE coalesce(l.vertikaleausrichtung,s.vertikaleausrichtung) "
-                                 u" WHEN 'oben' THEN 'L'"
-                                 u" WHEN 'Basis' THEN 'U'"
-                                 u" ELSE 'C'"
-                                 u" END || CASE coalesce(l.horizontaleausrichtung,s.horizontaleausrichtung)"
-                                 u" WHEN 'linksbündig' THEN 'L'"
-                                 u" WHEN 'rechtsbündig' THEN 'R'"
-                                 u" ELSE 'C'"
-                                 u" END AS position_umn"
-                                 u",drehwinkel_grad"
-                                 u",point AS geom"
-                                 )
-                        lwhere += " AND point IS NOT NULL"
-                    else:
-                        data += u",st_offsetcurve(line,0.125*skalierung*grad_pt,'') AS geom"
-                        lwhere += " AND line IS NOT NULL"
-
-                    data += (u" FROM {0}.po_labels l"
-                             u" JOIN {0}.alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
-                             u" JOIN {0}.alkis_farben f ON s.farbe=f.id"
-                             u" WHERE {2}"
-                             u") AS foo USING UNIQUE ogc_fid USING SRID={3}"
-                             ).format(
-                                 self.quotedschema(),
-                                 "" if katalog < 0 else " AND s.katalog=%d" % katalog,
-                                 lwhere,
-                                 self.epsg)
-
-                    layer.data = data.encode("utf-8")
-
-                    cl = mapscript.classObj(layer)
-                    label = mapscript.labelObj()
-
-                    if geom == "point":
-                        label.type = mapscript.MS_TRUETYPE
-                        label.setBinding(mapscript.MS_LABEL_BINDING_COLOR, "color_umn")
-                        label.setBinding(mapscript.MS_LABEL_BINDING_FONT, "font_umn")
-                        label.setBinding(mapscript.MS_LABEL_BINDING_ANGLE, "drehwinkel_grad")
-                        label.setBinding(mapscript.MS_LABEL_BINDING_SIZE, "size_umn")
-                        label.setBinding(mapscript.MS_LABEL_BINDING_POSITION, "position_umn")
-                        label.buffer = 2
-                        label.force = mapscript.MS_TRUE
-                        label.partials = mapscript.MS_TRUE
-                        label.antialias = mapscript.MS_TRUE
-                        label.outlinecolor.setRGB(255, 255, 255)
-                        label.mindistance = -1
-                        label.minfeaturesize = -1
-                        label.shadowsizex = 0
-                        label.shadowsizey = 0
-                        # label.minsize = 4
-                        # label.maxsize = 256
-                        label.minfeaturesize = -1
-                        label.priority = 10
-                    else:
-                        label.updateFromString("""
-LABEL
-ANGLE FOLLOW
-ANTIALIAS TRUE
-FONT [font_umn]
-SIZE [size_umn]
-BUFFER 2
-COLOR [color_umn]
-FORCE TRUE
-OFFSET 0 0
-OUTLINECOLOR 255 255 255
-PRIORITY 10
-SHADOWSIZE 0 0
-TYPE TRUETYPE
-END
-""")
-
-                    cl.addLabel(label)
-
-                    layer.labelitem = "text"
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    layer.classitem = "signaturnummer"
                     layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.connectiontype = mapscript.MS_POSTGIS
+                    layer.connection = conninfo
+                    layer.symbolscaledenom = 1000
+                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    layer.type = mapscript.MS_LAYER_POLYGON
+                    layer.sizeunits = mapscript.MS_INCHES
+                    layer.status = mapscript.MS_OFF
+                    layer.tileitem = None
+                    self.setLayerMetaData(layer, u"norGIS_label", (u"ALKIS / %s / Flächen" % tname))
+                    self.setLayerMetaData(layer, u"wms_layer_group", (u"/%s" % tname))
+                    self.setLayerMetaData(layer, u"wms_title", u"Flächen")
+                    self.setLayerMetaData(layer, u"wfs_title", u"Flächen")
+                    self.setLayerMetaData(layer, u"gml_geom_type", "multipolygon")
+                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
+                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
+                    self.setLayerMetaData(layer, u"gml_include_items", "all")
+                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
+                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
+                    self.setUMNScale(layer, f['area'])
 
+                    sql = (u"SELECT DISTINCT"
+                           u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
+                           u" FROM alkis_flaechen"
+                           u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
+                           u" WHERE EXISTS ("
+                           u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
+                           u"){1}"
+                           u" ORDER BY darstellungsprioritaet"
+                           ).format(
+                               where,
+                               "" if katalog < 0 else " AND katalog=%d" % katalog
+                    )
+                    # qDebug( "SQL: %s" % sql )
+
+                    if qry.exec_(sql):
+                        sprio = 0
+                        nclasses = 0
+                        minprio = None
+                        maxprio = None
+
+                        while qry.next():
+                            sn = qry.value(0)
+                            color = qry.value(1)
+                            prio = qry.value(2)
+                            name = qry.value(3)
+
+                            cl = mapscript.classObj(layer)
+                            cl.setExpression(sn)
+                            self.setClassName(cl, d['classes'].get(sn, name))
+
+                            style = mapscript.styleObj()
+                            if color:
+                                r, g, b = color.split(" ")
+                                style.color.setRGB(int(r), int(g), int(b))
+                            else:
+                                style.color.setRGB(0, 0, 0)
+
+                            cl.insertStyle(style)
+
+                            nclasses += 1
+                            sprio += prio
+                            if not minprio or prio < minprio:
+                                minprio = prio
+                            if not maxprio or prio > maxprio:
+                                maxprio = prio
+
+                    else:
+                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+                        break
+
+                    if layer.numclasses > 0:
+                        self.setLayerMetaData(layer, "norGIS_zindex", "%d" % (sprio / nclasses))
+                        self.setLayerMetaData(layer, "norGIS_minprio", "%d" % minprio)
+                        self.setLayerMetaData(layer, "norGIS_maxprio", "%d" % maxprio)
+
+                        group.append(layer.name)
+                    else:
+                        mapobj.removeLayer(layer.index)
+
+                    self.progress(iThema, "Grenzen", 1)
+
+                    #
+                    # 1.2 Randlinien
+                    #
+                    layer = mapscript.layerObj(mapobj)
+                    layer.name = "l%d" % iLayer
+                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
+                    iLayer += 1
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    layer.classitem = "signaturnummer"
+                    layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.connection = conninfo
+                    layer.connectiontype = mapscript.MS_POSTGIS
+                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    # layer.symbolscaledenom = 1000
+                    layer.sizeunits = mapscript.MS_METERS
+                    layer.type = mapscript.MS_LAYER_POLYGON
+                    layer.status = mapscript.MS_OFF
+                    layer.tileitem = None
+                    self.setLayerMetaData(layer, "norGIS_label", u"ALKIS / %s / Grenzen" % tname)
+                    self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
+                    self.setLayerMetaData(layer, u"wms_title", u"Grenzen")
+                    self.setLayerMetaData(layer, u"wfs_title", u"Grenzen")
+                    self.setLayerMetaData(layer, u"gml_geom_type", "multiline")
+                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
+                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
+                    self.setLayerMetaData(layer, u"gml_include_items", "all")
+                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
+                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
+                    self.setUMNScale(layer, f['outline'])
+
+                    sql = (u"SELECT DISTINCT"
+                           u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
+                           u" FROM alkis_linien ln{0}"
+                           u" LEFT OUTER JOIN alkis_farben f ON {1}.farbe=f.id"
+                           u" WHERE EXISTS ("
+                           u"SELECT * FROM po_polygons WHERE {2} AND po_polygons.sn_randlinie=ln.signaturnummer"
+                           u"){3}"
+                           u" ORDER BY darstellungsprioritaet"
+                           ).format(
+                               "" if katalog < 0 else u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
+                               "ln" if katalog < 0 else "l",
+                               where,
+                               "" if katalog < 0 else " AND ln.katalog=%d" % katalog
+                    )
+
+                    # qDebug( "SQL: %s" % sql )
+                    if qry.exec_(sql):
+                        sprio = 0
+                        nclasses = 0
+                        minprio = None
+                        maxprio = None
+
+                        while qry.next():
+                            sn = qry.value(0)
+                            color = qry.value(1)
+                            prio = qry.value(2)
+                            name = qry.value(3)
+
+                            cl = mapscript.classObj(layer)
+                            cl.setExpression(sn)
+                            self.setClassName(cl, d['classes'].get(sn, name))
+
+                            if not self.addLineStyles(db, cl, katalog, sn, color, True):
+                                layer.removeClass(layer.numclasses - 1)
+
+                            nclasses += 1
+                            sprio += prio
+                            if not minprio or prio < minprio:
+                                minprio = prio
+                            if not maxprio or prio > maxprio:
+                                maxprio = prio
+
+                    else:
+                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+                        break
+
+                    if layer.numclasses > 0:
+                        self.setLayerMetaData(layer, "norGIS_zindex", "%d" % (sprio / nclasses))
+                        self.setLayerMetaData(layer, "norGIS_minprio", "%d" % minprio)
+                        self.setLayerMetaData(layer, "norGIS_maxprio", "%d" % maxprio)
+
+                        group.append(layer.name)
+                    else:
+                        mapobj.removeLayer(layer.index)
+
+                    self.progress(iThema, "Linien", 2)
+
+                    #
+                    # 2 Linien
+                    #
+                    layer = mapscript.layerObj(mapobj)
+                    layer.name = "l%d" % iLayer
+                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
+                    iLayer += 1
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    layer.classitem = "signaturnummer"
+                    layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.connection = conninfo
+                    layer.connectiontype = mapscript.MS_POSTGIS
+                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    # layer.symbolscaledenom = 1000
+                    layer.sizeunits = mapscript.MS_METERS
+                    layer.type = mapscript.MS_LAYER_LINE
+                    layer.status = mapscript.MS_OFF
+                    layer.tileitem = None
+                    self.setLayerMetaData(layer, "norGIS_label", u"ALKIS / %s / Linien" % tname)
+                    self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
+                    self.setLayerMetaData(layer, u"wms_title", u"Linien")
+                    self.setLayerMetaData(layer, u"wfs_title", u"Linien")
+                    self.setLayerMetaData(layer, u"gml_geom_type", "multiline")
+                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
+                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
+                    self.setLayerMetaData(layer, u"gml_include_items", "all")
+                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
+                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
+                    self.setUMNScale(layer, f['line'])
+
+                    sql = (u"SELECT DISTINCT"
+                           u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
+                           u" FROM alkis_linien ln{0}"
+                           u" JOIN alkis_farben f ON {1}.farbe=f.id"
+                           u" WHERE EXISTS ("
+                           u"SELECT * FROM po_lines WHERE {2} AND po_lines.signaturnummer=ln.signaturnummer"
+                           u"){3}"
+                           u" ORDER BY darstellungsprioritaet"
+                           ).format(
+                               "" if katalog < 0 else u" JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
+                               "ln" if katalog < 0 else "l",
+                               where,
+                               "" if katalog < 0 else u" AND ln.katalog=%d" % katalog
+                    )
+                    # qDebug( "SQL: %s" % sql )
+                    if qry.exec_(sql):
+                        sprio = 0
+                        nclasses = 0
+                        minprio = None
+                        maxprio = None
+
+                        while qry.next():
+                            sn = qry.value(0)
+                            color = qry.value(1)
+                            prio = qry.value(2)
+                            name = qry.value(3)
+
+                            cl = mapscript.classObj(layer)
+                            cl.setExpression(sn)
+                            self.setClassName(cl, d['classes'].get(sn, name))
+
+                            if not self.addLineStyles(db, cl, katalog, sn, color, False):
+                                layer.removeClass(layer.numclasses - 1)
+
+                            nclasses += 1
+                            sprio += prio
+                            if not minprio or prio < minprio:
+                                minprio = prio
+                            if not maxprio or prio > maxprio:
+                                maxprio = prio
+
+                        # style caching (https://github.com/mapserver/mapserver/issues/4612) berücksichtigen
+                        haveMultipleStyles = False
+                        for i in range(layer.numclasses):
+                            cl = layer.getClass(i)
+                            if cl.numstyles > 0:
+                                haveMultipleStyles = True
+                                break
+
+                        if haveMultipleStyles:
+                            nStyles = 0
+                            for i in range(layer.numclasses):
+                                cl = layer.getClass(i)
+                                for j in range(nStyles):
+                                    cl.insertStyle(mapscript.styleObj(), 0)   # Leeren Style einfügen
+                                nStyles += cl.numstyles
+
+                    else:
+                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+                        break
+
+                    if layer.numclasses > 0:
+                        self.setLayerMetaData(layer, "norGIS_zindex", "%d" % (sprio / nclasses))
+                        self.setLayerMetaData(layer, "norGIS_minprio", "%d" % minprio)
+                        self.setLayerMetaData(layer, "norGIS_maxprio", "%d" % maxprio)
+
+                        group.append(layer.name)
+                    else:
+                        n = mapobj.numlayers
+                        mapobj.removeLayer(layer.index)
+                        if n == mapobj.numlayers:
+                            raise BaseException("No layer removed")
+
+                    #
+                    # 3 Punkte (TODO: Darstellungspriorität)
+                    #
+
+                    layer = mapscript.layerObj(mapobj)
+                    layer.name = "l%d" % iLayer
+                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
+                    iLayer += 1
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    layer.classitem = "signaturnummer"
+                    layer.setProjection("init=epsg:%d" % self.epsg)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.setProcessing("CLOSE_CONNECTION=DEFER")
                     layer.symbolscaledenom = 1000
-                    # layer.labelminscaledenom = 0
-                    # layer.labelmaxscaledenom = 2000
-                    layer.sizeunits = mapscript.MS_INCHES
-                    layer.type = mapscript.MS_LAYER_POINT if mapscript.MS_VERSION_MAJOR > 6 else mapscript.MS_LAYER_ANNOTATION
+                    layer.sizeunits = mapscript.MS_METERS
+                    layer.type = mapscript.MS_LAYER_POINT
                     layer.status = mapscript.MS_OFF
                     layer.tileitem = None
+                    self.setLayerMetaData(layer, "norGIS_label", u"ALKIS / %s / Punkte" % tname)
+                    self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
+                    self.setLayerMetaData(layer, u"wms_title", u"Punkte")
+                    self.setLayerMetaData(layer, u"wfs_title", u"Punkte")
+                    self.setLayerMetaData(layer, u"gml_geom_type", "multipoint")
+                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
+                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
+                    self.setLayerMetaData(layer, u"gml_include_items", "all")
+                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
+                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
+                    self.setUMNScale(layer, f['point'])
 
-                    lgroup.append(layer.name)
+                    self.progress(iThema, "Punkte", 3)
 
-        self.reorderLayers(mapobj)
+                    kat = max([1, katalog])
 
-        self.showProgress.emit(len(alkisplugin.themen) * 5, len(alkisplugin.themen) * 5)
+                    sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where
+                    # qDebug( "SQL: %s" % sql )
+                    if qry.exec_(sql):
+                        while qry.next():
+                            sn = qry.value(0)
+                            if not sn:
+                                logMessage(u"Leere Signaturnummer in po_points:%s" % thema)
+                                continue
 
-        mapobj.save(dstfile)
+                            path = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
 
-        if self.settings.umnpath != BASEDIR:
-            os.rename(dstfile, dstfile + ".bak")
-            i = open(dstfile + ".bak", "r")
-            o = open(dstfile, "w")
+                            if "norGIS_alkis%s_%d" % (sn, kat) not in symbols and not os.path.isfile(path):
+                                if sn != '6000':
+                                    logMessage("Symbol alkis%s_%d.svg nicht gefunden" % (sn, kat))
+                                    missing["norGIS_alkis%s" % sn] = 1
+                                continue
 
-            for l in i:
-                if 'FONTSET "' in l:
-                    o.write(u'  FONTSET "%s/fonts/fonts.txt"\n' % self.settings.umnpath)
-                else:
-                    o.write(l)
+                            cl = mapscript.classObj(layer)
+                            cl.setExpression(sn)
+                            self.setClassName(cl, d['classes'].get(sn, "(%s)" % sn))
 
-            o.close()
-            i.close()
+                            x, y, h = 0, 0, 1
+                            if qry2.exec_("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
+                                x = (qry2.value(0) + qry2.value(2)) / 2
+                                y = (qry2.value(1) + qry2.value(3)) / 2
+                                w = qry2.value(2) - qry2.value(0)
+                                h = qry2.value(3) - qry2.value(1)
+                            elif sn not in alkisplugin.exts:
+                                x = (alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx']) / 2
+                                y = (alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy']) / 2
+                                w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
+                                h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
 
-            os.remove(dstfile + ".bak")
+                            if "norGIS_alkis%s_%d" % (sn, kat) not in symbols:
+                                fd, tempname = mkstemp()
+                                os.close(fd)
+
+                                symbolf = open(tempname, "w", encoding="utf-8")
+                                symbolf.write(u"SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" ANCHORPOINT {3} {4} END END".format(
+                                    sn,
+                                    kat,
+                                    self.settings.umnpath + "/svg",
+                                    0.5 + x / w,
+                                    0.5 + y / h,
+                                ))
+                                symbolf.close()
+
+                                tempsymbolset = mapscript.symbolSetObj(tempname)
+
+                                os.unlink(tempname)
+
+                                sym = tempsymbolset.getSymbolByName("norGIS_alkis%s_%d" % (sn, kat))
+                                sym.inmapfile = True
+                                if mapobj.symbolset.appendSymbol(sym) < 0:
+                                    raise BaseException("symbol not added.")
+
+                                del tempsymbolset
+                                symbols["norGIS_alkis%s_%d" % (sn, kat)] = 1
+
+                            stylestring = "STYLE ANGLE [drehwinkel_grad] SIZE %lf SYMBOL \"norGIS_alkis%s_%d\" MINSIZE 1 END" % (h, sn, kat)
+                            style = fromstring(stylestring)
+                            cl.insertStyle(style)
+
+                    if layer.numclasses > 0:
+                        group.append(layer.name)
+                    else:
+                        mapobj.removeLayer(layer.index)
+
+                    #
+                    # 4 Beschriftungen (TODO: Darstellungspriorität)
+                    #
+
+                    lgroup = []
+
+                    for j in range(2):
+                        geom = "point" if j == 0 else "line"
+
+                        if not qry.exec_("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:
+                            continue
+
+                        self.progress(iThema, "Beschriftungen (%d)" % (j + 1), 4 + j)
+
+                        layer = mapscript.layerObj(mapobj)
+                        layer.name = "l%d" % iLayer
+                        layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
+                        iLayer += 1
+                        self.setLayerMetaData(layer, u"norGIS_label", u"ALKIS / %s / Beschriftungen" % tname)
+                        self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
+                        self.setLayerMetaData(layer, u"wms_title", u"Beschriftungen (%s)" % ("Punkte" if j == 0 else "Linien"))
+                        self.setLayerMetaData(layer, u"wfs_title", u"Beschriftungen (%s)" % ("Punkte" if j == 0 else "Linien"))
+                        self.setLayerMetaData(layer, u"gml_geom_type", "multipoint")
+                        self.setLayerMetaData(layer, u"gml_geometries", "geom")
+                        self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
+                        self.setLayerMetaData(layer, u"gml_include_items", "all")
+                        self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
+                        self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
+                        self.setLayerMetaData(layer, u"norGIS_zindex", "999")
+                        self.setUMNScale(layer, f['label'])
+
+                        data = (u"geom FROM (SELECT"
+                                u" ogc_fid"
+                                u",gml_id"
+                                u",text"
+                                u",f.umn AS color_umn"
+                                u",lower(art) || coalesce('-'||effekt,'') ||"
+                                u"CASE"
+                                u" WHEN stil='Kursiv' THEN '-italic'"
+                                u" WHEN stil='Fett' THEN '-bold'"
+                                u" WHEN stil='Fett, Kursiv' THEN '-bold-italic'"
+                                u" ELSE ''"
+                                u" END || CASE"
+                                u" WHEN coalesce(fontsperrung,0)=0 THEN ''"
+                                u" ELSE '-'||(fontsperrung/0.25)::int"
+                                u" END AS font_umn"
+                                u",0.25/0.0254*skalierung*grad_pt AS size_umn"
+                                )
+
+                        lwhere = where
+                        if geom == "point":
+                            data += (u",CASE coalesce(l.vertikaleausrichtung,s.vertikaleausrichtung) "
+                                     u" WHEN 'oben' THEN 'L'"
+                                     u" WHEN 'Basis' THEN 'U'"
+                                     u" ELSE 'C'"
+                                     u" END || CASE coalesce(l.horizontaleausrichtung,s.horizontaleausrichtung)"
+                                     u" WHEN 'linksbündig' THEN 'L'"
+                                     u" WHEN 'rechtsbündig' THEN 'R'"
+                                     u" ELSE 'C'"
+                                     u" END AS position_umn"
+                                     u",drehwinkel_grad"
+                                     u",point AS geom"
+                                     )
+                            lwhere += " AND point IS NOT NULL"
+                        else:
+                            data += u",st_offsetcurve(line,0.125*skalierung*grad_pt,'') AS geom"
+                            lwhere += " AND line IS NOT NULL"
+
+                        data += (u" FROM {0}.po_labels l"
+                                 u" JOIN {0}.alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
+                                 u" JOIN {0}.alkis_farben f ON s.farbe=f.id"
+                                 u" WHERE {2}"
+                                 u") AS foo USING UNIQUE ogc_fid USING SRID={3}"
+                                 ).format(
+                                     self.quotedschema(),
+                                     "" if katalog < 0 else " AND s.katalog=%d" % katalog,
+                                     lwhere,
+                                     self.epsg)
+
+                        self.setLayerData(layer, data)
+
+                        cl = mapscript.classObj(layer)
+                        label = mapscript.labelObj()
+
+                        if geom == "point":
+                            label.type = mapscript.MS_TRUETYPE
+                            label.setBinding(mapscript.MS_LABEL_BINDING_COLOR, "color_umn")
+                            label.setBinding(mapscript.MS_LABEL_BINDING_FONT, "font_umn")
+                            label.setBinding(mapscript.MS_LABEL_BINDING_ANGLE, "drehwinkel_grad")
+                            label.setBinding(mapscript.MS_LABEL_BINDING_SIZE, "size_umn")
+                            label.setBinding(mapscript.MS_LABEL_BINDING_POSITION, "position_umn")
+                            label.buffer = 2
+                            label.force = mapscript.MS_TRUE
+                            label.partials = mapscript.MS_TRUE
+                            label.antialias = mapscript.MS_TRUE
+                            label.outlinecolor.setRGB(255, 255, 255)
+                            label.mindistance = -1
+                            label.minfeaturesize = -1
+                            label.shadowsizex = 0
+                            label.shadowsizey = 0
+                            # label.minsize = 4
+                            # label.maxsize = 256
+                            label.minfeaturesize = -1
+                            label.priority = 10
+                        else:
+                            label.updateFromString("""
+    LABEL
+    ANGLE FOLLOW
+    ANTIALIAS TRUE
+    FONT [font_umn]
+    SIZE [size_umn]
+    BUFFER 2
+    COLOR [color_umn]
+    FORCE TRUE
+    OFFSET 0 0
+    OUTLINECOLOR 255 255 255
+    PRIORITY 10
+    SHADOWSIZE 0 0
+    TYPE TRUETYPE
+    END
+    """)
+
+                        cl.addLabel(label)
+
+                        layer.labelitem = "text"
+                        layer.setProjection("init=epsg:%d" % self.epsg)
+
+                        layer.connection = conninfo
+                        layer.connectiontype = mapscript.MS_POSTGIS
+                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                        layer.symbolscaledenom = 1000
+                        # layer.labelminscaledenom = 0
+                        # layer.labelmaxscaledenom = 2000
+                        layer.sizeunits = mapscript.MS_INCHES
+                        layer.type = mapscript.MS_LAYER_POINT if mapscript.MS_VERSION_MAJOR > 6 else mapscript.MS_LAYER_ANNOTATION
+                        layer.status = mapscript.MS_OFF
+                        layer.tileitem = None
+
+                        lgroup.append(layer.name)
+
+            self.reorderLayers(mapobj)
+
+            self.showProgress.emit(len(alkisplugin.themen) * 5, len(alkisplugin.themen) * 5)
+
+            mapobj.save(dstfile)
+
+            if self.settings.umnpath != BASEDIR:
+                os.rename(dstfile, dstfile + ".bak")
+                i = open(dstfile + ".bak", "r", encoding="utf-8")
+                o = open(dstfile, "w", encoding="utf-8")
+
+                for l in i:
+                    if 'FONTSET "' in l:
+                        o.write(u'  FONTSET "%s/fonts/fonts.txt"\n' % self.settings.umnpath)
+                    else:
+                        o.write(l)
+
+                o.close()
+                i.close()
+
+                os.remove(dstfile + ".bak")
+
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def addLineStyles(self, db, cl, kat, sn, c, outline):
         assert cl.numstyles == 0
@@ -3041,9 +3082,9 @@ END
         idx = {}
         for i in range(mapobj.numlayers):
             layer = mapobj.getLayer(i)
-            layer.setMetaData("norGIS_oldindex", "%d" % i)
+            self.setLayerMetaData(layer, "norGIS_oldindex", "%d" % i)
 
-            zindex = layer.metadata.get("norGIS_zindex") or -1
+            zindex = int(layer.metadata.get("norGIS_zindex") or '-1')
 
             if layer.type not in layers:
                 layers[layer.type] = {}
