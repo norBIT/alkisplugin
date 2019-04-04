@@ -317,12 +317,12 @@ class alkisplugin(QObject):
             'point': {'min': 0, 'max': 3500},
             'label': {'min': 0, 'max': 3500},
             'filter': [
-                {'name': u"Gebäude", 'filter': "layer NOT IN ('ax_lagebezeichnungmitpseudonummer','ax_gebaeude_dachform','ax_gebaeude_funktion','ax_gebaeude_geschosse','ax_gebaeude_zustand','ax_bauteil_dachform','ax_bauteil_funktion','ax_bauteil_geschosse','ax_turm_funktion')"},
                 {'name': u"Laufende Hausnummern", 'filter': "layer='ax_lagebezeichnungmitpseudonummer'"},
                 {'name': u"Dachform", 'filter': "layer IN ('ax_gebaeude_dachform','ax_bauteil_dachform')"},
                 {'name': u"Funktion", 'filter': "layer IN ('ax_gebaeude_funktion','ax_bauteil_funktion','ax_turm_funktion')"},
                 {'name': u"Geschosse", 'filter': "layer IN ('ax_gebaeude_geschosse','ax_bauteil_geschosse')"},
                 {'name': u"Zustand", 'filter': "layer='ax_gebaeude_zustand'"},
+                {'name': u"Gebäude", 'filter': "layer NOT IN ('ax_lagebezeichnungmitpseudonummer','ax_gebaeude_dachform','ax_gebaeude_funktion','ax_gebaeude_geschosse','ax_gebaeude_zustand','ax_bauteil_dachform','ax_bauteil_funktion','ax_bauteil_geschosse','ax_turm_funktion')"},
             ],
             'classes': {
                 '1301': u'Wohngebäude',
