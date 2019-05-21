@@ -1530,7 +1530,7 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
+                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
                             u"Flächen (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1578,7 +1578,7 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
+                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
                             u"Grenzen (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1631,7 +1631,7 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_lines (line) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
+                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_lines (line) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
                             u"Linien (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1708,7 +1708,7 @@ class alkisplugin(QObject):
                     qDebug(u"classes: %d" % n)
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),
+                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),
                             u"Punkte (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1748,7 +1748,7 @@ class alkisplugin(QObject):
                         layer = None
 
                     uri = (
-                        u"{0} estimatedmetadata=true key='ogc_fid' type={1} srid={2} table="
+                        u"{0} estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type={1} srid={2} table="
                         u"\"("
                         u"SELECT"
                         u" ogc_fid"
@@ -1912,7 +1912,7 @@ class alkisplugin(QObject):
             self.setGroupVisible(self.alkisGroup, False)
 
             self.pointMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOINT srid=%d table=%s.po_labels (point) sql=false" % (conninfo, self.epsg, self.quotedschema()),
+                u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=%s.po_labels (point) sql=false" % (conninfo, self.epsg, self.quotedschema()),
                 u"Punktmarkierung",
                 "postgres", layeropts
             )
@@ -1930,7 +1930,7 @@ class alkisplugin(QObject):
             self.addLayer(self.pointMarkerLayer, markerGroup)
 
             self.lineMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_labels (line) sql=false" % (conninfo, self.epsg, self.quotedschema()),
+                u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_labels (line) sql=false" % (conninfo, self.epsg, self.quotedschema()),
                 u"Linienmarkierung",
                 "postgres", layeropts
             )
@@ -1946,7 +1946,7 @@ class alkisplugin(QObject):
             self.addLayer(self.lineMarkerLayer, markerGroup)
 
             self.areaMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=false" % (conninfo, self.epsg, self.quotedschema()),
+                u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=false" % (conninfo, self.epsg, self.quotedschema()),
                 u"Flächenmarkierung",
                 "postgres", layeropts
             )
@@ -1973,6 +1973,9 @@ class alkisplugin(QObject):
                     restrictedLayers.append(l)
 
             QgsProject.instance().writeEntry("WMSRestrictedLayers", "/", restrictedLayers)
+
+            if qgis3:
+                QgsProject.instance().setTrustLayerMetadata(True)
 
             self.settings.saveToProject()
         else:
