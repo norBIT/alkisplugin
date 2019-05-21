@@ -624,7 +624,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.cbxStrassen.blockSignals(True)
         self.cbxStrassen.clear()
-        if qry.exec_(u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE k.bezeichnung LIKE {0} AND k.endet IS NULL ORDER BY k.bezeichnung || coalesce(', ' || g.bezeichnung,'')".format(quote(self.leStr.text() + '%'))):
+        if qry.exec_(u"SELECT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE lower(k.bezeichnung) LIKE {0} AND k.endet IS NULL ORDER BY k.bezeichnung || coalesce(', ' || g.bezeichnung,'')".format(quote(self.leStr.text().lower() + '%'))):
             while qry.next():
                 self.cbxStrassen.addItem(qry.value(1), qry.value(0))
         self.cbxStrassen.blockSignals(False)
@@ -694,7 +694,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             if text != "":
                 if self.cbTeiltreffer.isChecked():
                     # Teiltreffer
-                    text = u"text LIKE %s" % quote("%%%s%%" % text)
+                    text = u"lower(text) LIKE %s" % quote("%%%s%%" % text.lower())
                 else:
                     # Exakter Treffer
                     text = u"text=%s" % quote(text)
@@ -762,7 +762,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", text)
                 if m:
                     strasse, ha = m.group(1), m.group(2)
-                    fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.bezeichnung LIKE {0} AND h.hausnummer={1})".format(quote(strasse + '%'), quote(ha.upper())), zoomTo=True)
+                    fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND lower(k.bezeichnung) LIKE {0} AND h.hausnummer={1})".format(quote(strasse.lower() + '%'), quote(ha.upper())), zoomTo=True)
                     if len(fs) > 0:
                         self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)))
                     else:
@@ -790,7 +790,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         elif self.tabWidget.currentWidget() == self.tabEigentuemer:
             where = []
             for e in self.leEigentuemer.text().split():
-                where.append("name1 LIKE " + quote('%' + e + '%'))
+                where.append("lower(name1) LIKE " + quote('%' + e.lower() + '%'))
 
             if where:
                 fs = self.plugin.retrieve(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where))
