@@ -270,7 +270,7 @@ class Info(QDialog):
         self.setLayout(layout)
 
         self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("infogeom", QByteArray(), type=QByteArray))
-        self.move(self.pos() + QPoint(16, 16) * (len(self.info) - 1))
+        self.move(self.pos() + QPoint(16, 16) * len(self.info))
 
     def print_(self):
         printer = QPrinter()
@@ -287,8 +287,9 @@ class Info(QDialog):
 
     def closeEvent(self, e):
         QSettings("norBIT", "norGIS-ALKIS-Erweiterung").setValue("infogeom", self.saveGeometry())
-        QDialog.closeEvent(self, e)
         self.info.remove(self)
+        self.plugin.clearHighlight()
+        QDialog.closeEvent(self, e)
 
     def event(self, e):
         if e.type() == QEvent.WindowActivate:
