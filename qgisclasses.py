@@ -115,7 +115,7 @@ class ALKISConf(QDialog, ConfBase):
         return QDialog.done(self, r)
 
     def loadModels(self, error=True):
-        self.settings.service = self.leSERVICE.text()
+        self.settings.servicE = self.leSERVICE.text()
         self.settings.host = self.leHOST.text()
         self.settings.port = self.lePORT.text()
         self.settings.dbname = self.leDBNAME.text()
@@ -148,7 +148,7 @@ class ALKISConf(QDialog, ConfBase):
 
         qry = QSqlQuery(db)
         if qry.exec_("SELECT 1 FROM information_schema.tables WHERE table_schema={} AND table_name='po_modelle'".format(quote(self.plugin.settings.schema))) and qry.next():
-            sql = "SELECT modell,n FROM po_modelle ORDER BY n DESC"
+            sql = "SELECT modell,n FROM po_modelle WHERE modell IS NOT NULL ORDER BY n DESC"
         else:
             sql = """
 SELECT modell,count(*)
@@ -158,6 +158,7 @@ SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
 SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
 SELECT unnest(modell) AS modell from po_labels
 ) AS foo
+WHERE modell IS NOT NULL
 GROUP BY modell
 ORDER BY count(*) DESC
 """
