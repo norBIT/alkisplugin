@@ -929,11 +929,11 @@ class ALKISOwnerInfo(QgsMapTool):
 
             if not self.plugin.logQuery("eigentuemerInfo", p, [i['flsnr'] for i in fs]):
                 QMessageBox.information(None, u"Hinweis", u"Flurstücke werden ohne Protokollierung nicht angezeigt.")
-                return False
+                return
 
             if len(fs) == 0:
                 QMessageBox.information(None, u"Hinweis", u"Kein Flurstück gefunden.")
-                return False
+                return
 
             fs = self.plugin.highlight(fs=fs, zoomTo=False)
 

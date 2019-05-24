@@ -3219,6 +3219,11 @@ class alkisplugin(QObject):
         if src is None:
             src = self.destinationCrs()
         if dst is None:
+            if self.areaMarkerLayer is None:
+                (layerId, ok) = QgsProject.instance().readEntry("alkis", "/areaMarkerLayer")
+                if ok:
+                    self.areaMarkerLayer = self.mapLayer(layerId)
+
             if self.areaMarkerLayer is not None:
                 dst = self.areaMarkerLayer.crs()
 
