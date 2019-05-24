@@ -4,11 +4,6 @@
         Authors: A. Pasotti, V. Picavet
         git sha              : $TemplateVCSFormat
 """
-from __future__ import print_function
-from future import standard_library
-standard_library.install_aliases()
-from builtins import input
-
 import sys
 import os
 import getpass
@@ -44,7 +39,7 @@ def main(parameters, arguments):
 
     try:
         plugin_id, version_id = server.plugin.upload(
-            xmlrpc.client.Binary(open(arguments[0]).read()))
+            xmlrpc.client.Binary(open(arguments[0], "rb").read()))
         # fix_print_with_import
         print("Plugin ID: %s" % plugin_id)
         # fix_print_with_import
@@ -107,9 +102,9 @@ if __name__ == "__main__":
     try:
         config.read(os.path.expanduser("~/.plugin_uploadrc"))
         if not options.username:
-            options.username = config.get('auth', 'username', None)
+            options.username = config.get('auth', 'username', fallback=None)
         if not options.password:
-            options.password = config.get('auth', 'password', None)
+            options.password = config.get('auth', 'password', fallback=None)
     except:
         pass
 
