@@ -1835,8 +1835,8 @@ class alkisplugin(QObject):
                         lyr.bufferSize = 0.125
                         lyr.bufferDraw = True
 
-                        lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
-                        lyr.scaleVisibility = True
+                    lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
+                    lyr.scaleVisibility = True
 
                     if geom == "point":
                         lyr.placement = QgsPalLayerSettings.AroundPoint
