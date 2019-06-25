@@ -25,18 +25,29 @@ standard_library.install_aliases()
 from builtins import map
 from builtins import str
 from builtins import range
-from builtins import unicode
+try:
+    from builtins import unicode
+except ImportError:
+    unicode = str
+
 from io import open
 
 import sip
 for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
     sip.setapi(c, 2)
 
-from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
-from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
-from qgis.PyQt.QtGui import QIcon, QColor, QPainter
-from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
-from qgis.PyQt import QtCore
+try:
+    from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
+    from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
+    from qgis.PyQt.QtGui import QIcon, QColor, QPainter
+    from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
+    from qgis.PyQt import QtCore
+except ImportError:
+    from PyQt5.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
+    from PyQt5.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
+    from PyQt5.QtGui import QIcon, QColor, QPainter
+    from PyQt5.QtSql import QSqlDatabase, QSqlQuery
+    from PyQt5 import QtCore
 
 from tempfile import mkstemp
 
@@ -165,8 +176,9 @@ class alkissettings(QObject):
 
         self.load()
 
-        plugin.iface.projectRead.connect(self.load)
-        plugin.iface.newProjectCreated.connect(self.load)
+        if plugin.iface:
+            plugin.iface.projectRead.connect(self.load)
+            plugin.iface.newProjectCreated.connect(self.load)
 
     def saveSettings(self):
         s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
@@ -235,6 +247,10 @@ class alkissettings(QObject):
         QgsProject.instance().removeEntry("alkis", "settings")
 
     def load(self):
+        if not qgisAvailable:
+            self.loadSettings()
+            return
+
         p = QgsProject.instance()
         if len(p.entryList("alkis", "settings")) > 0:
             self.service, ok = p.readEntry("alkis", "settings/service", "")
@@ -983,6 +999,9 @@ class alkisplugin(QObject):
         self.az = None
 
         self.settings = alkissettings(self)
+
+        if not qgisAvailable:
+            return
 
         if hasattr(QgsSymbol, "MapUnit"):
             self.MapUnit = QgsSymbol.MapUnit
@@ -2015,19 +2034,37 @@ class alkisplugin(QObject):
             uid = self.settings.uid
             pwd = self.settings.pwd
 
-            uri = QgsDataSourceUri()
-            if service:
-                uri.setConnection(service, dbname, uid, pwd)
-            else:
-                uri.setConnection(host, port, dbname, uid, pwd)
+            if qgisAvailable:
+                uri = QgsDataSourceUri()
+                if service:
+                    uri.setConnection(service, dbname, uid, pwd)
+                else:
+                    uri.setConnection(host, port, dbname, uid, pwd)
 
-            if authAvailable:
-                authcfg = self.settings.authcfg
-                if authcfg:
-                    uri.setAuthConfigId(authcfg)
-                conninfo = uri.connectionInfo(False)
+                if authAvailable:
+                    authcfg = self.settings.authcfg
+                    if authcfg:
+                        uri.setAuthConfigId(authcfg)
+                    conninfo = uri.connectionInfo(False)
+                else:
+                    conninfo = uri.connectionInfo()
             else:
-                conninfo = uri.connectionInfo()
+                conninfo = ""
+                if service:
+                    conninfo = "service={} ".format(service)
+                if host:
+                    conninfo += "host={} ".format(host)
+                if port:
+                    conninfo += "port={} ".format(port)
+                if dbname:
+                    conninfo += "dbname={} ".format(dbname)
+                if uid:
+                    conninfo += "user={} ".format(uid)
+                if pwd:
+                    conninfo += "password={} ".format(pwd)
+
+                conninfo = conninfo.strip()
+
         else:
             uid = None
             pwd = None
@@ -2256,13 +2293,15 @@ class alkisplugin(QObject):
             c.name = name
 
     def mapfile(self, conninfo=None, dstfile=None):
-
         try:
-            QApplication.setOverrideCursor(Qt.WaitCursor)
+            if qgisAvailable:
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
             self.settings.loadSettings()
             (db, conninfo) = self.opendb(conninfo)
-            if db is None:
+            if db is None or not db.isOpen():
+                if not qgisAvailable:
+                    raise BaseException("Database connection failed.")
                 return
 
             qry = QSqlQuery(db)
@@ -2284,7 +2323,7 @@ class alkisplugin(QObject):
                 if isinstance(dstfile, tuple):
                     dstfile = dstfile[0]
 
-            if self.iface:
+            if qgisAvailable:
                 if hasattr(self.iface.mainWindow(), "showProgress"):
                     self.showProgress.connect(self.iface.mainWindow().showProgress)
                 else:
@@ -2293,9 +2332,10 @@ class alkisplugin(QObject):
 
             if not self.iface:
                 if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
-                    raise BaseException("Could not prepare search path update.")
+                    raise BaseException("Could not prepare search path update [{}]".format(qry.lastError().text()))
 
-                qry.addBindValue(self.schema)
+                qry.addBindValue(self.settings.schema)
+                self.schema = self.settings.schema
 
                 if not qry.exec_():
                     raise BaseException("Could not set search path.")
@@ -2345,13 +2385,22 @@ class alkisplugin(QObject):
             if mapobj.symbolset.appendSymbol(symbol) < 0:
                 raise BaseException("symbol not added.")
 
-            if qry.exec_(u"SELECT st_extent(wkb_geometry) FROM ax_flurstueck") and qry.next():
+            if qry.exec_(u"SELECT st_extent(wkb_geometry),find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text) FROM ax_flurstueck".format(self.settings.schema)) and qry.next():
                 bb = qry.value(0)[4:-1]
                 (p0, p1) = bb.split(",")
                 (x0, y0) = p0.split(" ")
                 (x1, y1) = p1.split(" ")
-                mapobj.setProjection("init=epsg:%d" % self.epsg)
+                self.epsg = int(qry.value(1))
+                if self.epsg > 100000:
+                    if qry.exec_("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
+                        crs = qry.value(0)
+                        mapobj.setProjection(crs)
+                else:
+                    crs = "init=epsg:%d" % self.epsg
+                    mapobj.setProjection(crs)
                 mapobj.setExtent(float(x0), float(y0), float(x1), float(y1))
+            else:
+                crs = "init=epsg:%d" % self.epsg
 
             modelle = self.settings.modellarten
             katalog = self.settings.signaturkatalog
@@ -2411,7 +2460,7 @@ class alkisplugin(QObject):
 
                     self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
                     layer.classitem = "signaturnummer"
-                    layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.setProjection(crs)
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.connection = conninfo
                     layer.symbolscaledenom = 1000
@@ -2502,7 +2551,7 @@ class alkisplugin(QObject):
                     iLayer += 1
                     self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
                     layer.classitem = "signaturnummer"
-                    layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.setProcessing("CLOSE_CONNECTION=DEFER")
@@ -2589,7 +2638,7 @@ class alkisplugin(QObject):
                     iLayer += 1
                     self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
                     layer.classitem = "signaturnummer"
-                    layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.setProcessing("CLOSE_CONNECTION=DEFER")
@@ -2693,7 +2742,7 @@ class alkisplugin(QObject):
                     iLayer += 1
                     self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
                     layer.classitem = "signaturnummer"
-                    layer.setProjection("init=epsg:%d" % self.epsg)
+                    layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.setProcessing("CLOSE_CONNECTION=DEFER")
@@ -2911,7 +2960,7 @@ class alkisplugin(QObject):
                         cl.addLabel(label)
 
                         layer.labelitem = "text"
-                        layer.setProjection("init=epsg:%d" % self.epsg)
+                        layer.setProjection(crs)
 
                         layer.connection = conninfo
                         layer.connectiontype = mapscript.MS_POSTGIS
@@ -2949,7 +2998,8 @@ class alkisplugin(QObject):
                 os.remove(dstfile + ".bak")
 
         finally:
-            QApplication.restoreOverrideCursor()
+            if qgisAvailable:
+                QApplication.restoreOverrideCursor()
 
     def addLineStyles(self, db, cl, kat, sn, c, outline):
         assert cl.numstyles == 0
