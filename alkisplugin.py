@@ -200,7 +200,7 @@ class alkissettings(QObject):
 
     def loadSettings(self):
         s = QSettings("norBIT", "norGIS-ALKIS-Erweiterung")
-        self.service = s.value("service", "")
+        self.service = s.value("service")
         self.host = s.value("host", "")
         self.port = s.value("port", "5432")
         self.dbname = s.value("dbname", "")
@@ -1261,6 +1261,10 @@ class alkisplugin(QObject):
         finally:
             QApplication.restoreOverrideCursor()
 
+            if self.proxyTask:
+                self.proxyTask.finalize(True)
+                self.proxyTask = None
+
     def progress(self, i, m, s):
         self.showStatusMessage.emit(u"%s/%s" % (alkisplugin.themen[i]['name'], m))
 
@@ -1270,11 +1274,6 @@ class alkisplugin(QObject):
                 QgsApplication.taskManager().addTask(self.proxyTask)
 
             self.proxyTask.setProxyProgress((i * 5 + s) / (len(alkisplugin.themen) * 5) * 100)
-
-            if (i * 5 + s) >= len(alkisplugin.themen) * 5:
-                self.proxyTask.finalize(True)
-                self.proxyTask.deleteLater()
-                self.proxyTask = None
 
         else:
             self.showProgress.emit(i * 5 + s, len(alkisplugin.themen) * 5)
