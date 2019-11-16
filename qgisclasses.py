@@ -29,6 +29,7 @@ from qgis.PyQt import uic
 
 from qgis.core import QgsMessageLog, QgsProject
 from qgis.gui import QgsMapTool, QgsAuthConfigSelect, QgsRubberBand
+from qgis.utils import qgsfunction
 
 import qgis.gui
 
@@ -940,13 +941,41 @@ class ALKISOwnerInfo(QgsMapTool):
         finally:
             QApplication.restoreOverrideCursor()
 
-        page = self.getPage(fs)
+        page = self.showPage(fs)
         if page is not None:
             Info.showInfo(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
+
+    def showPage(self, fs):
+        html = self.getPage(fs)
+        if html is None:
+            QMessageBox.information(None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr, repr(fs)))
+            return None
+
+        return """\
+<HTML xmlns="http://www.w3.org/1999/xhtml">
+  <HEAD>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  </HEAD>
+  <BODY>
+<style>
+.fls_tab{width:100%%;empty-cells:show}
+.fls_headline{font-weight:bold;font-size:4em;}
+.fls_headline_col{background-color:#EEEEEE;width:100%%;height:30px;text-align:left;}
+.fls_time        {background-color:#EEEEEE;font-weight:bold;font-size:4em;text-align:right;width:100%%}
+.fls_col_names{font-weight:bold;}
+.fls_col_values{vertical-align:top;}
+.fls_bst{width:100%%;empty-cells:show}
+.fls_hr{border:dotted 1px;color:#080808;}
+.fls_footnote{text-align:center;}
+</style>""" + html + """\
+</BODY>
+</HTML>
+"""
 
     def getPage(self, fs):
         (db, conninfo) = self.plugin.opendb()
         if db is None:
+            qDebug("No database")
             return None
 
         qry = QSqlQuery(db)
@@ -981,7 +1010,7 @@ class ALKISOwnerInfo(QgsMapTool):
             if len(res) == 1:
                 res = res[0]
             else:
-                QMessageBox.information(None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr, repr(fs)))
+                qDebug("Flurstück {} nicht gefunden.".format(flsnr))
                 return None
 
             res['datum'] = QDate.currentDate().toString("d. MMMM yyyy")
@@ -1012,24 +1041,7 @@ class ALKISOwnerInfo(QgsMapTool):
 #                        for k,v in res.iteritems():
 #                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
 
-            html = u"""
-<HTML xmlns="http://www.w3.org/1999/xhtml">
-  <HEAD>
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  </HEAD>
-  <BODY>
-<style>
-.fls_tab{width:100%%;empty-cells:show}
-.fls_headline{font-weight:bold;font-size:4em;}
-.fls_headline_col{background-color:#EEEEEE;width:100%%;height:30px;text-align:left;}
-.fls_time        {background-color:#EEEEEE;font-weight:bold;font-size:4em;text-align:right;width:100%%}
-.fls_col_names{font-weight:bold;}
-.fls_col_values{vertical-align:top;}
-.fls_bst{width:100%%;empty-cells:show}
-.fls_hr{border:dotted 1px;color:#080808;}
-.fls_footnote{text-align:center;}
-</style>
-
+            html = u"""\
 <TABLE class="fls_tab" border="0" width="100%%" cellspacing="0">
     <TR class="fls_headline">
         <TD colspan="3" class="fls_headline_col">Flurst&uuml;cksnachweis</TD><TD class="fls_time" colspan="4" align="right">%(datum)s</TD></TR>
@@ -1258,8 +1270,55 @@ class ALKISOwnerInfo(QgsMapTool):
 
         html += u"""
         </TABLE>
-</BODY>
-</HTML>
 """
 
         return html
+
+    def flsnr(self, gml_id):
+        if not isinstance(gml_id, str) or len(gml_id)!=16:
+            qDebug("gml_id erwartet [{}:{}]".format(len(gml_id), gml_id))
+            return None
+
+        (db, conninfo) = self.plugin.opendb()
+        if db is None:
+            qDebug("keine Datenbankverbindung")
+            return None
+
+        res = self.fetchall(db, "SELECT alb_key FROM fs WHERE fs_obj='{}'".format(gml_id))
+        if len(res) != 1:
+            qDebug("Kein eindeutiges Flurstück gefunden")
+            return None
+
+        return res[0]['alb_key']
+
+
+@qgsfunction(args=1, group='ALKIS')
+def flsnr(values, feature, parent):
+    return qgis.utils.plugins['alkisplugin'].queryOwnerInfoTool.flsnr(values[0])
+
+@qgsfunction(args=1, group='ALKIS')
+def flurstuecksnachweis(values, feature, parent):
+    oi = qgis.utils.plugins['alkisplugin'].queryOwnerInfoTool
+
+    arg = values[0]
+    if len(arg)==16:
+        arg = oi.flsnr(arg)
+
+    if arg is None:
+        qDebug("arg is None")
+        return None
+
+    qDebug("arg:{}".format(arg))
+    return """\
+<style>
+.fls_tab{width:100%%;empty-cells:show;}
+.fls_headline{font-weight:bold;font-size:1.5em;}
+.fls_headline_col{background-color:#EEEEEE;width:100%%;height:2em;text-align:left;}
+.fls_time{background-color:#EEEEEE;font-weight:bold;font-size:1.5em;text-align:right;width:100%%}
+.fls_col_names{font-weight:bold;}
+.fls_col_values{vertical-align:top;}
+.fls_bst{width:100%%;empty-cells:show}
+.fls_hr{border:dotted 1px;color:#080808;}
+.fls_footnote{text-align:center;}
+</style>
+""" + oi.getPage([{'flsnr': arg}])
