@@ -398,6 +398,7 @@ class alkisplugin(QObject):
                 '3537': u'Brunnen (Trinkwasserversorgung)',
                 '3539': u'Springbrunnen, Zierbrunnen',
                 '3540': u'Ziehbrunnen',
+                '3580': u'Zaun',
 
                 '2901': u'Geplantes Gebäude (gebaut)',
                 '2902': u'Geplantes Gebäude (Bauantrag)',
@@ -926,7 +927,7 @@ class alkisplugin(QObject):
         '3576': {'minx': -2.5193, 'miny': -2.5137, 'maxx': 2.5093, 'maxy': 2.5134},
         '3578': {'minx': -1.6094, 'miny': -1.6037, 'maxx': 1.6072, 'maxy': 1.6084},
         '3579': {'minx': -0.8011, 'miny': -0.8158, 'maxx': 0.8042, 'maxy': 0.8201},
-        '3580': {'minx': -0.09, 'miny': -0.3, 'maxx': 0.09, 'maxy': 0.3},
+        '3580': {'minx': -0.09, 'miny': 0, 'maxx': 0.09, 'maxy': 0.6},
         '3583': {'minx': -1.2177, 'miny': -2.8099, 'maxx': 1.1925, 'maxy': 2.794},
         '3584': {'minx': -1.3884, 'miny': -2.6038, 'maxx': 1.4728, 'maxy': 2.5162},
         '3585': {'minx': -0.5127, 'miny': -0.5212, 'maxx': 0.514, 'maxy': 0.5002},

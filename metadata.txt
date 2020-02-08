@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.40
+version=2.0.41
 qgisMinimumVersion=2.14
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
@@ -20,7 +20,16 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.40
+changelog=Änderungen in 2.0.41
+ 
+ * Zaunsignatur angepaßt
+ * Ausdrücke ergänzt:
+  * flsnr(gml_id): Erzeugt Flurstücksnummer zu einem gml_id
+  * flurstuecksnachweis(gml_id): Erzeugt Flurstücksnachweise zu gml_id in HTML.
+ * Fix: Absturz beim Schließen von QGIS
+ * Mapexport über die Kommandozeile wiederbeleben
+ 
+ Änderungen in 2.0.40
  
  * Fix: Beschriftungen auch in QGIS3 ggf. kopfstehend anzeigen
  
