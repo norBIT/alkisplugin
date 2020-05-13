@@ -7,7 +7,7 @@
     alkisplugin.py
     ---------------------
     Date                 : September 2012
-    Copyright            : (C) 2012-2018 by Jürgen Fischer
+    Copyright            : (C) 2012-2020 by Jürgen Fischer
     Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
@@ -591,8 +591,10 @@ class alkisplugin(QObject):
             'classes': {
                 '1404': u'Brachland, Heide, Moor, Sumpf, Torf',
                 '1406': u'Garten',
+                '1409': u'Ackerland',
                 '1414': u'Wald',
-                '2515': u'[2515]',
+                '1561': u'Schneise',
+                '2515': u'Ackerland',
                 '2517': u'Wald',
                 '3413': u'Gras',
                 '3415': u'Park',
