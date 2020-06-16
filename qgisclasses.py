@@ -627,7 +627,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.cbxStrassen.blockSignals(True)
         self.cbxStrassen.clear()
-        if qry.exec_(u"SELECT DISTINCT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE lower(k.bezeichnung) LIKE {0} AND k.endet IS NULL ORDER BY k.bezeichnung || coalesce(', ' || g.bezeichnung,'')".format(quote(self.leStr.text().lower() + '%'))):
+        if qry.exec_(u"SELECT schluesselgesamt, bezeichnung FROM (SELECT DISTINCT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') AS bezeichnung FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE lower(k.bezeichnung) LIKE {0} AND k.endet IS NULL UNION SELECT DISTINCT '' AS schluesselgesamt,unverschluesselt FROM ax_lagebezeichnungmithausnummer WHERE lower(unverschluesselt) LIKE {0} AND endet IS NULL) AS foo ORDER BY bezeichnung".format(quote(self.leStr.text().lower() + '%'))):
             while qry.next():
                 self.cbxStrassen.addItem(qry.value(1), qry.value(0))
         self.cbxStrassen.blockSignals(False)
@@ -643,16 +643,20 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         qry = QSqlQuery(self.db)
 
         schluesselgesamt = self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())
+        if schluesselgesamt == '':
+            schluesselgesamt = None
 
         self.cbxHNR.blockSignals(True)
         self.cbxHNR.clear()
-        if qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt))):
+        if (schluesselgesamt is None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or \
+           (schluesselgesamt is not None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt)))):
             while qry.next():
                 self.cbxHNR.addItem(qry.value(0))
         else:
             qDebug(qry.lastError().text())
 
-        if qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE k.schluesselgesamt={0}".format(quote(schluesselgesamt))):
+        if (schluesselgesamt is None and qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h WHERE unverschluesselt={0}".format(quote(self.cbxStrassen.currentText())))) or \
+           (schluesselgesamt is not None and qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE k.schluesselgesamt={0}".format(quote(schluesselgesamt)))):
             if qry.next():
                 self.cbxHNR.addItem('Ohne')
         else:
@@ -777,7 +781,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", text)
                 if m:
                     strasse, ha = m.group(1), m.group(2)
-                    fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k ON h.land=k.land AND h.regierungsbezirk=k.regierungsbezirk AND h.kreis=k.kreis AND h.gemeinde=k.gemeinde AND h.lage=k.lage WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND lower(k.bezeichnung) LIKE {0} AND h.hausnummer={1})".format(quote(strasse.lower() + '%'), quote(ha.upper())), zoomTo=True)
+                    fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h LEFT OUTER JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND (lower(k.bezeichnung) LIKE {0} OR lower(h.unverschluesselt) LIKE {0}) AND h.hausnummer={1})".format(quote(strasse.lower() + '%'), quote(ha.upper())), zoomTo=True)
                     if len(fs) > 0:
                         self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)))
                     else:
@@ -788,17 +792,29 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             if self.cbxHNR.isEnabled():
                 hnr = self.cbxHNR.currentText()
 
-                if hnr in ["Ohne", "Alle"]:
-                    sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.zeigtauf AND k.schluesselgesamt={0})"
+                if self.cbxStrassen.itemData(self.cbxStrassen.currentIndex()) != "":
+                    # geschlüsselt
+                    if hnr in ["Ohne", "Alle"]:
+                        sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.zeigtauf AND k.schluesselgesamt={0})"
 
-                    if hnr == "Alle":
-                        sql += u" OR EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})"
+                        if hnr == "Alle":
+                            sql += u" OR EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0})"
+                    else:
+                        sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0}{2})"
                 else:
-                    sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND k.schluesselgesamt={0}{1})"
+                    # unverschlüsselt
+                    if hnr in ["Ohne", "Alle"]:
+                        sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungohnehausnummer h WHERE ARRAY[h.gml_id] <@ ax_flurstueck.zeigtauf AND unverschluesselt={1})"
+
+                        if hnr == "Alle":
+                            sql += u" OR EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND unverschluesselt={1})"
+                    else:
+                        sql = u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND unverschluesselt={1}{2})"
 
                 fs = self.plugin.highlight(
                     where=sql.format(
                         quote(self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())),
+                        quote(self.cbxStrassen.currentText()),
                         ' AND h.hausnummer={0}'.format(quote(hnr)) if hnr not in ["Alle", "Ohne"] else ""
                     ),
                     zoomTo=True
