@@ -367,10 +367,15 @@ class ALKISPointInfo(QgsMapTool):
 
         try:
             s = QSettings("norBIT", "EDBSgen/PRO")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
-            sock.send("NORGIS_MAIN#EDBS#ALBKEY#{}#".format(fs[0]['flsnr']).encode("utf-8"))
-            sock.close()
+            if s.value("useTempfile", 0) == 1:
+                f = open(os.path.join(os.getenv("TEMP"), "norgis-msg.log"), "a")
+                f.write("NORGIS_MAIN#EDBS#ALBKEY#{}#\n".format(fs[0]['flsnr']))
+                f.close()
+            else:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
+                sock.send("NORGIS_MAIN#EDBS#ALBKEY#{}#".format(fs[0]['flsnr']).encode("utf-8"))
+                sock.close()
 
             if win32:
                 window = win32gui.FindWindow(None, s.value("albWin", "norGIS"))
@@ -460,10 +465,15 @@ class ALKISPolygonInfo(QgsMapTool):
             try:
                 s = QSettings("norBIT", "EDBSgen/PRO")
                 for i in range(0, len(fs)):
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
-                    sock.send("NORGIS_MAIN#EDBS#ALBKEY#{}#{}#".format(fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1).encode("utf-8"))
-                    sock.close()
+                    if s.value("useTempfile", 0) == 1:
+                        f = open(os.path.join(os.getenv("TEMP"), "norgis-msg.log"), "a")
+                        f.write("NORGIS_MAIN#EDBS#ALBKEY#{}#{}#\n".format(fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1))
+                        f.close()
+                    else:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.connect(("localhost", int(s.value("norGISPort", "6102"))))
+                        sock.send("NORGIS_MAIN#EDBS#ALBKEY#{}#{}#".format(fs[i]['flsnr'], 0 if i + 1 == len(fs) else 1).encode("utf-8"))
+                        sock.close()
 
                 if win32:
                     window = win32gui.FindWindow(None, s.value("albWin", "norGIS"))

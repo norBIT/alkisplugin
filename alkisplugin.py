@@ -1072,7 +1072,7 @@ class alkisplugin(QObject):
         self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
 
         ns = QSettings("norBIT", "EDBSgen/PRO")
-        if ns.contains("norGISPort"):
+        if ns.contains("norGISPort") or ns.contains("useTempfile"):
             self.pointInfoAction = QAction(QIcon("alkis:info.svg"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
             self.pointInfoAction.triggered.connect(self.setPointInfoTool)
             self.pointInfoAction.setCheckable(True)
