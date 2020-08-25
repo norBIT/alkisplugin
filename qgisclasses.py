@@ -1078,7 +1078,7 @@ class ALKISOwnerInfo(QgsMapTool):
 
                 if qry.exec_("SELECT has_table_privilege('eigner', 'SELECT')") and qry.next() and qry.value(0):
                     for b in res['best']:
-                        b['bse'] = self.fetchall(db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0" % b['bestdnr'])
+                        b['bse'] = self.fetchall(db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0 ORDER BY coalesce(namensnr,'0')" % b['bestdnr'])
 
 #                        for k,v in res.iteritems():
 #                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
@@ -1282,14 +1282,15 @@ class ALKISOwnerInfo(QgsMapTool):
                         if 'bse' in best:
                             if best['bse']:
                                 html += u"""
-        <TR class="fls_col_names"><TD>Anteil</TD><TD colspan="5">Namensinformation</TD></TR>
+        <TR class="fls_col_names"><TD>Anteil</TD><TD>Namensnr</TD><TD colspan="5">Namensinformation</TD></TR>
 """
 
                                 for bse in best['bse']:
                                     html += u"""
         <TR class="fls_col_values">
                 <TD>%(antverh)s</TD>
-                <TD colspan="5">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
+                <TD>%(namensnr)s</TD>
+                <TD colspan="4">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
         </TR>
 """ % bse
                             else:
