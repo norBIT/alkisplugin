@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.46
+version=2.0.47
 qgisMinimumVersion=2.14
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
@@ -20,7 +20,11 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.46
+changelog=Änderungen in 2.0.47
+ 
+ * Flurstücksnachweis: Gericht nur anzeigen wo verfügbar
+ 
+ Änderungen in 2.0.46
  
  * Flurstücksnachweis: laufende Nummer und Gericht anzeigen
  

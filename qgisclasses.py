@@ -1027,6 +1027,11 @@ th { text-align:left;}
         else:
             exists_ea_anteil = False
 
+        if qry.exec_("SELECT 1 FROM information_schema.columns WHERE table_schema={} AND table_name='ax_buchungsblattbezirk' AND column_name='gehoertzu_land'".format(quote(self.plugin.settings.schema))) and qry.next():
+            ghz = qry.value(0) == 1
+        else:
+            ghz = False
+
         html = ""
         for i in range(0, len(fs)):
             flsnr = fs[i]['flsnr']
@@ -1041,14 +1046,17 @@ th { text-align:left;}
                 ",b.bestdnr"
                 ",b.gbbz"
                 ",b.gbblnr"
-                ",(SELECT d.bezeichnung FROM ax_buchungsblattbezirk bbb JOIN ax_dienststelle d ON bbb.gehoertzu_land||bbb.gehoertzu_stelle=d.schluesselgesamt AND d.stellenart='1000' WHERE b.gbbz=bbb.bezirk AND substr(b.bestdnr,1,2)=bbb.land LIMIT 1) AS bezeichnung"
+                ",%s AS bezeichnung"
                 ",b.bestfl"
                 ",ea.auftlnr"
                 ",b.ff_stand AS bhist"
                 " FROM eignerart ea"
                 " JOIN bestand b ON ea.bestdnr = b.bestdnr"
                 " WHERE ea.flsnr = '%s'"
-                " ORDER BY zhist,bhist,b") % ("ea.anteil" if exists_ea_anteil else "''", flsnr)
+                " ORDER BY zhist,bhist,b") % (
+                    "ea.anteil" if exists_ea_anteil else "''",
+                    "(SELECT d.bezeichnung FROM ax_buchungsblattbezirk bbb JOIN ax_dienststelle d ON bbb.gehoertzu_land||bbb.gehoertzu_stelle=d.schluesselgesamt AND d.stellenart='1000' WHERE b.gbbz=bbb.bezirk AND substr(b.bestdnr,1,2)=bbb.land LIMIT 1)" if ghz else "''",
+                    flsnr)
             )
 
             res = self.fetchall(db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr)
