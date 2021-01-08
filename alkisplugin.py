@@ -1469,7 +1469,7 @@ class alkisplugin(QObject):
                 crs = QgsCoordinateReferenceSystem()
                 crs.createFromProj4(qry.value(0))
                 if crs.authid() == "":
-                    crs.saveAsUserCRS("ALKIS %d" % self.epsg)
+                    crs.saveAsUserCrs("ALKIS %d" % self.epsg)
                 else:
                     QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), qry.executedQuery()))
             else:
