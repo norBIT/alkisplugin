@@ -37,13 +37,13 @@ for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVar
     sip.setapi(c, 2)
 
 try:
-    from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
+    from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject
     from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
     from qgis.PyQt.QtGui import QIcon, QColor, QPainter
     from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
     from qgis.PyQt import QtCore
 except ImportError:
-    from PyQt5.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication
+    from PyQt5.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject
     from PyQt5.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
     from PyQt5.QtGui import QIcon, QColor, QPainter
     from PyQt5.QtSql import QSqlDatabase, QSqlQuery
@@ -97,6 +97,7 @@ if qgisAvailable:
         qgis3 = False
     else:
         from qgis.core import (
+            Qgis,
             QgsWkbTypes,
             QgsProperty,
             QgsPropertyCollection,
@@ -1256,12 +1257,16 @@ class alkisplugin(QObject):
 
     def run(self):
         if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", u"Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok | QMessageBox.Cancel) == QMessageBox.Cancel:
-                return
+            return
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             self.alkisimport()
         finally:
+            if qgis3:
+                if Qgis.QGIS_VERSION_INT >= 31800:
+                    QMetaObject.invokeMethod(self.iface.layerTreeView().model(), 'invalidate', Qt.QueuedConnection)
+
             QApplication.restoreOverrideCursor()
 
             if self.proxyTask:
@@ -1987,11 +1992,11 @@ class alkisplugin(QObject):
 
             restrictedLayers, ok = QgsProject.instance().readListEntry("WMSRestrictedLayers", "/", [])
 
-            for l in [u'Punktmarkierung', u'Linienmarkierung', u'Flächenmarkierung']:
+            for lyr in [u'Punktmarkierung', u'Linienmarkierung', u'Flächenmarkierung']:
                 try:
-                    restrictedLayers.index(l)
+                    restrictedLayers.index(lyr)
                 except ValueError:
-                    restrictedLayers.append(l)
+                    restrictedLayers.append(lyr)
 
             QgsProject.instance().writeEntry("WMSRestrictedLayers", "/", restrictedLayers)
 
@@ -2988,11 +2993,11 @@ class alkisplugin(QObject):
                 i = open(dstfile + ".bak", "r", encoding="utf-8")
                 o = open(dstfile, "w", encoding="utf-8")
 
-                for l in i:
-                    if 'FONTSET "' in l:
+                for lyr in i:
+                    if 'FONTSET "' in lyr:
                         o.write(u'  FONTSET "%s/fonts/fonts.txt"\n' % self.settings.umnpath)
                     else:
-                        o.write(l)
+                        o.write(lyr)
 
                 o.close()
                 i.close()
@@ -3200,11 +3205,10 @@ class alkisplugin(QObject):
         if not qgis3:
             return self.iface.legendInterface().addGroup(name, expand, parent)
 
-        if parent:
-            grp = parent.addGroup(name)
-        else:
-            grp = QgsProject.instance().layerTreeRoot().addGroup(name)
+        if parent is None:
+            parent = QgsProject.instance().layerTreeRoot()
 
+        grp = parent.addGroup(name)
         grp.setExpanded(expand)
 
         return grp
