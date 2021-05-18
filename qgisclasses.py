@@ -446,10 +446,16 @@ class ALKISPolygonInfo(QgsMapTool):
 
             self.rubberBand.reset(self.plugin.PolygonGeometry)
 
+            if hasattr(g, 'asWkt'):
+                wkt = g.asWkt()
+            else:
+                wkt = "POLYGON((%s))" % (
+                    ",".join(["%.3lf %.3lf" % (p[0], p[1]) for p in g.asPolygon()[0]])
+                )
+
             fs = self.plugin.highlight(
-                where=u"st_intersects(wkb_geometry,st_geomfromtext('POLYGON((%s))'::text,%d))" % (
-                    ",".join(["%.3lf %.3lf" % (p[0], p[1]) for p in g.asPolygon()[0]]),
-                    self.plugin.getepsg()
+                where=u"st_intersects(wkb_geometry,st_geomfromtext('%s'::text,%d))" % (
+                    wkt, self.plugin.getepsg()
                 )
             )
 
