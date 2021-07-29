@@ -770,8 +770,6 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             self.updateButtons(fs)
 
         elif self.tabWidget.currentWidget() == self.tabFLSNR:
-            hits = 0
-
             m = re.search("(\\d+)(-\\d+)?-(\\d+)(/\\d+)?", self.leFLSNR.text())
             if m:
                 g, f, z, n = int(m.group(1)), m.group(2), int(m.group(3)), m.group(4)
@@ -785,7 +783,10 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 flsnr += "%"
 
                 fs = self.plugin.highlight(where=u"flurstueckskennzeichen LIKE %s" % quote(flsnr), zoomTo=True)
-                hits = len(fs)
+            else:
+                fs = []
+
+            hits = len(fs)
 
             self.lblResult.setText(u"{} Flurstücke gefunden".format(hits) if hits > 0 else u"Keine Flurstücke gefunden")
 
