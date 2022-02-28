@@ -21,7 +21,7 @@ email=jef@norbit.de
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
 changelog=Änderungen in 2.0.52
-  
+ 
  * Bei doppeldeutigen Straßenbezeichnungen auch Schlüssel anzeigen,
  * Ggf. auch noch die Kennung des Eintrags anzeigen (anscheinend
    ausschließlich in Thüringen gesetzt) anzeigen
@@ -340,7 +340,7 @@ changelog=Änderungen in 2.0.52
  * Anlegen von Benutzerkoordinatensystem für BW/BY (ermöglicht Reprojektion)
  * Signaturnamen ergänzt
 
-homepage=http://www.norbit.de/75/
+homepage=https://www.norbit.de/75/
 repository=https://github.com/norBIT/alkisplugin
 tracker=https://github.com/norBIT/alkisplugin/issues
 icon=https://raw.githubusercontent.com/norBIT/alkisplugin/master/logo.svg
