@@ -643,9 +643,29 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.cbxStrassen.blockSignals(True)
         self.cbxStrassen.clear()
-        if qry.exec_(u"SELECT schluesselgesamt, bezeichnung FROM (SELECT DISTINCT k.schluesselgesamt, k.bezeichnung || coalesce(', ' || g.bezeichnung,'') AS bezeichnung FROM ax_lagebezeichnungkatalogeintrag k LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL WHERE lower(k.bezeichnung) LIKE {0} AND k.endet IS NULL UNION SELECT DISTINCT '' AS schluesselgesamt,unverschluesselt FROM ax_lagebezeichnungmithausnummer WHERE lower(unverschluesselt) LIKE {0} AND endet IS NULL) AS foo ORDER BY bezeichnung".format(quote(self.leStr.text().lower() + '%'))):
+        if qry.exec_(
+            u"SELECT bezeichnung, schluesselgesamt FROM ("
+            u"SELECT k.bezeichnung || coalesce(', ' || g.bezeichnung,'') || coalesce(' (' || k.kennung || ')', '') AS bezeichnung, array_to_string(array_agg(k.schluesselgesamt), '#') AS schluesselgesamt"
+            u" FROM ax_lagebezeichnungkatalogeintrag k"
+            u" LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL"
+            u" WHERE k.endet IS NULL"
+            u" GROUP BY k.bezeichnung, k.kennung, g.bezeichnung"
+            u" UNION "
+            u"SELECT DISTINCT unverschluesselt, ''"
+            u" FROM ax_lagebezeichnungmithausnummer"
+            u" WHERE endet IS NULL"
+            u") AS foo"
+            u" WHERE lower(bezeichnung) LIKE {0}"
+            u" ORDER BY bezeichnung".format(quote(self.leStr.text().lower() + '%'))
+        ):
             while qry.next():
-                self.cbxStrassen.addItem(qry.value(1), qry.value(0))
+                name = qry.value(0)
+                keys = qry.value(1).split("#")
+                if len(keys) > 1:
+                    for k in keys:
+                        self.cbxStrassen.addItem("{} ({})".format(name, k), k)
+                else:
+                    self.cbxStrassen.addItem(name, keys[0])
         self.cbxStrassen.blockSignals(False)
 
         self.lblResult.setText(u"Keine Straßen gefunden" if self.cbxStrassen.count() == 0 else u"{} Straßen gefunden".format(self.cbxStrassen.count()))
@@ -656,6 +676,9 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
     def on_cbxStrassen_currentIndexChanged(self, index):
         # qDebug(u"on_cbxStrassen_currentIndexChanged: index={} text={}".format(self.cbxStrassen.currentIndex(), self.cbxStrassen.currentText()))
+        if self.cbxStrassen.currentIndex() < 0:
+            return
+
         qry = QSqlQuery(self.db)
 
         schluesselgesamt = self.cbxStrassen.itemData(self.cbxStrassen.currentIndex())
@@ -664,15 +687,15 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.cbxHNR.blockSignals(True)
         self.cbxHNR.clear()
-        if (schluesselgesamt is None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or \
-           (schluesselgesamt is not None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt)))):
+        if (schluesselgesamt is None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} WHERE h.endet IS NULL ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or \
+           (schluesselgesamt is not None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt)))):
             while qry.next():
                 self.cbxHNR.addItem(qry.value(0))
         else:
             qDebug(qry.lastError().text())
 
-        if (schluesselgesamt is None and qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h WHERE unverschluesselt={0}".format(quote(self.cbxStrassen.currentText())))) or \
-           (schluesselgesamt is not None and qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE k.schluesselgesamt={0}".format(quote(schluesselgesamt)))):
+        if (schluesselgesamt is None and qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h WHERE h.endet IS NULL AND h.unverschluesselt={0}".format(quote(self.cbxStrassen.currentText())))) or \
+           (schluesselgesamt is not None and qry.exec_(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0}".format(quote(schluesselgesamt)))):
             if qry.next():
                 self.cbxHNR.addItem('Ohne')
         else:
