@@ -33,8 +33,9 @@ except ImportError:
 from io import open
 
 import sip
-for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
-    sip.setapi(c, 2)
+if sip.SIP_VERSION >> 16 < 5:
+    for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
+        sip.setapi(c, 2)
 
 try:
     from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject
