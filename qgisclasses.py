@@ -687,7 +687,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.cbxHNR.blockSignals(True)
         self.cbxHNR.clear()
-        if (schluesselgesamt is None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} WHERE h.endet IS NULL ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or \
+        if (schluesselgesamt is None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} AND h.endet IS NULL ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or \
            (schluesselgesamt is not None and qry.exec_(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt)))):
             while qry.next():
                 self.cbxHNR.addItem(qry.value(0))
