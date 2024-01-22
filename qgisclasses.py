@@ -157,7 +157,7 @@ FROM (
 SELECT unnest(modell) AS modell FROM po_points   UNION ALL
 SELECT unnest(modell) AS modell FROM po_lines    UNION ALL
 SELECT unnest(modell) AS modell FROM po_polygons UNION ALL
-SELECT unnest(modell) AS modell from po_labels
+SELECT unnest(modell) AS modell FROM po_labels
 ) AS foo
 WHERE modell IS NOT NULL
 GROUP BY modell

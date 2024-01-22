@@ -2291,8 +2291,10 @@ class alkisplugin(QObject):
     def setLayerMetaData(self, layer, k, v):
         if int(sys.version[0]) < 3:
             layer.setMetaData(k, v.encode("utf-8"))
-        else:
+        elif hasattr(layer, "setMetaData"):
             layer.setMetaData(k, v)
+        else:
+            layer.metadata.set(k, v)
 
     def setClassName(self, c, name):
         if int(sys.version[0]) < 3:
@@ -2472,7 +2474,10 @@ class alkisplugin(QObject):
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.connection = conninfo
                     layer.symbolscaledenom = 1000
-                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    try:
+                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    except:
+                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     layer.type = mapscript.MS_LAYER_POLYGON
                     layer.sizeunits = mapscript.MS_INCHES
                     layer.status = mapscript.MS_OFF
@@ -2562,7 +2567,10 @@ class alkisplugin(QObject):
                     layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
-                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    try:
+                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    except:
+                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     # layer.symbolscaledenom = 1000
                     layer.sizeunits = mapscript.MS_METERS
                     layer.type = mapscript.MS_LAYER_POLYGON
@@ -2649,7 +2657,10 @@ class alkisplugin(QObject):
                     layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
-                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    try:
+                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    except:
+                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     # layer.symbolscaledenom = 1000
                     layer.sizeunits = mapscript.MS_METERS
                     layer.type = mapscript.MS_LAYER_LINE
@@ -2753,7 +2764,10 @@ class alkisplugin(QObject):
                     layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
-                    layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    try:
+                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                    except:
+                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     layer.symbolscaledenom = 1000
                     layer.sizeunits = mapscript.MS_METERS
                     layer.type = mapscript.MS_LAYER_POINT
@@ -2972,7 +2986,10 @@ class alkisplugin(QObject):
 
                         layer.connection = conninfo
                         layer.connectiontype = mapscript.MS_POSTGIS
-                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                        try:
+                            layer.setProcessing("CLOSE_CONNECTION=DEFER")
+                        except:
+                            layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                         layer.symbolscaledenom = 1000
                         # layer.labelminscaledenom = 0
                         # layer.labelmaxscaledenom = 2000
