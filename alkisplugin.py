@@ -89,7 +89,9 @@ if qgisAvailable:
             QgsRendererCategoryV2 as QgsRendererCategory,
             QgsSvgMarkerSymbolLayerV2 as QgsSvgMarkerSymbolLayer,
             QgsSingleSymbolRendererV2 as QgsSingleSymbolRenderer,
+            QgsMarkerSymbolV2 as QgsMarkerSymbol,
             QgsLineSymbolV2 as QgsLineSymbol,
+            QgsFillSymbolV2 as QgsFillSymbol,
             QgsMapRenderer,
         )
 
@@ -110,7 +112,9 @@ if qgisAvailable:
             QgsRendererCategory,
             QgsSvgMarkerSymbolLayer,
             QgsSingleSymbolRenderer,
+            QgsMarkerSymbol,
             QgsLineSymbol,
+            QgsFillSymbol,
             QgsDataSourceUri,
             QgsUnitTypes,
             QgsTextFormat,
@@ -1274,7 +1278,7 @@ class alkisplugin(QObject):
                 self.proxyTask.finalize(True)
                 self.proxyTask = None
 
-    def progress(self, i, m, s):
+    def progress(self, i, m):
         self.showStatusMessage.emit(u"%s/%s" % (alkisplugin.themen[i]['name'], m))
 
         if hasProxyTask:
@@ -1282,11 +1286,13 @@ class alkisplugin(QObject):
                 self.proxyTask = QgsProxyProgressTask(u"Lade ALKIS-Layer…")
                 QgsApplication.taskManager().addTask(self.proxyTask)
 
-            self.proxyTask.setProxyProgress((i * 5 + s) / (len(alkisplugin.themen) * 5) * 100)
+            self.proxyTask.setProxyProgress(self.step * 100 / self.steps)
 
         else:
-            self.showProgress.emit(i * 5 + s, len(alkisplugin.themen) * 5)
+            self.showProgress.emit(self.step, self.steps)
             QCoreApplication.processEvents()
+
+        self.step += 1
 
     def doShowProgress(self, i, n):
         b = self.iface.mainWindow().findChild(QProgressBar, "mProgressBar")
@@ -1482,6 +1488,12 @@ class alkisplugin(QObject):
                 QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), qry.executedQuery()))
                 return
 
+        self.steps = 0
+        for d in alkisplugin.themen:
+            self.steps += 6 * len(d.get('filter', [1]))
+
+        self.step = 0
+
         nGroups = 0
         iThema = -1
         for d in alkisplugin.themen:
@@ -1522,7 +1534,7 @@ class alkisplugin(QObject):
                 if f.get('filter', None):
                     where += " AND (%s)" % f['filter']
 
-                self.progress(iThema, u"Flächen", 0)
+                self.progress(iThema, u"Flächen")
 
                 sql = (u"SELECT signaturnummer,r,g,b"
                        u" FROM alkis_flaechen"
@@ -1543,7 +1555,7 @@ class alkisplugin(QObject):
 
                     n = 0
                     while qry.next():
-                        sym = QgsSymbol.defaultSymbol(self.PolygonGeometry)
+                        sym = QgsFillSymbol()
 
                         sn = qry.value(0)
                         sym.setColor(QColor(int(qry.value(1)), int(qry.value(2)), int(qry.value(3))))
@@ -1575,7 +1587,7 @@ class alkisplugin(QObject):
                     QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
-                self.progress(iThema, "Grenzen", 1)
+                self.progress(iThema, "Grenzen")
 
                 sql = (u"SELECT"
                        u" signaturnummer"
@@ -1596,7 +1608,7 @@ class alkisplugin(QObject):
 
                     n = 0
                     while qry.next():
-                        sym = QgsSymbol.defaultSymbol(self.PolygonGeometry)
+                        sym = QgsFillSymbol()
                         sn = qry.value(0)
 
                         if self.setStricharten(db, sym, katalog, sn, True):
@@ -1625,7 +1637,7 @@ class alkisplugin(QObject):
                     QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
-                self.progress(iThema, "Linien", 2)
+                self.progress(iThema, "Linien")
 
                 sql = (u"SELECT signaturnummer"
                        u" FROM alkis_linien"
@@ -1646,7 +1658,7 @@ class alkisplugin(QObject):
 
                     n = 0
                     while qry.next():
-                        sym = QgsSymbol.defaultSymbol(self.LineGeometry)
+                        sym = QgsLineSymbol()
                         sn = qry.value(0)
 
                         if self.setStricharten(db, sym, katalog, sn, False):
@@ -1679,7 +1691,7 @@ class alkisplugin(QObject):
                     QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                     break
 
-                self.progress(iThema, "Punkte", 3)
+                self.progress(iThema, "Punkte")
 
                 kat = max([1, katalog])
 
@@ -1715,7 +1727,7 @@ class alkisplugin(QObject):
                         symlayer.setSize(w)
                         symlayer.setOffset(QPointF(-x, -y))
 
-                        sym = QgsSymbol.defaultSymbol(self.PointGeometry)
+                        sym = QgsMarkerSymbol()
                         sym.setOutputUnit(self.MapUnit)
                         sym.setSize(w)
 
@@ -1764,7 +1776,7 @@ class alkisplugin(QObject):
                         QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                         continue
 
-                    self.progress(iThema, "Beschriftungen (%d)" % (i + 1), 4 + i)
+                    self.progress(iThema, "Beschriftungen (%d)" % (i + 1))
 
                     if not qry.next() or int(qry.value(0)) == 0:
                         continue
@@ -1827,7 +1839,7 @@ class alkisplugin(QObject):
 
                     self.setScale(layer, f['label'])
 
-                    sym = QgsSymbol.defaultSymbol(self.PointGeometry if geom == "point" else self.LineGeometry)
+                    sym = QgsMarkerSymbol() if geom == "point" else QgsLineSymbol()
                     if geom == "point":
                         sym.setSize(0.0)
                     else:
@@ -1944,7 +1956,7 @@ class alkisplugin(QObject):
                 "postgres", layeropts
             )
 
-            sym = QgsSymbol.defaultSymbol(self.PointGeometry)
+            sym = QgsMarkerSymbol()
             sym.setColor(Qt.yellow)
             sym.setSize(20.0)
             sym.setOutputUnit(self.Millimeter)
@@ -1978,7 +1990,7 @@ class alkisplugin(QObject):
                 "postgres", layeropts
             )
 
-            sym = QgsSymbol.defaultSymbol(self.PolygonGeometry)
+            sym = QgsFillSymbol()
             sym.setColor(Qt.yellow)
             try:
                 sym.setAlpha(0.5)
@@ -2418,6 +2430,12 @@ class alkisplugin(QObject):
             missing = {}
             symbols = {}
 
+            self.steps = 0
+            for d in alkisplugin.themen:
+                self.steps += 6 * len(d.get('filter', [1]))
+
+            self.step = 0
+
             iThema = -1
             iLayer = 0
             for d in alkisplugin.themen:
@@ -2447,7 +2465,7 @@ class alkisplugin(QObject):
                         if k not in f:
                             f[k] = d[k]
 
-                    self.progress(iThema, u"Flächen", 0)
+                    self.progress(iThema, u"Flächen")
 
                     # 1 Polylinien
                     # 1.1 Flächen
@@ -2553,7 +2571,7 @@ class alkisplugin(QObject):
                     else:
                         mapobj.removeLayer(layer.index)
 
-                    self.progress(iThema, "Grenzen", 1)
+                    self.progress(iThema, "Grenzen")
 
                     #
                     # 1.2 Randlinien
@@ -2643,7 +2661,7 @@ class alkisplugin(QObject):
                     else:
                         mapobj.removeLayer(layer.index)
 
-                    self.progress(iThema, "Linien", 2)
+                    self.progress(iThema, "Linien")
 
                     #
                     # 2 Linien
@@ -2785,7 +2803,7 @@ class alkisplugin(QObject):
                     self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
                     self.setUMNScale(layer, f['point'])
 
-                    self.progress(iThema, "Punkte", 3)
+                    self.progress(iThema, "Punkte")
 
                     kat = max([1, katalog])
 
@@ -2869,7 +2887,7 @@ class alkisplugin(QObject):
                         if not qry.exec_("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:
                             continue
 
-                        self.progress(iThema, "Beschriftungen (%d)" % (j + 1), 4 + j)
+                        self.progress(iThema, "Beschriftungen (%d)" % (j + 1))
 
                         layer = mapscript.layerObj(mapobj)
                         layer.name = "l%d" % iLayer
