@@ -7,7 +7,7 @@
     alkisplugin.py
     ---------------------
     Date                 : September 2012
-    Copyright            : (C) 2012-2020 by Jürgen Fischer
+    Copyright            : (C) 2012-2025 by Jürgen Fischer
     Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
@@ -18,10 +18,6 @@
 *                                                                         *
 ***************************************************************************
 """
-from __future__ import print_function
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
 from builtins import map
 from builtins import str
 from builtins import range
@@ -32,10 +28,13 @@ except ImportError:
 
 from io import open
 
-import sip
-if sip.SIP_VERSION >> 16 < 5:
-    for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
-        sip.setapi(c, 2)
+try:
+    import sip
+    if sip.SIP_VERSION >> 16 < 5:
+        for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
+            sip.setapi(c, 2)
+except ModuleNotFoundError:
+    pass
 
 try:
     from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject
@@ -75,61 +74,36 @@ except ImportError:
 if qgisAvailable:
     from qgis.core import QgsMessageLog, QgsProject, QgsCoordinateReferenceSystem, QgsPalLayerSettings, QgsCredentials, QgsRectangle, QgsCoordinateTransform, QgsVectorLayer, QgsApplication, QgsLayerTreeGroup
 
-    if hasattr(qgis.core, "QGis"):
-        from qgis.core import (
-            QGis as Qgis,
-            QgsWKBTypes as QgsWkbTypes,
-            QgsDataDefined,
-            QgsDataSourceURI as QgsDataSourceUri,
-            QgsMapLayerRegistry,
-            QgsMarkerLineSymbolLayerV2 as QgsMarkerLineSymbolLayer,
-            QgsSymbolV2 as QgsSymbol,
-            QgsSimpleLineSymbolLayerV2 as QgsSimpleLineSymbolLayer,
-            QgsCategorizedSymbolRendererV2 as QgsCategorizedSymbolRenderer,
-            QgsRendererCategoryV2 as QgsRendererCategory,
-            QgsSvgMarkerSymbolLayerV2 as QgsSvgMarkerSymbolLayer,
-            QgsSingleSymbolRendererV2 as QgsSingleSymbolRenderer,
-            QgsMarkerSymbolV2 as QgsMarkerSymbol,
-            QgsLineSymbolV2 as QgsLineSymbol,
-            QgsFillSymbolV2 as QgsFillSymbol,
-            QgsMapRenderer,
-        )
+    from qgis.core import (
+        Qgis,
+        QgsWkbTypes,
+        QgsProperty,
+        QgsPropertyCollection,
+        QgsVectorLayerSimpleLabeling,
+        QgsMarkerLineSymbolLayer,
+        QgsSymbol,
+        QgsSimpleLineSymbolLayer,
+        QgsCategorizedSymbolRenderer,
+        QgsRendererCategory,
+        QgsSvgMarkerSymbolLayer,
+        QgsSingleSymbolRenderer,
+        QgsMarkerSymbol,
+        QgsLineSymbol,
+        QgsFillSymbol,
+        QgsDataSourceUri,
+        QgsUnitTypes,
+        QgsTextFormat,
+        QgsTextBufferSettings,
+        QgsSettings
+    )
+    authAvailable = True
+    hasBlendSource = True
 
-        authAvailable = hasattr(QgsDataSourceUri, 'setAuthConfigId')
-        hasBlendSource = hasattr(QgsMapRenderer, "BlendSource")
-        qgis3 = False
-    else:
-        from qgis.core import (
-            Qgis,
-            QgsWkbTypes,
-            QgsProperty,
-            QgsPropertyCollection,
-            QgsVectorLayerSimpleLabeling,
-            QgsMarkerLineSymbolLayer,
-            QgsSymbol,
-            QgsSimpleLineSymbolLayer,
-            QgsCategorizedSymbolRenderer,
-            QgsRendererCategory,
-            QgsSvgMarkerSymbolLayer,
-            QgsSingleSymbolRenderer,
-            QgsMarkerSymbol,
-            QgsLineSymbol,
-            QgsFillSymbol,
-            QgsDataSourceUri,
-            QgsUnitTypes,
-            QgsTextFormat,
-            QgsTextBufferSettings,
-            QgsSettings
-        )
-        authAvailable = True
-        hasBlendSource = True
-        qgis3 = True
-
-        try:
-            from qgis.core import QgsProxyProgressTask
-            hasProxyTask = True
-        except ImportError:
-            pass
+    try:
+        from qgis.core import QgsProxyProgressTask
+        hasProxyTask = True
+    except ImportError:
+        pass
 
     from .qgisclasses import About, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
@@ -1186,11 +1160,11 @@ class alkisplugin(QObject):
 
     def conf(self):
         dlg = ALKISConf(self)
-        dlg.exec_()
+        dlg.exec()
 
     def about(self):
         dlg = About()
-        dlg.exec_()
+        dlg.exec()
 
     def initLayers(self):
         if self.pointMarkerLayer is None:
@@ -1215,22 +1189,17 @@ class alkisplugin(QObject):
 
     def search(self):
         dlg = ALKISSearch(self)
-        dlg.exec_()
+        dlg.exec()
 
     def setScale(self, layer, d):
-        if qgis3:
-            kmin, kmax = 'max', 'min'
-        else:
-            kmin, kmax = 'min', 'max'
-
-        if d[kmin] is None and d[kmax] is None:
+        if d['max'] is None and d['min'] is None:
             return
 
-        if d[kmin] is not None:
-            layer.setMinimumScale(d[kmin])
+        if d['max'] is not None:
+            layer.setMinimumScale(d['max'])
 
-        if d[kmax] is not None:
-            layer.setMaximumScale(d[kmax])
+        if d['min'] is not None:
+            layer.setMaximumScale(d['min'])
 
         try:
             layer.setScaleBasedVisibility(True)
@@ -1264,13 +1233,12 @@ class alkisplugin(QObject):
         if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", u"Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok | QMessageBox.Cancel) == QMessageBox.Cancel:
             return
 
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
             self.alkisimport()
         finally:
-            if qgis3:
-                if Qgis.QGIS_VERSION_INT >= 31800:
-                    QMetaObject.invokeMethod(self.iface.layerTreeView().model(), 'invalidate', Qt.QueuedConnection)
+            if Qgis.QGIS_VERSION_INT >= 31800:
+                QMetaObject.invokeMethod(self.iface.layerTreeView().model(), 'invalidate', Qt.ConnectionType.QueuedConnection)
 
             QApplication.restoreOverrideCursor()
 
@@ -1325,7 +1293,7 @@ class alkisplugin(QObject):
                    "" if kat < 0 else u" AND ln.katalog=%d" % kat
         )
 
-        if lqry.exec_(sql):
+        if lqry.exec(sql):
             stricharten = []
 
             maxStrichstaerke = None
@@ -1394,9 +1362,9 @@ class alkisplugin(QObject):
                         sl.subSymbol().symbolLayer(0).setSize(abs(strichstaerke))
                         sl.subSymbol().symbolLayer(0).setSizeUnit(self.MapUnit if strichstaerke >= 0 else self.Millimeter)
                         try:
-                            sl.subSymbol().symbolLayer(0).setOutlineStyle(Qt.NoPen)
+                            sl.subSymbol().symbolLayer(0).setOutlineStyle(Qt.PenStyle.NoPen)
                         except AttributeError:
-                            sl.subSymbol().symbolLayer(0).setStrokeStyle(Qt.NoPen)
+                            sl.subSymbol().symbolLayer(0).setStrokeStyle(Qt.PenStyle.NoPen)
                         sl.subSymbol().symbolLayer(0).setColor(c)
                         sl.setWidth(strichstaerke)
                         sl.setWidthUnit(self.MapUnit)
@@ -1404,7 +1372,7 @@ class alkisplugin(QObject):
                         sym.appendSymbolLayer(sl)
                 else:
                     # Simple line
-                    sl = QgsSimpleLineSymbolLayer(c, strichstaerke, Qt.SolidLine)
+                    sl = QgsSimpleLineSymbolLayer(c, strichstaerke, Qt.PenStyle.SolidLine)
 
                     if abstaende:
                         dashvector = []
@@ -1414,8 +1382,8 @@ class alkisplugin(QObject):
                         sl.setCustomDashVector(dashvector)
                         sl.setCustomDashPatternUnit(self.MapUnit)
 
-                    sl.setPenCapStyle(Qt.FlatCap if abschluss == "Abgeschnitten" else Qt.RoundCap)
-                    sl.setPenJoinStyle(Qt.MiterJoin if abschluss == "Spitz" else Qt.RoundJoin)
+                    sl.setPenCapStyle(Qt.PenCapStyle.FlatCap if abschluss == "Abgeschnitten" else Qt.PenCapStyle.RoundCap)
+                    sl.setPenJoinStyle(Qt.PenJoinStyle.MiterJoin if abschluss == "Spitz" else Qt.PenJoinStyle.RoundJoin)
                     sl.setWidth(abs(strichstaerke))
                     sl.setWidthUnit(self.MapUnit if strichstaerke >= 0 else self.Millimeter)
 
@@ -1428,7 +1396,7 @@ class alkisplugin(QObject):
             if outline:
                 sym.deleteSymbolLayer(0)
             else:
-                sl = QgsSimpleLineSymbolLayer(QColor(0, 0, 0, 0) if hasBlendSource else Qt.white, maxStrichstaerke * 1.01, Qt.SolidLine)
+                sl = QgsSimpleLineSymbolLayer(QColor(0, 0, 0, 0) if hasBlendSource else Qt.GlobalColor.white, maxStrichstaerke * 1.01, Qt.PenStyle.SolidLine)
                 sl.setWidthUnit(self.MapUnit)
                 sym.changeSymbolLayer(0, sl)
         else:
@@ -1453,25 +1421,14 @@ class alkisplugin(QObject):
         qry2 = QSqlQuery(db)
 
         svgpath = os.path.abspath(os.path.join(BASEDIR, "svg"))
-        if qgis3:
-            qs = QgsSettings()
-            svgpaths = QgsApplication.svgPaths()
-            if svgpath not in svgpaths:
-                svgpaths.append(svgpath)
-                qs.setValue("svg/searchPathsForSVG", svgpaths)
-            layeropts = QgsVectorLayer.LayerOptions(False, False)
-        else:
-            qs = QSettings("QGIS", "QGIS2")
-            svgpaths = qs.value("svg/searchPathsForSVG", "", type=unicode).split("|")
-            if not svgpath.upper() in list(map(unicode.upper, svgpaths)):
-                svgpaths.append(svgpath)
-                qs.setValue("svg/searchPathsForSVG", u"|".join(svgpaths))
-            layeropts = False
+        qs = QgsSettings()
+        svgpaths = QgsApplication.svgPaths()
+        if svgpath not in svgpaths:
+            svgpaths.append(svgpath)
+            qs.setValue("svg/searchPathsForSVG", svgpaths)
+        layeropts = QgsVectorLayer.LayerOptions(False, False)
 
-        if qgis3:
-            self.shortnames = [self.shortName(lyr) for lyr in QgsProject.instance().mapLayers().values() if self.shortName(lyr)]
-        else:
-            self.shortnames = [self.shortName(lyr) for lyr in QgsMapLayerRegistry.instance().mapLayers().values()]
+        self.shortnames = [self.shortName(lyr) for lyr in QgsProject.instance().mapLayers().values() if self.shortName(lyr)]
 
         def addgroupsns(root=QgsProject.instance().layerTreeRoot()):
             for c in root.children():
@@ -1496,7 +1453,7 @@ class alkisplugin(QObject):
         self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
         if self.epsg > 100000:
-            if qry.exec_("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
+            if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
                 crs = QgsCoordinateReferenceSystem()
                 crs.createFromProj4(qry.value(0))
                 if crs.authid() == "":
@@ -1568,7 +1525,7 @@ class alkisplugin(QObject):
                 )
 
                 # qDebug( u"SQL: %s" % sql )
-                if qry.exec_(sql):
+                if qry.exec(sql):
                     r = QgsCategorizedSymbolRenderer("sn_flaeche")
                     r.deleteAllCategories()
 
@@ -1579,9 +1536,9 @@ class alkisplugin(QObject):
                         sn = qry.value(0)
                         sym.setColor(QColor(int(qry.value(1)), int(qry.value(2)), int(qry.value(3))))
                         try:
-                            sym.symbolLayer(0).setBorderStyle(Qt.NoPen)
+                            sym.symbolLayer(0).setBorderStyle(Qt.PenStyle.NoPen)
                         except AttributeError:
-                            sym.symbolLayer(0).setStrokeStyle(Qt.NoPen)
+                            sym.symbolLayer(0).setStrokeStyle(Qt.PenStyle.NoPen)
 
                         r.addCategory(QgsRendererCategory(sn, sym, self.categoryLabel(d, sn)))
                         n += 1
@@ -1621,7 +1578,7 @@ class alkisplugin(QObject):
                 )
 
                 # qDebug( u"SQL: %s" % sql )
-                if qry.exec_(sql):
+                if qry.exec(sql):
                     r = QgsCategorizedSymbolRenderer("sn_randlinie")
                     r.deleteAllCategories()
 
@@ -1643,7 +1600,7 @@ class alkisplugin(QObject):
                         layer.setReadOnly()
                         self.setRenderer(layer, r)
                         if hasBlendSource:
-                            layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
+                            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Source)
                         self.setScale(layer, f['outline'])
                         self.refreshLayer(layer)
 
@@ -1670,7 +1627,7 @@ class alkisplugin(QObject):
                 )
 
                 # qDebug( u"SQL: %s" % sql )
-                if qry.exec_(sql):
+                if qry.exec(sql):
                     r = QgsCategorizedSymbolRenderer("signaturnummer")
                     r.setUsingSymbolLevels(True)
                     r.deleteAllCategories()
@@ -1696,8 +1653,7 @@ class alkisplugin(QObject):
                         layer.setReadOnly()
                         self.setRenderer(layer, r)
                         if hasBlendSource:
-                            layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
-                        layer.setFeatureBlendMode(QPainter.CompositionMode_Source)
+                            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Source)
                         self.setScale(layer, f['line'])
                         self.refreshLayer(layer)
 
@@ -1716,21 +1672,17 @@ class alkisplugin(QObject):
 
                 sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where
                 # qDebug( u"SQL: %s" % sql )
-                if qry.exec_(sql):
+                if qry.exec(sql):
                     r = QgsCategorizedSymbolRenderer("signaturnummer")
                     r.deleteAllCategories()
 
                     n = 0
                     while qry.next():
                         sn = qry.value(0)
-
-                        if qgis3:
-                            svg = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
-                        else:
-                            svg = "alkis%s_%d.svg" % (sn, kat)
+                        svg = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
 
                         x, y, w = 0, 0, 1
-                        if qry2.exec_("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
+                        if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
                             x = (qry2.value(0) + qry2.value(2)) / 2
                             y = (qry2.value(1) + qry2.value(3)) / 2
                             w = qry2.value(2) - qry2.value(0)
@@ -1791,7 +1743,7 @@ class alkisplugin(QObject):
                     geom = "point" if i == 0 else "line"
                     geomtype = "MULTIPOINT" if i == 0 else "MULTILINESTRING"
 
-                    if not qry.exec_("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)):
+                    if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)):
                         QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                         continue
 
@@ -1854,7 +1806,6 @@ class alkisplugin(QObject):
                         "postgres", layeropts
                     )
                     layer.setReadOnly()
-                    self.setShortName(layer)
 
                     self.setScale(layer, f['label'])
 
@@ -1862,7 +1813,7 @@ class alkisplugin(QObject):
                     if geom == "point":
                         sym.setSize(0.0)
                     else:
-                        sym.changeSymbolLayer(0, QgsSimpleLineSymbolLayer(Qt.black, 0.0, Qt.NoPen))
+                        sym.changeSymbolLayer(0, QgsSimpleLineSymbolLayer(Qt.GlobalColor.black, 0.0, Qt.PenStyle.NoPen))
                     self.setRenderer(layer, QgsSingleSymbolRenderer(sym))
                     self.refreshLayer(layer)
 
@@ -1871,27 +1822,18 @@ class alkisplugin(QObject):
                     lyr.isExpression = False
                     lyr.enabled = True
                     # lyr.displayAll = True
-                    if qgis3:
-                        tf = QgsTextFormat()
-                        tf.font().setPointSizeF(2.5)
-                        tf.font().setFamily("Arial")
-                        tf.setSizeUnit(self.MapUnit)
+                    tf = QgsTextFormat()
+                    tf.font().setPointSizeF(2.5)
+                    tf.font().setFamily("Arial")
+                    tf.setSizeUnit(self.MapUnit)
 
-                        bs = QgsTextBufferSettings()
-                        bs.setEnabled(True)
-                        bs.setSize(0.125)
-                        bs.setSizeUnit(self.MapUnit)
-                        tf.setBuffer(bs)
+                    bs = QgsTextBufferSettings()
+                    bs.setEnabled(True)
+                    bs.setSize(0.125)
+                    bs.setSizeUnit(self.MapUnit)
+                    tf.setBuffer(bs)
 
-                        lyr.setFormat(tf)
-                    else:
-                        lyr.textFont.setPointSizeF(2.5)
-                        lyr.textFont.setFamily("Arial")
-                        lyr.fontSizeInMapUnits = True
-
-                        lyr.bufferSizeInMapUnits = True
-                        lyr.bufferSize = 0.125
-                        lyr.bufferDraw = True
+                    lyr.setFormat(tf)
 
                     lyr.upsidedownLabels = QgsPalLayerSettings.ShowAll
                     lyr.scaleVisibility = True
@@ -1902,45 +1844,26 @@ class alkisplugin(QObject):
                         lyr.placement = QgsPalLayerSettings.Curved
                         lyr.placementFlags = QgsPalLayerSettings.AboveLine
 
-                    if qgis3:
-                        c = QgsPropertyCollection()
-                        c.setProperty(QgsPalLayerSettings.Size, QgsProperty.fromField("tsize"))
-                        c.setProperty(QgsPalLayerSettings.FontSizeUnit, QgsProperty.fromField("tunit"))
-                        c.setProperty(QgsPalLayerSettings.Family, QgsProperty.fromField("family"))
-                        c.setProperty(QgsPalLayerSettings.Italic, QgsProperty.fromField("italic"))
-                        c.setProperty(QgsPalLayerSettings.Bold, QgsProperty.fromField("bold"))
-                        c.setProperty(QgsPalLayerSettings.Hali, QgsProperty.fromField("halign"))
-                        c.setProperty(QgsPalLayerSettings.Vali, QgsProperty.fromField("valign"))
-                        c.setProperty(QgsPalLayerSettings.Color, QgsProperty.fromField("tcolor"))
-                        c.setProperty(QgsPalLayerSettings.FontLetterSpacing, QgsProperty.fromField("fontsperrung"))
-                        if geom == "point":
-                            c.setProperty(QgsPalLayerSettings.PositionX, QgsProperty.fromField("tx"))
-                            c.setProperty(QgsPalLayerSettings.PositionY, QgsProperty.fromField("ty"))
+                    c = QgsPropertyCollection()
+                    c.setProperty(QgsPalLayerSettings.Size, QgsProperty.fromField("tsize"))
+                    c.setProperty(QgsPalLayerSettings.FontSizeUnit, QgsProperty.fromField("tunit"))
+                    c.setProperty(QgsPalLayerSettings.Family, QgsProperty.fromField("family"))
+                    c.setProperty(QgsPalLayerSettings.Italic, QgsProperty.fromField("italic"))
+                    c.setProperty(QgsPalLayerSettings.Bold, QgsProperty.fromField("bold"))
+                    c.setProperty(QgsPalLayerSettings.Hali, QgsProperty.fromField("halign"))
+                    c.setProperty(QgsPalLayerSettings.Vali, QgsProperty.fromField("valign"))
+                    c.setProperty(QgsPalLayerSettings.Color, QgsProperty.fromField("tcolor"))
+                    c.setProperty(QgsPalLayerSettings.FontLetterSpacing, QgsProperty.fromField("fontsperrung"))
+                    if geom == "point":
+                        c.setProperty(QgsPalLayerSettings.PositionX, QgsProperty.fromField("tx"))
+                        c.setProperty(QgsPalLayerSettings.PositionY, QgsProperty.fromField("ty"))
 
-                        c.setProperty(QgsPalLayerSettings.LabelRotation, QgsProperty.fromExpression("-tangle"))
-                        c.setProperty(QgsPalLayerSettings.AlwaysShow, QgsProperty.fromField("tshow"))
-                        lyr.setDataDefinedProperties(c)
+                    c.setProperty(QgsPalLayerSettings.LabelRotation, QgsProperty.fromExpression("-tangle"))
+                    c.setProperty(QgsPalLayerSettings.AlwaysShow, QgsProperty.fromField("tshow"))
+                    lyr.setDataDefinedProperties(c)
 
-                        layer.setLabeling(QgsVectorLayerSimpleLabeling(lyr))
-                        layer.setLabelsEnabled(True)
-                    else:
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Size, True, False, "", "tsize")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.FontSizeUnit, True, False, "", "tunit")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Family, True, False, "", "family")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Italic, True, False, "", "italic")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Bold, True, False, "", "bold")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Hali, True, False, "", "halign")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Vali, True, False, "", "valign")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Color, True, False, "", "tcolor")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.FontLetterSpacing, True, False, "", "fontsperrung")
-                        if geom == "point":
-                            lyr.setDataDefinedProperty(QgsPalLayerSettings.PositionX, True, False, "", "tx")
-                            lyr.setDataDefinedProperty(QgsPalLayerSettings.PositionY, True, False, "", "ty")
-
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.Rotation, True, False, "", "tangle")
-                        lyr.setDataDefinedProperty(QgsPalLayerSettings.AlwaysShow, True, False, "", "tshow")
-
-                        lyr.writeToLayer(layer)
+                    layer.setLabeling(QgsVectorLayerSimpleLabeling(lyr))
+                    layer.setLabelsEnabled(True)
 
                     self.refreshLayer(layer)
 
@@ -1976,7 +1899,7 @@ class alkisplugin(QObject):
             )
 
             sym = QgsMarkerSymbol()
-            sym.setColor(Qt.yellow)
+            sym.setColor(Qt.GlobalColor.yellow)
             sym.setSize(20.0)
             sym.setOutputUnit(self.Millimeter)
             try:
@@ -1994,7 +1917,7 @@ class alkisplugin(QObject):
             )
 
             sym = QgsLineSymbol()
-            sym.setColor(Qt.yellow)
+            sym.setColor(Qt.GlobalColor.yellow)
             try:
                 sym.setAlpha(0.5)
             except AttributeError:
@@ -2010,7 +1933,7 @@ class alkisplugin(QObject):
             )
 
             sym = QgsFillSymbol()
-            sym.setColor(Qt.yellow)
+            sym.setColor(Qt.GlobalColor.yellow)
             try:
                 sym.setAlpha(0.5)
             except AttributeError:
@@ -2032,11 +1955,10 @@ class alkisplugin(QObject):
 
             QgsProject.instance().writeEntry("WMSRestrictedLayers", "/", restrictedLayers)
 
-            if qgis3:
-                if Qgis.QGIS_VERSION_INT >= 32600:
-                    QgsProject.instance().setFlag(Qgis.ProjectFlag.TrustStoredLayerStatistics)
-                else:
-                    QgsProject.instance().setTrustLayerMetadata(True)
+            if Qgis.QGIS_VERSION_INT >= 32600:
+                QgsProject.instance().setFlag(Qgis.ProjectFlag.TrustStoredLayerStatistics)
+            else:
+                QgsProject.instance().setTrustLayerMetadata(True)
 
             self.settings.saveToProject()
         else:
@@ -2144,19 +2066,19 @@ class alkisplugin(QObject):
 
             qry.addBindValue(schema)
 
-            if not qry.exec_():
+            if not qry.exec():
                 QMessageBox.warning(None, "ALKIS", u"Fehler: Schema {} konnte nicht aktiviert werden [{}]!".format(schema, qry.lastError().text()))
-            elif not qry.exec_("SELECT current_schema()") or not qry.next():
+            elif not qry.exec("SELECT current_schema()") or not qry.next():
                 QMessageBox.warning(None, "ALKIS", u"Fehler: Aktiviertes Schema {} konnte nicht abgefragt werden [{}]!".format(schema, qry.lastError().text()))
             elif qry.value(0) != schema:
                 QMessageBox.warning(None, "ALKIS", u"Fehler: Schema {} wurde nicht aktiviert [noch aktiv: {}]!".format(schema, qry.value(0)))
 
             sql = u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['gema_shl', 'eignerart', 'bestand', 'flurst']])
-            buchZugriff = qry.exec_(sql) and qry.next() and qry.value(0)
+            buchZugriff = True if qry.exec(sql) and qry.next() and qry.value(0) else False
 
             self.queryOwnerAction.setVisible(buchZugriff)
 
-            if qry.exec_(u"SELECT find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text)".format(schema.replace("'", "''"))) and qry.next():
+            if qry.exec(u"SELECT find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text)".format(schema.replace("'", "''"))) and qry.next():
                 self.epsg = int(qry.value(0))
             else:
                 QMessageBox.warning(None, "ALKIS", u"Fehler: Keine Daten im Schema {} gefunden!".format(schema))
@@ -2233,7 +2155,7 @@ class alkisplugin(QObject):
 
         qry = QSqlQuery(db)
 
-        if not qry.exec_(
+        if not qry.exec(
                 u"SELECT "
                 u"gml_id"
                 u",alkis_flsnr(ax_flurstueck)"
@@ -2285,7 +2207,7 @@ class alkisplugin(QObject):
             return fs
 
         qry = QSqlQuery(db)
-        if zoomTo and qry.exec_(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1) > 0:
+        if zoomTo and qry.exec(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1) > 0:
             self.zoomToExtent(qry.value(0), self.areaMarkerLayer.crs())
 
         return fs
@@ -2339,7 +2261,7 @@ class alkisplugin(QObject):
     def mapfile(self, conninfo=None, dstfile=None):
         try:
             if qgisAvailable:
-                QApplication.setOverrideCursor(Qt.WaitCursor)
+                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
 
             self.settings.loadSettings()
             (db, conninfo) = self.opendb(conninfo)
@@ -2356,7 +2278,7 @@ class alkisplugin(QObject):
                     raise BaseException("Destination file missing.")
 
                 try:
-                    QApplication.setOverrideCursor(Qt.ArrowCursor)
+                    QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
                     dstfile = QFileDialog.getSaveFileName(None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)")
                 finally:
                     QApplication.restoreOverrideCursor()
@@ -2381,7 +2303,7 @@ class alkisplugin(QObject):
                 qry.addBindValue(self.settings.schema)
                 self.schema = self.settings.schema
 
-                if not qry.exec_():
+                if not qry.exec():
                     raise BaseException("Could not set search path.")
 
             mapobj = mapscript.mapObj()
@@ -2429,14 +2351,14 @@ class alkisplugin(QObject):
             if mapobj.symbolset.appendSymbol(symbol) < 0:
                 raise BaseException("symbol not added.")
 
-            if qry.exec_(u"SELECT st_extent(wkb_geometry),find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text) FROM ax_flurstueck".format(self.settings.schema)) and qry.next():
+            if qry.exec(u"SELECT st_extent(wkb_geometry),find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text) FROM ax_flurstueck".format(self.settings.schema)) and qry.next():
                 bb = qry.value(0)[4:-1]
                 (p0, p1) = bb.split(",")
                 (x0, y0) = p0.split(" ")
                 (x1, y1) = p1.split(" ")
                 self.epsg = int(qry.value(1))
                 if self.epsg > 100000:
-                    if qry.exec_("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
+                    if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
                         crs = qry.value(0)
                         mapobj.setProjection(crs)
                 else:
@@ -2548,7 +2470,7 @@ class alkisplugin(QObject):
                     )
                     # qDebug( "SQL: %s" % sql )
 
-                    if qry.exec_(sql):
+                    if qry.exec(sql):
                         sprio = 0
                         nclasses = 0
                         minprio = None
@@ -2644,7 +2566,7 @@ class alkisplugin(QObject):
                     )
 
                     # qDebug( "SQL: %s" % sql )
-                    if qry.exec_(sql):
+                    if qry.exec(sql):
                         sprio = 0
                         nclasses = 0
                         minprio = None
@@ -2733,7 +2655,7 @@ class alkisplugin(QObject):
                                "" if katalog < 0 else u" AND ln.katalog=%d" % katalog
                     )
                     # qDebug( "SQL: %s" % sql )
-                    if qry.exec_(sql):
+                    if qry.exec(sql):
                         sprio = 0
                         nclasses = 0
                         minprio = None
@@ -2831,7 +2753,7 @@ class alkisplugin(QObject):
 
                     sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where
                     # qDebug( "SQL: %s" % sql )
-                    if qry.exec_(sql):
+                    if qry.exec(sql):
                         while qry.next():
                             sn = qry.value(0)
                             if not sn:
@@ -2851,7 +2773,7 @@ class alkisplugin(QObject):
                             self.setClassName(cl, d['classes'].get(sn, "(%s)" % sn))
 
                             x, y, h = 0, 0, 1
-                            if qry2.exec_("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
+                            if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
                                 x = (qry2.value(0) + qry2.value(2)) / 2
                                 y = (qry2.value(1) + qry2.value(3)) / 2
                                 w = qry2.value(2) - qry2.value(0)
@@ -2906,7 +2828,7 @@ class alkisplugin(QObject):
                     for j in range(2):
                         geom = "point" if j == 0 else "line"
 
-                        if not qry.exec_("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:
+                        if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:
                             continue
 
                         self.progress(iThema, "Beschriftungen (%d)" % (j + 1))
@@ -3083,7 +3005,7 @@ class alkisplugin(QObject):
         )
 
         lqry = QSqlQuery(db)
-        if lqry.exec_(sql):
+        if lqry.exec(sql):
             stricharten = []
 
             maxStrichstaerke = None
@@ -3272,12 +3194,8 @@ class alkisplugin(QObject):
             layer.setShortName(sn)
 
     def addGroup(self, name, expand=True, parent=None):
-        if not qgis3:
-            if parent is None:
-                parent = self.iface.layerTreeView().layerTreeModel().rootGroup()
-        else:
-            if parent is None:
-                parent = QgsProject.instance().layerTreeRoot()
+        if parent is None:
+            parent = self.iface.layerTreeView().layerTreeModel().rootGroup()
 
         grp = parent.addGroup(name)
         grp.setExpanded(expand)
@@ -3299,19 +3217,13 @@ class alkisplugin(QObject):
         if not self.shortName(layer):
             self.setShortName(layer)
 
-        if qgis3:
-            QgsProject.instance().addMapLayer(layer, False)
-        else:
-            QgsMapLayerRegistry.instance().addMapLayer(layer, False)
+        QgsProject.instance().addMapLayer(layer, False)
 
         grp.insertLayer(0, layer)
 
     def refreshLayer(self, layer):
-        if qgis3:
-            node = QgsProject.instance().layerTreeRoot().findLayer(layer)
-            self.iface.layerTreeView().layerTreeModel().refreshLayerLegend(node)
-        else:
-            self.iface.legendInterface().refreshLayerSymbology(layer)
+        node = QgsProject.instance().layerTreeRoot().findLayer(layer)
+        self.iface.layerTreeView().layerTreeModel().refreshLayerLegend(node)
 
     def setGroupExpanded(self, grp, expanded):
         grp.setExpanded(expanded)
@@ -3326,10 +3238,7 @@ class alkisplugin(QObject):
         grp.parent().removeChildNode(grp)
 
     def mapLayer(self, layerId):
-        if qgis3:
-            return QgsProject.instance().mapLayer(layerId)
-        else:
-            return QgsMapLayerRegistry.instance().mapLayer(layerId)
+        return QgsProject.instance().mapLayer(layerId)
 
     def setRenderer(self, layer, r):
         if hasattr(layer, "setRendererV2"):
@@ -3383,24 +3292,24 @@ class alkisplugin(QObject):
 
         qry = QSqlQuery(db)
 
-        if qry.exec_("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')"):
+        if qry.exec("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')"):
             if not qry.next() or not qry.value(0):
                 qDebug(u"Einfügerecht zur Protokollierung fehlt.")
                 return True
 
             qDebug(u"Protokollierung aktiv.")
 
-        elif qry.exec_("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])"):
+        elif qry.exec("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])"):
             qDebug(u"Protokolltabelle angelegt.")
 
         else:
             qDebug(u"Protokolltabelle konnte nicht angelegt werden.")
             return True
 
-        mitAZ = qry.exec_("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='postnas_search_logging' AND column_name='aktenzeichen'".format(self.settings.schema.replace("'", "''"))) and qry.next()
+        mitAZ = qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='postnas_search_logging' AND column_name='aktenzeichen'".format(self.settings.schema.replace("'", "''"))) and qry.next()
 
         if mitAZ:
-            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
             az, ok = QInputDialog.getText(None, u"Grund der Abfrage", u"Aktenzeichen:", text=self.az)
             QApplication.restoreOverrideCursor()
             if not ok:
@@ -3422,7 +3331,7 @@ class alkisplugin(QObject):
         if mitAZ:
             qry.addBindValue(self.az)
 
-        if not qry.exec_():
+        if not qry.exec():
             logMessage(u"Protokolleintrag konnte nicht ergänzt werden")
             return False
 

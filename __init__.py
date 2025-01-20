@@ -5,7 +5,7 @@
     __init__.py
     ---------------------
     Date                 : September 2012
-    Copyright            : (C) 2012-2020 by Jürgen Fischer
+    Copyright            : (C) 2012-2025 by Jürgen Fischer
     Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
@@ -29,7 +29,7 @@ def version():
     return "Version 0.1"
 
 def qgisMinimumVersion():
-    return "1.8"
+    return "3.0"
 
 def authorName():
     return u"Jürgen E. Fischer <jef@norbit.de>"

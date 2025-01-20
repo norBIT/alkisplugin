@@ -12,15 +12,23 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.57
-qgisMinimumVersion=2.14
+version=2.0.58
+qgisMinimumVersion=3.00
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
 email=jef@norbit.de
+supportsQt6=TRUE
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.57
+changelog=Änderungen in 2.0.58
+ 
+ * Unterstützung für Qt6 ergänzt und QGIS <3 (mit Python2) entfernt
+ * Deprecation-Warnungen vermeiden
+ * Straßensuche bei Straße/Hausnummer auf verwendete Straßen beschränken (ax_lagebezeichnungskatalogeintrag mit ax_lagebezeichnung(mit|ohne)hausnummer)
+ * Flurstückssuche auf Gemarkungen mit Flurstücken einschränken (gema_shl mit flurst)
+ 
+ Änderungen in 2.0.57
  
  * WMS-Kurznamen für alle Layer und Gruppen vergeben
  
@@ -364,6 +372,6 @@ changelog=Änderungen in 2.0.57
 homepage=https://www.norbit.de/75/
 repository=https://github.com/norBIT/alkisplugin
 tracker=https://github.com/norBIT/alkisplugin/issues
-icon=https://raw.githubusercontent.com/norBIT/alkisplugin/master/logo.svg
+icon=logo.svg
 
 class_name=alkisplugin
