@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.56
+version=2.0.57
 qgisMinimumVersion=2.14
 qgisMaximumVersion=3.98
 author=Jürgen E. Fischer
@@ -20,7 +20,11 @@ email=jef@norbit.de
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.56
+changelog=Änderungen in 2.0.57
+ 
+ * WMS-Kurznamen für alle Layer und Gruppen vergeben
+ 
+ Änderungen in 2.0.56
  
  * Fortschrittsanzeige korrigiert
  * Nicht Vorgabesymbole des Projekts verwenden

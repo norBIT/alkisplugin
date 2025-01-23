@@ -73,7 +73,7 @@ except ImportError:
     qgisAvailable = False
 
 if qgisAvailable:
-    from qgis.core import QgsMessageLog, QgsProject, QgsCoordinateReferenceSystem, QgsPalLayerSettings, QgsCredentials, QgsRectangle, QgsCoordinateTransform, QgsVectorLayer, QgsApplication
+    from qgis.core import QgsMessageLog, QgsProject, QgsCoordinateReferenceSystem, QgsPalLayerSettings, QgsCredentials, QgsRectangle, QgsCoordinateTransform, QgsVectorLayer, QgsApplication, QgsLayerTreeGroup
 
     if hasattr(qgis.core, "QGis"):
         from qgis.core import (
@@ -1464,6 +1464,22 @@ class alkisplugin(QObject):
                 svgpaths.append(svgpath)
                 qs.setValue("svg/searchPathsForSVG", u"|".join(svgpaths))
             layeropts = False
+
+        if qgis3:
+            self.shortnames = [self.shortName(lyr) for lyr in QgsProject.instance().mapLayers().values() if self.shortName(lyr)]
+        else:
+            self.shortnames = [self.shortName(lyr) for lyr in QgsMapLayerRegistry.instance().mapLayers().values()]
+
+        def addgroupsns(root=QgsProject.instance().layerTreeRoot()):
+            for c in root.children():
+                if not isinstance(c, QgsLayerTreeGroup):
+                    continue
+                sn = c.customProperty("wmsShortName")
+                if sn and sn not in self.shortnames:
+                    self.shortnames.append(sn)
+                addgroupsns(c)
+
+        addgroupsns()
 
         self.alkisGroup = self.addGroup("ALKIS", False)
 
@@ -3231,31 +3247,58 @@ class alkisplugin(QObject):
             return None
         return self.epsg
 
+    def shortName(self, layer):
+        return layer.serverProperties().shortName() if hasattr(layer, "serverProperties") and hasattr(layer.serverProperties(), 'shortName') else layer.shortName()
+
     def setShortName(self, layer):
-        (idx, ok) = QgsProject.instance().readNumEntry("alkis", "/shortNameIndex")
-        layer.setShortName("alkis{}".format(idx))
-        idx += 1
-        QgsProject.instance().writeEntry("alkis", "/shortNameIndex", idx)
+        idx = 0
+        while True:
+            sn = "alkis{0}".format(idx)
+            if sn not in self.shortnames:
+                break
+            idx += 1
+
+        self.shortnames.append(sn)
+
+        if hasattr(layer, "serverProperties") and hasattr(layer.serverProperties(), 'setShortName'):
+            layer.serverProperties().setShortName(sn)
+        else:
+            layer.setShortName(sn)
 
     def addGroup(self, name, expand=True, parent=None):
         if not qgis3:
-            return self.iface.legendInterface().addGroup(name, expand, parent)
-
-        if parent is None:
-            parent = QgsProject.instance().layerTreeRoot()
+            if parent is None:
+                parent = self.iface.layerTreeView().layerTreeModel().rootGroup()
+        else:
+            if parent is None:
+                parent = QgsProject.instance().layerTreeRoot()
 
         grp = parent.addGroup(name)
         grp.setExpanded(expand)
 
+        idx = 0
+        while True:
+            sn = "alkis{0}".format(idx)
+            if sn not in self.shortnames:
+                break
+            idx += 1
+
+        self.shortnames.append(sn)
+
+        grp.setCustomProperty("wmsShortName", sn)
+
         return grp
 
     def addLayer(self, layer, grp):
+        if not self.shortName(layer):
+            self.setShortName(layer)
+
         if qgis3:
             QgsProject.instance().addMapLayer(layer, False)
-            grp.insertLayer(0, layer)
         else:
-            QgsMapLayerRegistry.instance().addMapLayer(layer, True)
-            self.iface.legendInterface().moveLayer(layer, grp)
+            QgsMapLayerRegistry.instance().addMapLayer(layer, False)
+
+        grp.insertLayer(0, layer)
 
     def refreshLayer(self, layer):
         if qgis3:
@@ -3265,22 +3308,16 @@ class alkisplugin(QObject):
             self.iface.legendInterface().refreshLayerSymbology(layer)
 
     def setGroupExpanded(self, grp, expanded):
-        if hasattr(self.iface, "legendInterface"):
-            self.iface.legendInterface().setGroupExpanded(grp, expanded)
-        else:
-            grp.setExpanded(expanded)
+        grp.setExpanded(expanded)
 
     def setGroupVisible(self, grp, visible):
-        if hasattr(self.iface, "legendInterface"):
-            self.iface.legendInterface().setGroupVisible(grp, visible)
-        else:
+        if hasattr(grp, 'setItemVisibilityChecked'):
             grp.setItemVisibilityChecked(visible)
+        else:
+            grp.setVisible(Qt.Checked if visible else Qt.Unchecked)
 
     def removeGroup(self, grp):
-        if hasattr(self.iface, "legendInterface"):
-            self.iface.legendInterface().removeGroup(grp)
-        else:
-            grp.parent().removeChildNode(grp)
+        grp.parent().removeChildNode(grp)
 
     def mapLayer(self, layerId):
         if qgis3:
