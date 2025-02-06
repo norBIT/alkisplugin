@@ -20,7 +20,7 @@
 from builtins import str
 from builtins import range
 
-from qgis.PyQt.QtCore import Qt, QDate, QDir, QByteArray, QSize, QEvent, QSettings, QPoint
+from qgis.PyQt.QtCore import Qt, QDate, QDir, QByteArray, QSize, QEvent, QSettings, QPoint, QLocale
 from qgis.PyQt.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMessageBox, QTableWidgetItem, QAction, QMenu, QFileDialog, QTextBrowser, QVBoxLayout
 from qgis.PyQt.QtGui import QCursor, QPixmap, QIntValidator
 from qgis.PyQt.QtPrintSupport import QPrintDialog, QPrinter
@@ -586,7 +586,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 self.cbxGemarkung,
                 "SELECT {0} FROM gema_shl a LEFT OUTER JOIN gem_shl b USING (gemshl){1} GROUP BY {0} ORDER BY {0}".format(
                     "a.gemashl,a.gemarkung||' ('||a.gemashl||coalesce(', '||b.gemname,'')||')'",
-                    u" JOIN flurst c USING (gemashl){0}".format(where) if where != "" else ""
+                    u" JOIN flurst c USING (gemashl){0}".format(where) if where != "" else " WHERE EXISTS (SELECT 1 FROM flurst f WHERE f.gemashl=a.gemashl)"
                 ),
                 g,
             ],
@@ -610,13 +610,13 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             cbx.clear()
             cbx.addItem("Alle", "")
 
-            # qDebug(u"SQL:{} [{}]".format(sql, val))
-
             if qry.exec_(sql):
                 d = 0 if qry.record().count() == 1 else 1
 
                 while qry.next():
                     cbx.addItem(qry.value(d), qry.value(0))
+            else:
+                qDebug(u"SQL:{} [{}]".format(qry.lastQuery(), qry.lastError().text()))
 
             cbx.setCurrentIndex(cbx.findData(val))
             cbx.blockSignals(False)
@@ -641,32 +641,46 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         # qDebug("on_pbSearchStr_clicked: text={}".format(self.leStr.text()))
         qry = QSqlQuery(self.db)
 
-        self.cbxStrassen.blockSignals(True)
-        self.cbxStrassen.clear()
-        if qry.exec_(
-            u"SELECT bezeichnung, schluesselgesamt FROM ("
-            u"SELECT k.bezeichnung || coalesce(', ' || g.bezeichnung,'') || coalesce(' (' || k.kennung || ')', '') AS bezeichnung, array_to_string(array_agg(k.schluesselgesamt), '#') AS schluesselgesamt"
-            u" FROM ax_lagebezeichnungkatalogeintrag k"
-            u" LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL"
-            u" WHERE k.endet IS NULL"
-            u" GROUP BY k.bezeichnung, k.kennung, g.bezeichnung"
-            u" UNION "
-            u"SELECT DISTINCT unverschluesselt, ''"
-            u" FROM ax_lagebezeichnungmithausnummer"
-            u" WHERE endet IS NULL"
-            u") AS foo"
-            u" WHERE lower(bezeichnung) LIKE {0}"
-            u" ORDER BY bezeichnung".format(quote(self.leStr.text().lower() + '%'))
-        ):
-            while qry.next():
-                name = qry.value(0)
-                keys = qry.value(1).split("#")
-                if len(keys) > 1:
-                    for k in keys:
-                        self.cbxStrassen.addItem("{} ({})".format(name, k), k)
-                else:
-                    self.cbxStrassen.addItem(name, keys[0])
-        self.cbxStrassen.blockSignals(False)
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+
+            self.cbxStrassen.blockSignals(True)
+            self.cbxStrassen.clear()
+            if qry.exec_(
+                u"SELECT bezeichnung, schluesselgesamt FROM ("
+                u"SELECT k.bezeichnung || coalesce(', ' || g.bezeichnung,'') || coalesce(' (' || k.kennung || ')', '') AS bezeichnung, array_to_string(array_agg(DISTINCT k.schluesselgesamt), '#') AS schluesselgesamt"
+                u" FROM ax_lagebezeichnungkatalogeintrag k"
+                u" LEFT JOIN ax_lagebezeichnungmithausnummer m USING (land,regierungsbezirk,kreis,gemeinde,lage)"
+                u" LEFT JOIN ax_lagebezeichnungohnehausnummer o USING (land,regierungsbezirk,kreis,gemeinde,lage)"
+                u" LEFT OUTER JOIN ax_gemeinde g ON k.land=g.land AND k.regierungsbezirk=g.regierungsbezirk AND k.kreis=g.kreis AND k.gemeinde::int=g.gemeinde::int AND g.endet IS NULL"
+                u" WHERE k.endet IS NULL AND ((m.gml_id IS NOT NULL AND m.endet IS NULL) OR (o.gml_id IS NOT NULL AND o.endet IS NULL))"
+                u" GROUP BY k.bezeichnung, k.kennung, g.bezeichnung"
+                u" UNION "
+                u"SELECT DISTINCT unverschluesselt, ''"
+                u" FROM ax_lagebezeichnungmithausnummer"
+                u" WHERE endet IS NULL"
+                u" UNION "
+                u"SELECT DISTINCT unverschluesselt, ''"
+                u" FROM ax_lagebezeichnungohnehausnummer"
+                u" WHERE endet IS NULL"
+                u") AS foo"
+                u" WHERE bezeichnung ILIKE {0}"
+                u" ORDER BY bezeichnung".format(quote(self.leStr.text().lower() + '%'))
+            ):
+                while qry.next():
+                    name = qry.value(0)
+                    keys = qry.value(1).split("#")
+                    if len(keys) > 1:
+                        for k in keys:
+                            self.cbxStrassen.addItem(u"{} ({})".format(name, k), k)
+                    else:
+                        self.cbxStrassen.addItem(name, keys[0])
+            else:
+                qDebug(qry.lastError().text())
+
+            self.cbxStrassen.blockSignals(False)
+        finally:
+            QApplication.restoreOverrideCursor()
 
         self.lblResult.setText(u"Keine Straßen gefunden" if self.cbxStrassen.count() == 0 else u"{} Straßen gefunden".format(self.cbxStrassen.count()))
 
@@ -977,7 +991,7 @@ class ALKISOwnerInfo(QgsMapTool):
 
                 for i in range(0, rec.count()):
                     v = "%s" % qry.value(i)
-                    if v == "NULL":
+                    if v in ["NULL", "None", None]:
                         v = ''
                     row[rec.fieldName(i)] = v.strip()
 
@@ -1096,7 +1110,7 @@ th { text-align:left;}
                 qDebug("Flurstück {} nicht gefunden.".format(flsnr))
                 return None
 
-            res['datum'] = QDate.currentDate().toString("d. MMMM yyyy")
+            res['datum'] = QLocale.system().toString(QDate.currentDate(), "d. MMMM yyyy")
             res['hist'] = 0
 
             if qry.exec_(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['strassen', 'str_shl']])) and qry.next() and qry.value(0):
