@@ -1384,7 +1384,10 @@ class alkisplugin(QObject):
 
                     for abstand in abstaende:
                         sl = QgsMarkerLineSymbolLayer(False, gesamtl)
-                        sl.setPlacement(QgsMarkerLineSymbolLayer.Interval)
+                        if Qgis.QGIS_VERSION_INT >= 32400:
+                            sl.setPlacements(Qgis.MarkerLinePlacement.Interval)
+                        else:
+                            sl.setPlacement(QgsMarkerLineSymbolLayer.Interval)
                         sl.setIntervalUnit(self.MapUnit)
                         sl.setOffsetAlongLine(einzug)
                         sl.setOffsetAlongLineUnit(self.MapUnit)
@@ -2030,7 +2033,10 @@ class alkisplugin(QObject):
             QgsProject.instance().writeEntry("WMSRestrictedLayers", "/", restrictedLayers)
 
             if qgis3:
-                QgsProject.instance().setTrustLayerMetadata(True)
+                if Qgis.QGIS_VERSION_INT >= 32600:
+                    QgsProject.instance().setFlag(Qgis.ProjectFlag.TrustStoredLayerStatistics)
+                else:
+                    QgsProject.instance().setTrustLayerMetadata(True)
 
             self.settings.saveToProject()
         else:
