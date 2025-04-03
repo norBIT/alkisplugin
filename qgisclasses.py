@@ -1141,7 +1141,11 @@ th { text-align:left;}
                 qDebug("Flurstück {} nicht gefunden.".format(flsnr))
                 return None
 
-            res['datum'] = QLocale.system().toString(QDate.currentDate(), "d. MMMM yyyy")
+            if qry.exec(u"SELECT max(to_timestamp(datadate, 'YYYY-MM-DDTHH:MI:SSZ')) FROM alkis_importe") and qry.next():
+                res['datum'] = 'Stand: ' + QLocale.system().toString(qry.value(0), "d. MMMM yyyy")
+            else:
+                res['datum'] = QLocale.system().toString(QDate.currentDate(), "d. MMMM yyyy")
+
             res['hist'] = 0
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['strassen', 'str_shl']])) and qry.next() and qry.value(0):
