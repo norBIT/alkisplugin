@@ -2037,7 +2037,12 @@ class alkisplugin(QObject):
         conninfo0 = conninfo
 
         if conninfo0 == self.conninfo and self.db and self.db.isOpen() and schema == self.schema:
-            return (self.db, self.conninfo)
+            qry = QSqlQuery(self.db)
+            if qry.exec("SELECT 1"):
+                return (self.db, self.conninfo)
+            logMessage("Bestehende Verbindung nicht verfügbar - wird neu verbunden")
+            self.db.close()
+            self.db = None
 
         if authAvailable:
             conninfo = uri.connectionInfo(True)
