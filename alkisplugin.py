@@ -18,7 +18,6 @@
 *                                                                         *
 ***************************************************************************
 """
-from builtins import map
 from builtins import str
 from builtins import range
 try:
@@ -151,6 +150,7 @@ class alkissettings(QObject):
         self.signaturkatalog = -1
         self.modellarten = ['DLKM', 'DKKM1000']
         self.footnote = ""
+        self.template = ""
         self.umnpath = BASEDIR
         self.umntemplate = ""
 
@@ -173,6 +173,7 @@ class alkissettings(QObject):
         s.setValue("signaturkatalog", self.signaturkatalog)
         s.setValue("modellarten", self.modellarten)
         s.setValue("footnote", self.footnote)
+        s.setValue("template", self.template)
         s.setValue("umnpath", self.umnpath)
         s.setValue("umntemplate", self.umntemplate)
 
@@ -196,6 +197,7 @@ class alkissettings(QObject):
 
         self.modellarten = s.value("modellarten", ['DLKM', 'DKKM1000'])
         self.footnote = s.value("footnote", "")
+        self.template = s.value("template", "")
         self.umnpath = s.value("umnpath", BASEDIR)
         self.umntemplate = s.value("umntemplate", "")
 
@@ -215,6 +217,7 @@ class alkissettings(QObject):
         p.writeEntry("alkis", "settings/signaturkatalog", self.signaturkatalog)
         p.writeEntry("alkis", "settings/modellarten", self.modellarten)
         p.writeEntry("alkis", "settings/footnote", self.footnote)
+        p.writeEntry("alkis", "settings/template", self.template)
         p.writeEntry("alkis", "settings/umnpath", self.umnpath)
         p.writeEntry("alkis", "settings/umntemplate", self.umntemplate)
 
@@ -244,6 +247,7 @@ class alkissettings(QObject):
             self.signaturkatalog, ok = p.readNumEntry("alkis", "settings/signaturkatalog", -1)
             self.modellarten, ok = p.readListEntry("alkis", "settings/modellarten", ['DLKM', 'DKKM1000'])
             self.footnote, ok = p.readEntry("alkis", "settings/footnote", "")
+            self.template, ok = p.readEntry("alkis", "settings/template", "")
             self.umnpath, ok = p.readEntry("alkis", "settings/umnpath", BASEDIR)
             self.umntemplate, ok = p.readEntry("alkis", "settings/umntemplate", "")
 
