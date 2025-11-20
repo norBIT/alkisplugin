@@ -100,7 +100,9 @@ class ALKISConf(QDialog, ConfBase):
         self.leUMNPath.setText(self.settings.umnpath)
         self.pbUMNBrowse.clicked.connect(self.browseUMNPath)
         self.leUMNTemplate.setText(self.settings.umntemplate)
-        self.teFussnote.setPlainText(self.settings.footnote)
+        self.leFussnote.setPlainText(self.settings.footnote)
+        self.leTemplate.setText(self.settings.template)
+        self.pbTemplateBrowse.clicked.connect(self.browseTemplate)
 
         self.loadModels(False)
 
@@ -120,7 +122,7 @@ class ALKISConf(QDialog, ConfBase):
         self.settings.host = self.leHOST.text()
         self.settings.port = self.lePORT.text()
         self.settings.dbname = self.leDBNAME.text()
-        self.settings.schema = self.leSCHEMA.text()
+        self.settings.schema = self.leSCHEMA.text() or 'public'
         self.settings.uid = self.leUID.text()
         self.settings.pwd = self.lePWD.text()
 
@@ -202,7 +204,7 @@ ORDER BY count(*) DESC
         self.settings.host = self.leHOST.text()
         self.settings.port = self.lePORT.text()
         self.settings.dbname = self.leDBNAME.text()
-        self.settings.schema = self.leSCHEMA.text()
+        self.settings.schema = self.leSCHEMA.text() or 'public'
         self.settings.uid = self.leUID.text()
         self.settings.pwd = self.lePWD.text()
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
@@ -210,7 +212,8 @@ ORDER BY count(*) DESC
 
         self.settings.umnpath = self.leUMNPath.text()
         self.settings.umntemplate = self.leUMNTemplate.text()
-        self.settings.footnote = self.teFussnote.toPlainText()
+        self.settings.template = self.leTemplate.text()
+        self.settings.footnote = self.leFussnote.toPlainText()
 
         modelle = []
         if self.twModellarten.isEnabled():
@@ -241,13 +244,21 @@ ORDER BY count(*) DESC
         if path != "":
             self.leUMNPath.setText(path)
 
+    def browseTemplate(self):
+        path = self.leTemplate.text()
+        path = QFileDialog.getOpenFileName(self, u"Jinja2-Template wählen", path, "", "Jinja2-Template (*.jinja2)")
+        if isinstance(path, tuple):
+            path = path[0]
+        if path:
+            self.leTemplate.setText(path)
+
 
 class Info(QDialog):
     info = []
 
     @classmethod
-    def showInfo(cls, plugin, html, gmlid, parent):
-        info = Info(plugin, html, gmlid, parent)
+    def showInfo(cls, plugin, html, gmlid, title, parent):
+        info = Info(plugin, html, gmlid, title, parent)
         info.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         info.setModal(False)
 
@@ -255,10 +266,10 @@ class Info(QDialog):
 
         info.show()
 
-    def __init__(self, plugin, html, gmlid, parent):
+    def __init__(self, plugin, html, gmlid, title, parent):
         QDialog.__init__(self, parent)
         self.resize(QSize(740, 580))
-        self.setWindowTitle(u"Flurstücksnachweis")
+        self.setWindowTitle(title)
 
         self.plugin = plugin
         self.gmlid = gmlid
@@ -1060,37 +1071,25 @@ class ALKISOwnerInfo(QgsMapTool):
 
         page = self.showPage(fs)
         if page is not None:
-            Info.showInfo(self.plugin, page, fs[0]['gmlid'], self.iface.mainWindow())
+            Info.showInfo(self.plugin, page, fs[0]['gmlid'], f"Flurstücksnachweis {fs[0]['flsnr']}", self.iface.mainWindow())
 
     def showPage(self, fs):
-        html = self.getPage(fs)
+        html = self.getPage(fs, template=self.plugin.settings.template)
         if html is None:
             QMessageBox.information(None, "Fehler", u"Flurstück %s nicht gefunden.\n[%s]" % (flsnr, repr(fs)))
             return None
 
-        return """\
+        return f"""\
 <HTML xmlns="http://www.w3.org/1999/xhtml">
   <HEAD>
       <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   </HEAD>
   <BODY>
-<style>
-.fls_tab{width:100%%;empty-cells:show}
-.fls_headline{font-weight:bold;font-size:4em;}
-.fls_headline_col{background-color:#EEEEEE;width:100%%;height:30px;text-align:left;}
-.fls_time        {background-color:#EEEEEE;font-weight:bold;font-size:4em;text-align:right;width:100%%}
-.fls_col_names{font-weight:bold;}
-.fls_col_values{vertical-align:top;}
-.fls_bst{width:100%%;empty-cells:show}
-.fls_hr{border:dotted 1px;color:#080808;}
-.fls_footnote{text-align:center;}
-th { text-align:left;}
-</style>""" + html + """\
+{html}
 </BODY>
-</HTML>
-"""
+</HTML>"""
 
-    def getPage(self, fs):
+    def getPage(self, fs, template=None):
         (db, conninfo) = self.plugin.opendb()
         if db is None:
             qDebug("No database")
@@ -1107,7 +1106,6 @@ th { text-align:left;}
         else:
             ghz = False
 
-        html = ""
         for i in range(0, len(fs)):
             flsnr = fs[i]['flsnr']
 
@@ -1141,7 +1139,7 @@ th { text-align:left;}
                 qDebug("Flurstück {} nicht gefunden.".format(flsnr))
                 return None
 
-            if qry.exec(u"SELECT max(to_timestamp(datadate, 'YYYY-MM-DDTHH:MI:SSZ')) FROM alkis_importe") and qry.next():
+            if qry.exec(u"SELECT max(to_timestamp(datadate, 'YYYY-MM-DDTHH:MI:SSZ')) FROM alkis_importe") and qry.next() and qry.value(0) not in ["NULL", "None", None]:
                 res['datum'] = 'Stand: ' + QLocale.system().toString(qry.value(0), "d. MMMM yyyy")
             else:
                 res['datum'] = QLocale.system().toString(QDate.currentDate(), "d. MMMM yyyy")
@@ -1149,13 +1147,20 @@ th { text-align:left;}
             res['hist'] = 0
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['strassen', 'str_shl']])) and qry.next() and qry.value(0):
-                res['str'] = self.fetchall(db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0" % flsnr)
+                res['str'] = self.fetchall(db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0 ORDER BY sstr.strname,coalesce(substring(str.hausnr FROM '^(\\d+)$')::integer, 0),str.hausnr" % flsnr)
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['nutz_21', 'nutz_shl']])) and qry.next() and qry.value(0):
                 res['nutz'] = self.fetchall(db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr)
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['klas_3x', 'kls_shl']])) and qry.next() and qry.value(0):
-                res['klas'] = self.fetchall(db, "SELECT sum(fl::int) AS fl, min(kls.klf_text) AS klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0 GROUP BY kls.klf" % flsnr)
+                res['klas'] = self.fetchall(db, "SELECT sum(fl::int) AS fl, kls.klf_text || coalesce(', EMZ ' || sum(wertz2::int*fl::int/100), '') AS klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0 GROUP BY kls.klf, kls.klf_text" % flsnr)
+                res['emz'] = self.fetchall(db, "SELECT sum(wertz2::int*fl::int/100) AS emz FROM klas_3x WHERE flsnr='%s' AND ff_stand=0 AND wertz2 IS NOT NULL" % flsnr)
+                if len(res['emz']) == 1:
+                    res['emz'] = res['emz'][0]['emz']
+                    if res['emz'] == '':
+                        del res['emz']
+                else:
+                    del res['emz']
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['ausfst', 'afst_shl']])) and qry.next() and qry.value(0):
                 res['afst'] = self.fetchall(db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr)
@@ -1170,241 +1175,229 @@ th { text-align:left;}
 #                        for k,v in res.iteritems():
 #                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
 
-            html = u"""\
-<TABLE class="fls_tab" border="0" width="100%%" cellspacing="0">
-    <TR class="fls_headline">
-        <TD colspan="3" class="fls_headline_col">Flurst&uuml;cksnachweis</TD><TD class="fls_time" colspan="4" align="right">%(datum)s</TD></TR>
-    </TR>
-    <TR><TD colspan="7">&nbsp;</TD></TR>
-    <TR>
-        <TD colspan="7"><h3>Flurst&uuml;ck %(gemashl)s-%(flr)s-%(flsnrk)s<hr style="width:100%%"></h3></TD>
-    </TR>
-    <TR class="fls_col_names">
-        <TH align=left width="15%%">Gemarkung</TH>
-        <TH align=left width="6%%">Flur</TH>
-        <TH align=left width="15%%">Flurst&uuml;ck</TH>
-        <TH align=left width="20%%">Flurkarte</TH>
-        <TH align=left width="17%%">Entstehung</TH>
-        <TH align=left width="17%%">Fortf&uuml;hrung</TH>
-        <TH align=left width="5%%">Fl&auml;che</TH>
-    </TR>
-    <TR class="fls_col_values">
-        <TD>%(gemashl)s<br>%(gemarkung)s</TD>
-        <TD>%(flr)s</TD>
-        <TD>%(flsnrk)s</TD>
-        <TD>%(flurknr)s</TD>
-        <TD>%(entst)s</TD>
-        <TD>%(fortf)s</TD>
-        <TD>%(flsfl)s&nbsp;m&sup2;</TD>
-    </TR>
-</TABLE>
-""" % res
+            if self.plugin.settings.footnote:
+                res['footnote'] = self.plugin.settings.footnote
 
-            if res['blbnr']:
-                html += u"""
-<TABLE class="fls_tab" border="0" width="100%%">
-    <TR class="fls_col_names">
-        <TH align=left width="21%%"></TH>
-        <TH align=left width="79%%">Baulastenblattnr.</TH>
-    </TR>
-    <TR class="fls_col_values">
-        <TD></TD>
-        <TD>%(blbnr)s</TD>
-    </TR>
-</TABLE>
-""" % res
+            if template:
+                with open(template, "r") as f:
+                    template = f.read()
+            else:
+                template = """\
+<style>
+.fls_tab{width:100%;empty-cells:show;border:0}
+.fls_headline{font-weight:bold;font-size:16pt;}
+.fls_headline_col{background-color:#EEEEEE;width:100%;height:3em;text-align:left;}
+.fls_time{background-color:#EEEEEE;font-weight:bold;font-size:1.5em;text-align:right;width:100%;}
+.fls_col_names{font-weight:bold;}
+.fls_col_values{vertical-align:top;}
+.fls_bst{width:100%;empty-cells:show}
+.fls_hr{border:dotted 1px;color:#080808;}
+.fls_footnote{text-align:center;}
+th { text-align:left;}
+</style>
 
-            if res['lagebez'] or res['anl_verm']:
-                html += u"""
-<TABLE class="fls_tab" border="0" width="100%%">
-    <TR class="fls_col_names">
-        <TH align=left width="21%%"></TH>
-        <TH align=left width="52%%">Lage</TH>
-        <TH align=left width="27%%">Anliegervermerk</TH>
-    </TR>
-    <TR class="fls_col_values">
-        <TD></TD>
-        <TD>%(lagebez)s</TD>
-        <TD>%(anl_verm)s</TD>
-    </TR>
-</TABLE>
-""" % res
+<table class="fls_tab" border="0" width="100%">
+  <tr class="fls_headline">
+    <td class="fls_headline_col" colspan="3">Flurst&uuml;cksnachweis {{ gemashl }}-{{ flr }}-{{ flsnrk }}</td>
+    <td class="fls_time" colspan="4" align="right">{{ datum }}</td>
+  </tr>
+  <tr><td colspan="7">&nbsp;</td></tr>
+  <tr class="fls_col_names">
+    <th align=left nowrap>Gemarkung</th>
+    <th align=left nowrap>Flur</th>
+    <th align=left nowrap>Flurst&uuml;ck</th>
+    <th align=left nowrap>Flurkarte</th>
+    <th align=left nowrap>Entstehung</th>
+    <th align=left nowrap>Fortf&uuml;hrung</th>
+    <th align=left nowrap>Fl&auml;che</th>
+  </tr>
+  <tr class="fls_col_values">
+    <td>{{ gemashl }}<br/>{{ gemarkung }}</td>
+    <td>{{ flr }}</td>
+    <td>{{ flsnrk }}</td>
+    <td>{{ flurknr }}</td>
+    <td>{{ entst }}</td>
+    <td>{{ fortf }}</td>
+    <td>{{ flsfl }}&nbsp;m&sup2;</td>
+  </tr>
 
-            if 'str' in res:
-                if res['str']:
-                    html += u"""
-<TABLE border="0" class="fls_tab" width="100%">
-    <TR class="fls_col_names">
-        <TH align=left width="21%"></TH>
-        <TH align=left width="52%">Strasse</TH>
-        <TH align=left width="27%">Hausnummer</TH>
-    </TR>
-"""
+{% if blbnr|length %}
+  <tr class="fls_col_names">
+    <th align=left colspan=5>&nbsp;</th>
+    <th align=left colspan=2>Baulastenblattnr.</th>
+  </tr>
+  <tr class="fls_col_values">
+    <td colspan=5>&nbsp;</td>
+    <td colspan=2>{{ blbnr }}</td>
+  </tr>
+{% endif %}
 
-                    for strres in res['str']:
-                        html += u"""
-    <TR class="fls_col_values">
-        <TD></TD><TD>%(strname)s</TD><TD>%(hausnr)s</TD></TR>
-    </TR>
-""" % strres
+{% if lagebez|length or anl_verm|length %}
+  <tr class="fls_col_names">
+    <th align=left>&nbsp;</th>
+    <th align=left colspan=3>Lage</th>
+    <th align=left colspan=3>Anliegervermerk</th>
+  </tr>
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=3>{{ lagebez }}</td>
+    <td colspan=3>{{ anl_verm }}</td>
+  </tr>
+{% endif %}
 
-                    html += u"""
-</TABLE>
-"""
+{% if str|length %}
+  <tr class="fls_col_names">
+    <th align=left>&nbsp;</th>
+    <th align=left colspan=4>Strasse</th>
+    <th align=left colspan=2>Hausnummer</th>
+  </tr>
 
-            if 'nutz' in res:
-                html += u"""
-<TABLE border="0" class="fls_tab" width="100%">
-        <TR class="fls_col_names"><TH align=left width="21%"></TH><TH align=left width="69%">Nutzung</TH><TH align=left width="10%">Fl&auml;che</TH></TR>
-"""
-                if res['nutz']:
-                    for nutz in res['nutz']:
-                        html += u"""
-        <TR class="fls_col_values"><TD></TD><TD>21%(nutzshl)s - %(nutzung)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
-""" % nutz
-                else:
-                    html += u"""
-        <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
-"""
+  {% for item in str %}
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=4>{{ item.strname }}</td>
+    <td colspan=2>{{ item.hausnr }}</td>
+  </tr>
+  {% endfor %}
+{% endif %}
 
-            html += u"""
-</TABLE>
-"""
+{% if nutz is defined %}
+  <tr><td colspan=7>&nbsp;</td>
+  <tr class="fls_col_names">
+    <th align=left>&nbsp;</th>
+    <th align=left colspan=5>Nutzung</th>
+    <th align=left>Fl&auml;che</th>
+  </tr>
+  {% for item in nutz %}
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=5>{{ item.nutzung }} ({{ item.nutzshl }})</td>
+    <td>{{ item.fl }}&nbsp;m&sup2;</td>
+  </tr>
+  {% else %}
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=6>Keine</td>
+  </tr>
+  {% endfor %}
+{% endif %}
 
-            if 'klas' in res:
-                html += u"""
-<TABLE border="0" class="fls_tab" width="100%">
-        <TR class="fls_col_names"><TD width="21%"></TD><TH align=left width="69%">Klassifizierung(en)</TH><TH align=left width="10%">Fl&auml;che</TH></TR>
-"""
+{% if klas|length %}
+  <tr><td colspan=7>&nbsp;</td>
+  <tr class="fls_col_names">
+    <td>&nbsp;</td>
+    <th align=left colspan=5>Klassifizierung(en)</th>
+    <th align=left>Fl&auml;che</th>
+  </tr>
+  {% for item in klas %}
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=5>{{ item.klf_text }}</td>
+    <td>{{ item.fl }}&nbsp;m&sup2;</td>
+  </tr>
+  {% endfor %}
+{% endif %}
 
-                if res['klas']:
-                    for klas in res['klas']:
-                        html += u"""
-        <TR class="fls_col_values"><TD></TD><TD>%(klf_text)s</TD><TD>%(fl)s&nbsp;m&sup2;</TD></TR>
-""" % klas
-                else:
-                    html += u"""
-        <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
-"""
+{% if emz|length %}
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <th colspan=5>Gesamtertragsmesszahl</td>
+    <td>{{ emz }}</td>
+  </tr>
+{% endif %}
 
-            html += u"""
-</TABLE>
-"""
+{% if afst|length %}
+  <tr><td colspan=7>&nbsp;</td>
+  <tr class="fls_col_names">
+    <th align=left>&nbsp;</th>
+    <th align=left colspan=6>Ausf&uuml;hrende Stelle(n)</th>
+  </tr>
+  {% for item in afst %}
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=6>{{ item.afst_txt }}</td>
+  </tr>
+  {% endfor %}
+{% endif %}
 
-            if 'afst' in res:
-                html += u"""
-<TABLE border="0" class="fls_tab" width="100%">
-        <TR class="fls_col_names"><TH align=left width="21%"></TH><TH align=left width="79%">Ausf&uuml;hrende Stelle(n)</TH></TR>
-"""
+</table>
 
-                if res['afst']:
-                    for afst in res['afst']:
-                        html += u"""
-        <TR class="fls_col_values"><TD></TD><TD>%(afst_txt)s</TD></TR>
-""" % afst
-
-                else:
-                    html += u"""
-        <TR class="fls_col_values"><TD></TD><TD colspan=2>Keine</TD></TR>
-"""
-
-                html += u"""
-</TABLE>
-"""
-
-            if 'best' in res:
-                if res['best']:
-                    html += u"""
 <br>
-<TABLE border="0" class="fls_bst" width="100%">
-        <TR><TD colspan="6"><h3>Best&auml;nde<hr style="width:100%"></h3></TD></TR>
+
+<table class="fls_bst" border="0" width="100%">
+
+{% if best|length %}
+  <tr>
+    <td colspan="6">
+      Best&auml;nde<hr style="width:100%"/>
+    </td>
+  </tr>
+
+  {% for item in best %}
+  <tr><td colspan=6>&nbsp;</td>
+  <tr class="fls_col_names">
+    <th align=left>Bestandsnummer</th>
+    <th align=left>Grundbuchbezirk</th>
+    <th align=left>Grundbuchblattnr.</th>
+    <th align=left colspan=2>Amtsgericht</th>
+    <th align=left>Anteil</th>
+  </tr>
+  <tr class="fls_col_values">
+    <td>{{ item.bestdnr }}</td>
+    <td>{{ item.gbbz }}</td>
+    <td>{{ item.gbblnr }}</td>
+    <td colspan=2>{{ item.bezeichnung }}</td>
+    <td>{{ item.anteil }}</td>
+  </tr>
+  <tr class="fls_col_names">
+    <th align=left>&nbsp;</th>
+    <th align=left>Buchungskennz.</th>
+    <th align=left>Lfd. Nr.</th>
+    <th align=left>PZ</th>
+    {% if item.hist is defined %}
+    <th align=left>Hist. Bestand</th>
+    <th align=left>Hist. Zuordnung</th>
+    {% else %}
+    <td colspan=2>&nbsp;</td>
+    {% endif %}
+  </tr>
+  <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td>{{ item.eignerart }}</td>
+    <td>{{ item.auftlnr }}</td>
+    <td>{{ item.pz }}</td>
+    <td>{% if item.hist is defined and item.bhist is defined %}ja{% endif %}</td>
+    <td>{% if item.hist is defined and item.zhist is defined %}ja{% endif %}</td>
+  </tr>
+  {% if item.bse is defined %}
+  <tr><td colspan=6>&nbsp;</td></tr>
+  <tr class="fls_col_names">
+    <th align=left>Anteil</th>
+    <th align=left>Namensnr</th>
+    <th align=left colspan="4">Namensinformation</th>
+  </tr>
+  {% for bse in item.bse %}
+  <tr class="fls_col_values">
+    <td>{{ bse.antverh }}</td>
+    <td>{{ bse.namensnr }}</td>
+    <td colspan="4">{{ bse.name1 }} {{ bse.name2 }}<br>{{ bse.name3 }}<br>{{ bse.name4 }}</td>
+  </tr>
+  {% else %}
+  <p>Kein Eigentümer gefunden.</p>
+  {% endfor %}
+  {% endif %}
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if footnote is defined %}
+<hr class="fls_hr">
+{{ footnote }}
+{% endif %}
 """
 
-                    for best in res['best']:
-                        html += u"""
-        <TR class="fls_col_names">
-                <TH align=left>Bestandsnummer</TH>
-                <TH align=left>Grundbuchbezirk</TH>
-                <TH align=left>Grundbuchblattnr.</TH>
-                <TH align=left>Amtsgericht</TH>
-                <TH align=left>Anteil</TH>
-        </TR>
-        <TR class="fls_col_values">
-                <TD>%(bestdnr)s</TD>
-                <TD>%(gbbz)s</TD>
-                <TD>%(gbblnr)s</TD>
-                <TD>%(bezeichnung)s</TD>
-                <TD>%(anteil)s</TD>
-        </TR>
-        <TR class="fls_col_names">
-                <TH align=left>&nbsp;</TH>
-                <TH align=left>Buchungskennz.</TH>
-                <TH align=left>Lfd. Nr.</TH>
-                <TH align=left>PZ</TH>
-""" % best
-
-                        if res['hist']:
-                            html += u"""
-                <TH align=left>Hist. Bestand</TH><TH align=left>Hist. Zuordnung</TH>
-"""
-                        else:
-                            html += u"""
-                <TD></TD><TD></TD>
-"""
-
-                        html += u"""
-        </TR>
-        <TR class="fls_col_values">
-                <TD>&nbsp;</TD>
-                <TD>%(eignerart)s</TD>
-                <TD>%(auftlnr)s</TD>
-                <TD>%(pz)s</TD>
-""" % best
-
-                        html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['bhist'] else "")
-                        html += "<TD>%s</TD>" % ("ja" if res['hist'] and best['zhist'] else "")
-
-                        html += u"""
-        </TR>
-"""
-
-                        if 'bse' in best:
-                            if best['bse']:
-                                html += u"""
-        <TR class="fls_col_names"><TH align=left>Anteil</TH><TH align=left>Namensnr</TH><TH align=left colspan="5">Namensinformation</TH></TR>
-"""
-
-                                for bse in best['bse']:
-                                    html += u"""
-        <TR class="fls_col_values">
-                <TD>%(antverh)s</TD>
-                <TD>%(namensnr)s</TD>
-                <TD colspan="4">%(name1)s %(name2)s<br>%(name3)s<br>%(name4)s</TD>
-        </TR>
-""" % bse
-                            else:
-                                html += u"""
-        <p>Kein Eigentümer gefunden.</p>
-"""
-
-                            html += u"""
-        <TR><TD colspan="6"><hr class="fls_hr"></TD></TR>
-"""
-
-        html += u"""
-"""
-
-        footnote = self.plugin.settings.footnote
-        if footnote:
-            html += u"""
-        <TR><TD colspan="7" class="fls_footnote">%s</TD></TR>
-""" % footnote
-
-        html += u"""
-        </TABLE>
-"""
-
-        return html
+        from jinja2 import Template
+        return Template(template).render(res)
 
     def flsnr(self, gml_id):
         if not isinstance(gml_id, str) or len(gml_id) != 16:
@@ -1424,16 +1417,16 @@ th { text-align:left;}
         return res[0]['alb_key']
 
 
-@qgsfunction(args=1, group='ALKIS')
-def flsnr(values, feature, parent):
-    return qgis.utils.plugins['alkisplugin'].queryOwnerInfoTool.flsnr(values[0])
+@qgsfunction(group='ALKIS')
+def flsnr(value):
+    return qgis.utils.plugins['alkisplugin'].queryOwnerInfoTool.flsnr(value)
 
 
-@qgsfunction(args=1, group='ALKIS')
-def flurstuecksnachweis(values, feature, parent):
-    oi = qgis.utils.plugins['alkisplugin'].queryOwnerInfoTool
+@qgsfunction(group='ALKIS')
+def flurstuecksnachweis(arg, template=None):
+    plugin = qgis.utils.plugins['alkisplugin']
+    oi = plugin.queryOwnerInfoTool
 
-    arg = values[0]
     if len(arg) == 16:
         arg = oi.flsnr(arg)
 
@@ -1442,16 +1435,4 @@ def flurstuecksnachweis(values, feature, parent):
         return None
 
     qDebug("arg:{}".format(arg))
-    return """\
-<style>
-.fls_tab{width:100%%;empty-cells:show;}
-.fls_headline{font-weight:bold;font-size:1.5em;}
-.fls_headline_col{background-color:#EEEEEE;width:100%%;height:2em;text-align:left;}
-.fls_time{background-color:#EEEEEE;font-weight:bold;font-size:1.5em;text-align:right;width:100%%}
-.fls_col_names{font-weight:bold;}
-.fls_col_values{vertical-align:top;}
-.fls_bst{width:100%%;empty-cells:show}
-.fls_hr{border:dotted 1px;color:#080808;}
-.fls_footnote{text-align:center;}
-</style>
-""" + oi.getPage([{'flsnr': arg}])
+    return oi.getPage([{'flsnr': arg}], template=template or plugin.settings.template)

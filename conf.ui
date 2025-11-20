@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>646</width>
-    <height>477</height>
+    <height>499</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -70,7 +70,7 @@
       <item row="2" column="1">
        <widget class="QLineEdit" name="lePORT">
         <property name="inputMask">
-         <string>99999; </string>
+         <string>99999</string>
         </property>
         <property name="text">
          <string/>
@@ -256,11 +256,35 @@
    <item row="5" column="0" colspan="2">
     <widget class="QGroupBox" name="groupBox_4">
      <property name="title">
-      <string>Fußnote für Eigentümer-Auskunft</string>
+      <string>Eigentümer-Auskunft</string>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QTextEdit" name="teFussnote"/>
+     <layout class="QGridLayout" name="gridLayout_6">
+      <item row="2" column="2">
+       <widget class="QLineEdit" name="leTemplate"/>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Fußnote</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QPushButton" name="pbTemplateBrowse">
+        <property name="text">
+         <string>...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2" rowspan="2" colspan="2">
+       <widget class="QTextEdit" name="leFussnote"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_13">
+        <property name="text">
+         <string>Template</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -281,7 +305,7 @@
   <tabstop>leUMNTemplate</tabstop>
   <tabstop>cbxSignaturkatalog</tabstop>
   <tabstop>twModellarten</tabstop>
-  <tabstop>teFussnote</tabstop>
+  <tabstop>leFussnote</tabstop>
   <tabstop>bb</tabstop>
  </tabstops>
  <resources/>
