@@ -2,9 +2,6 @@ VERSION = $(shell sed -ne "s/^version=//p" metadata.txt)
 
 all:
 
-%.py: %.qrc
-	pyrcc4 -o $@ $^
-
 plugin.xml: metadata.txt
 	perl mkxml.pl
 

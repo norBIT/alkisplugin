@@ -118,14 +118,13 @@ class ALKISConf(QDialog, ConfBase):
         return QDialog.done(self, r)
 
     def loadModels(self, error=True):
-        self.settings.servicE = self.leSERVICE.text()
+        self.settings.service = self.leSERVICE.text()
         self.settings.host = self.leHOST.text()
         self.settings.port = self.lePORT.text()
         self.settings.dbname = self.leDBNAME.text()
         self.settings.schema = self.leSCHEMA.text() or 'public'
         self.settings.uid = self.leUID.text()
         self.settings.pwd = self.lePWD.text()
-
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
             self.settings.authcfg = self.authCfgSelect.configId()
 

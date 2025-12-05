@@ -12,7 +12,7 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
-version=2.0.58
+version=2.0.59
 qgisMinimumVersion=3.00
 qgisMaximumVersion=4.99
 author=Jürgen E. Fischer
@@ -21,7 +21,12 @@ supportsQt6=TRUE
 
 tags=cadastre,germany,NAS,ALKIS,PostNAS
 
-changelog=Änderungen in 2.0.58
+changelog=Änderungen in 2.0.59
+ 
+ * Tippfehlerkorrektur
+ * Flurstücksnachweis auf jinja2 umgestellt
+ 
+ Änderungen in 2.0.58
  
  * Unterstützung für Qt6 ergänzt und QGIS <3 (mit Python2) entfernt
  * Deprecation-Warnungen vermeiden
