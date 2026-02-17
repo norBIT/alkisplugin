@@ -1152,8 +1152,47 @@ class ALKISOwnerInfo(QgsMapTool):
                 res['nutz'] = self.fetchall(db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr)
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['klas_3x', 'kls_shl']])) and qry.next() and qry.value(0):
-                res['klas'] = self.fetchall(db, "SELECT sum(fl::int) AS fl, kls.klf_text || coalesce(', EMZ ' || sum(wertz2::int*fl::int/100), '') AS klf_text FROM klas_3x kl, kls_shl kls WHERE kl.flsnr='%s' AND kl.klf=kls.klf AND kl.ff_stand=0 GROUP BY kls.klf, kls.klf_text" % flsnr)
-                res['emz'] = self.fetchall(db, "SELECT sum(wertz2::int*fl::int/100) AS emz FROM klas_3x WHERE flsnr='%s' AND ff_stand=0 AND wertz2 IS NOT NULL" % flsnr)
+                res['bewertung'] = self.fetchall(db, f"""\
+SELECT
+  coalesce(k.beschreibung, '(' || klassifizierung || ')', '(Klassifizierung fehlt)') AS klf_text,
+  st_area(st_intersection(a.wkb_geometry,b.wkb_geometry))::int AS fl
+FROM ax_flurstueck a
+JOIN ax_bewertung b ON st_relate(a.wkb_geometry, b.wkb_geometry, '2********')
+LEFT JOIN ax_klassifizierung_bewertung k ON wert=klassifizierung
+WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
+""")
+
+                res['bodenschätzung'] = self.fetchall(db, f"""\
+SELECT
+  array_to_string(
+    ARRAY[
+      (SELECT beschreibung FROM ax_nutzungsart_bodenschaetzung WHERE wert=b.nutzungsart),
+      'Bodenart ' || (SELECT beschreibung FROM ax_bodenart_bodenschaetzung WHERE wert=b.bodenart),
+      (SELECT beschreibung FROM ax_bodenstufe WHERE wert=b.bodenstufe),
+      'Zustandsstufe '|| (SELECT beschreibung FROM ax_zustandsstufe WHERE wert=b.zustandsstufe),
+      'Entstehungsart(en) '|| (SELECT array_to_string(array_agg(beschreibung), ', ') FROM ax_entstehungsart WHERE wert=ANY(b.entstehungsart)),
+      (SELECT beschreibung FROM ax_klimastufe WHERE wert=klimastufe),
+      CASE WHEN nutzungsart<3000 THEN 'Bodenzahl' ELSE 'Grünlandgrundzahl' END || ' ' || bodenzahlOderGruenlandgrundzahl,
+      CASE WHEN nutzungsart<3000 THEN 'Ackerzahl' ELSE 'Grünlandzahl' END || ' ' || ackerzahlOderGruenlandzahl,
+      'sonstige Angaben ' || (SELECT array_to_string(array_agg(beschreibung), ', ') FROM ax_sonstigeangaben_bodenschaetzung WHERE wert=ANY(b.sonstigeangaben)),
+      'Ertragsmesszahl ' || alkis_toint(ackerzahlOderGruenlandzahl) * st_area(st_intersection(a.wkb_geometry,b.wkb_geometry))::int / 100
+    ],
+    ', '
+  ) AS klf_text,
+  st_area(st_intersection(a.wkb_geometry,b.wkb_geometry))::int AS fl
+FROM ax_flurstueck a
+JOIN ax_bodenschaetzung b ON st_relate(a.wkb_geometry, b.wkb_geometry, '2********')
+WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
+ORDER BY st_area(st_intersection(a.wkb_geometry,b.wkb_geometry))::int DESC
+""")
+
+                res['emz'] = self.fetchall(db, f"""\
+SELECT
+  sum((alkis_toint(ackerzahlOderGruenlandzahl) * st_area(st_intersection(a.wkb_geometry,b.wkb_geometry)) / 100)::int) AS emz
+FROM ax_flurstueck a
+JOIN ax_bodenschaetzung b ON st_relate(a.wkb_geometry, b.wkb_geometry, '2********')
+WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
+""")
                 if len(res['emz']) == 1:
                     res['emz'] = res['emz'][0]['emz']
                     if res['emz'] == '':
@@ -1208,7 +1247,7 @@ th { text-align:left;}
     <th align=left nowrap>Flurkarte</th>
     <th align=left nowrap>Entstehung</th>
     <th align=left nowrap>Fortf&uuml;hrung</th>
-    <th align=left nowrap>Fl&auml;che</th>
+    <th align=right nowrap>Fl&auml;che</th>
   </tr>
   <tr class="fls_col_values">
     <td>{{ gemashl }}<br/>{{ gemarkung }}</td>
@@ -1217,7 +1256,7 @@ th { text-align:left;}
     <td>{{ flurknr }}</td>
     <td>{{ entst }}</td>
     <td>{{ fortf }}</td>
-    <td>{{ flsfl }}&nbsp;m&sup2;</td>
+    <td align=right>{{ flsfl }}&nbsp;m&sup2;</td>
   </tr>
 
 {% if blbnr|length %}
@@ -1265,13 +1304,13 @@ th { text-align:left;}
   <tr class="fls_col_names">
     <th align=left>&nbsp;</th>
     <th align=left colspan=5>Nutzung</th>
-    <th align=left>Fl&auml;che</th>
+    <th align=right>Fl&auml;che</th>
   </tr>
   {% for item in nutz %}
   <tr class="fls_col_values">
     <td>&nbsp;</td>
     <td colspan=5>{{ item.nutzung }} ({{ item.nutzshl }})</td>
-    <td>{{ item.fl }}&nbsp;m&sup2;</td>
+    <td align=Right>{{ item.fl }}&nbsp;m&sup2;</td>
   </tr>
   {% else %}
   <tr class="fls_col_values">
@@ -1281,28 +1320,43 @@ th { text-align:left;}
   {% endfor %}
 {% endif %}
 
-{% if klas|length %}
+{% if bewertung|length %}
   <tr><td colspan=7>&nbsp;</td>
   <tr class="fls_col_names">
-    <td>&nbsp;</td>
-    <th align=left colspan=5>Klassifizierung(en)</th>
-    <th align=left>Fl&auml;che</th>
+  <td>&nbsp;</td>
+  <th align=left colspan=5>Bodenschätzung, Bewertung</th>
+  <th align=right>Fl&auml;che</th>
   </tr>
-  {% for item in klas %}
-  <tr class="fls_col_values">
+  {% for item in bewertung %}
+    <tr class="fls_col_values">
     <td>&nbsp;</td>
     <td colspan=5>{{ item.klf_text }}</td>
-    <td>{{ item.fl }}&nbsp;m&sup2;</td>
-  </tr>
+    <td align=right>{{ item.fl }}&nbsp;m&sup2;</td>
+    </tr>
   {% endfor %}
 {% endif %}
 
-{% if emz|length %}
-  <tr class="fls_col_values">
-    <td>&nbsp;</td>
-    <th colspan=5>Gesamtertragsmesszahl</td>
-    <td>{{ emz }}</td>
+{% if bodenschätzung|length %}
+  <tr><td colspan=7>&nbsp;</td>
+  <tr class="fls_col_names">
+  <td>&nbsp;</td>
+  <th align=left colspan=5>Bodenschätzung</th>
+  <th align=right>Fl&auml;che</th>
   </tr>
+  {% for item in bodenschätzung %}
+    <tr class="fls_col_values">
+    <td>&nbsp;</td>
+    <td colspan=5>{{ item.klf_text }}</td>
+    <td align=right>{{ item.fl }}&nbsp;m&sup2;</td>
+    </tr>
+  {% endfor %}
+  {% if emz|length %}
+    <tr class="fls_col_values">
+      <td>&nbsp;</td>
+      <th colspan=5>Gesamtertragsmesszahl</td>
+      <td align=right>{{ emz }}</td>
+    </tr>
+  {% endif %}
 {% endif %}
 
 {% if afst|length %}
