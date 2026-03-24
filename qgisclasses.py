@@ -6,7 +6,7 @@
     qgisclasses.py
     ---------------------
     Date                 : May 2014
-    Copyright            : (C) 2014-2025 by Jürgen Fischer
+    Copyright            : (C) 2014-2026 by Jürgen Fischer
     Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
@@ -86,6 +86,8 @@ class ALKISConf(QDialog, ConfBase):
         self.leSCHEMA.setText(self.settings.schema)
         self.leUID.setText(self.settings.uid)
         self.lePWD.setText(self.settings.pwd)
+        self.cbEmbedSVGs.setChecked(self.settings.embedSVGs)
+
         self.cbxSignaturkatalog.setEnabled(False)
 
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
@@ -127,6 +129,8 @@ class ALKISConf(QDialog, ConfBase):
         self.settings.pwd = self.lePWD.text()
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
             self.settings.authcfg = self.authCfgSelect.configId()
+
+        self.settings.embedSVGs = self.cbEmbedSVGs.isChecked()
 
         self.twModellarten.clearContents()
         self.cbxSignaturkatalog.clear()
@@ -208,6 +212,8 @@ ORDER BY count(*) DESC
         self.settings.pwd = self.lePWD.text()
         if hasattr(qgis.gui, 'QgsAuthConfigSelect'):
             self.settings.authcfg = self.authCfgSelect.configId()
+
+        self.settings.embedSVGs = self.cbEmbedSVGs.isChecked()
 
         self.settings.umnpath = self.leUMNPath.text()
         self.settings.umntemplate = self.leUMNTemplate.text()

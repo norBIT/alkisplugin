@@ -7,7 +7,7 @@
     alkisplugin.py
     ---------------------
     Date                 : September 2012
-    Copyright            : (C) 2012-2025 by Jürgen Fischer
+    Copyright            : (C) 2012-2026 by Jürgen Fischer
     Email                : jef at norbit dot de
 ***************************************************************************
 *                                                                         *
@@ -36,13 +36,13 @@ except ModuleNotFoundError:
     pass
 
 try:
-    from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject
+    from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice
     from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
     from qgis.PyQt.QtGui import QIcon, QColor, QPainter
     from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
     from qgis.PyQt import QtCore
 except ImportError:
-    from PyQt5.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject
+    from PyQt5.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice
     from PyQt5.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
     from PyQt5.QtGui import QIcon, QColor, QPainter
     from PyQt5.QtSql import QSqlDatabase, QSqlQuery
@@ -148,6 +148,7 @@ class alkissettings(QObject):
         self.pwd = ""
         self.authcfg = ""
         self.signaturkatalog = -1
+        self.embedSVGs = False
         self.modellarten = ['DLKM', 'DKKM1000']
         self.footnote = ""
         self.template = ""
@@ -171,6 +172,7 @@ class alkissettings(QObject):
         s.setValue("pwd", self.pwd)
         s.setValue("authcfg", self.authcfg)
         s.setValue("signaturkatalog", self.signaturkatalog)
+        s.setValue("embedSVGs", self.embedSVGs)
         s.setValue("modellarten", self.modellarten)
         s.setValue("footnote", self.footnote)
         s.setValue("template", self.template)
@@ -195,6 +197,8 @@ class alkissettings(QObject):
         except Exception:
             self.signaturkatalog = -1
 
+        self.embedSVGs = s.value("embedSVGs", False, type=bool)
+
         self.modellarten = s.value("modellarten", ['DLKM', 'DKKM1000'])
         self.footnote = s.value("footnote", "")
         self.template = s.value("template", "")
@@ -215,6 +219,7 @@ class alkissettings(QObject):
         p.writeEntry("alkis", "settings/pwd", self.pwd)
         p.writeEntry("alkis", "settings/authcfg", self.authcfg)
         p.writeEntry("alkis", "settings/signaturkatalog", self.signaturkatalog)
+        p.writeEntryBool("alkis", "settings/embedSVGs", self.embedSVGs)
         p.writeEntry("alkis", "settings/modellarten", self.modellarten)
         p.writeEntry("alkis", "settings/footnote", self.footnote)
         p.writeEntry("alkis", "settings/template", self.template)
@@ -245,6 +250,7 @@ class alkissettings(QObject):
             self.pwd, ok = p.readEntry("alkis", "settings/pwd", "")
             self.authcfg, ok = p.readEntry("alkis", "settings/authcfg", "")
             self.signaturkatalog, ok = p.readNumEntry("alkis", "settings/signaturkatalog", -1)
+            self.embedSVGs, ok = p.readBoolEntry("alkis", "settings/embedSVGs", False)
             self.modellarten, ok = p.readListEntry("alkis", "settings/modellarten", ['DLKM', 'DKKM1000'])
             self.footnote, ok = p.readEntry("alkis", "settings/footnote", "")
             self.template, ok = p.readEntry("alkis", "settings/template", "")
@@ -1418,6 +1424,7 @@ class alkisplugin(QObject):
 
         modelle = self.settings.modellarten
         katalog = self.settings.signaturkatalog
+        embedSVGs = self.settings.embedSVGs
 
         self.iface.mapCanvas().setRenderFlag(False)
 
@@ -1696,6 +1703,12 @@ class alkisplugin(QObject):
                             y = (alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy']) / 2
                             w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
                             # h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
+
+                        if embedSVGs:
+                            svgfile = QFile(svg)
+                            if svgfile.open(QIODevice.OpenModeFlag.ReadOnly):
+                                svg = "base64:" + svgfile.readAll().toBase64().data().decode("utf-8")
+                                svgfile.close()
 
                         symlayer = QgsSvgMarkerSymbolLayer(svg)
                         symlayer.setOutputUnit(self.MapUnit)
