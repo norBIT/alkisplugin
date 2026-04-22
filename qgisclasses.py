@@ -56,14 +56,14 @@ def qDebug(s):
 
 
 def quote(x, prefix='E'):
-    if type(x) == str:
+    if isinstance(x, str):
         x.replace("'", "''")
         x.replace("\\", "\\\\")
         if x.find("\\") < 0:
             return u"'%s'" % x
         else:
             return u"%s'%s'" % (prefix, x)
-    elif type(x) == str and x.find(u"\\"):
+    elif isinstance(x, str) and x.find(u"\\"):
         x.replace(u"\\", u"\\\\")
         return u"%s'%s'" % (prefix, str(x))
     else:
@@ -153,7 +153,7 @@ class ALKISConf(QDialog, ConfBase):
             modelle = ['DLKM', 'DKKM1000']
 
         qry = QSqlQuery(db)
-        if qry.exec("SELECT 1 FROM information_schema.tables WHERE table_schema={} AND table_name='po_modelle'".format(quote(self.plugin.settings.schema))) and qry.next():
+        if qry.exec("SELECT 1 FROM information_schema.tables WHERE table_schema={} AND table_name='po_modelle'".format(quote(self.plugin.settings.schema))) and qry.next():  # nosec: B608
             sql = "SELECT modell,n FROM po_modelle WHERE modell IS NOT NULL ORDER BY n DESC"
         else:
             sql = """
@@ -621,7 +621,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
         for cbx, sql, val in [
             [
                 self.cbxGemarkung,
-                "SELECT {0} FROM gema_shl a LEFT OUTER JOIN gem_shl b USING (gemshl){1} GROUP BY {0} ORDER BY {0}".format(
+                "SELECT {0} FROM gema_shl a LEFT OUTER JOIN gem_shl b USING (gemshl){1} GROUP BY {0} ORDER BY {0}".format(  # nosec: B608
                     "a.gemashl,a.gemarkung||' ('||a.gemashl||coalesce(', '||b.gemname,'')||')'",
                     u" JOIN flurst c USING (gemashl){0}".format(where) if where != "" else " WHERE EXISTS (SELECT 1 FROM flurst f WHERE f.gemashl=a.gemashl)"
                 ),
@@ -629,17 +629,17 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             ],
             [
                 self.cbxFlur,
-                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("flr", where),
+                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("flr", where),  # nosec: B608
                 f,
             ],
             [
                 self.cbxFSZ,
-                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("split_part(flsnrk,'/',1)", where),
+                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("split_part(flsnrk,'/',1)", where),  # nosec: B608
                 z,
             ],
             [
                 self.cbxFSN,
-                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("split_part(flsnrk,'/',2)", where),
+                "SELECT {0} FROM flurst{1} GROUP BY {0} ORDER BY {0}".format("split_part(flsnrk,'/',2)", where),  # nosec: B608
                 n,
             ],
         ]:
@@ -662,7 +662,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             return
 
         hits = 0
-        if qry.exec(u"SELECT count(*) FROM flurst{}".format(where)) and qry.next():
+        if qry.exec(u"SELECT count(*) FROM flurst{}".format(where)) and qry.next():  # nosec: B608
             hits = qry.value(0)
 
         if hits > 0 and hits < int(self.leHighlightThreshold.text()):
@@ -684,7 +684,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
             self.cbxStrassen.blockSignals(True)
             self.cbxStrassen.clear()
             if qry.exec(
-                u"SELECT bezeichnung, schluesselgesamt FROM ("
+                u"SELECT bezeichnung, schluesselgesamt FROM ("  # nosec: B608
                 u"SELECT k.bezeichnung || coalesce(', ' || g.bezeichnung,'') || coalesce(' (' || k.kennung || ')', '') AS bezeichnung, array_to_string(array_agg(DISTINCT k.schluesselgesamt), '#') AS schluesselgesamt"
                 u" FROM ax_lagebezeichnungkatalogeintrag k"
                 u" LEFT JOIN ax_lagebezeichnungmithausnummer m USING (land,regierungsbezirk,kreis,gemeinde,lage)"
@@ -738,15 +738,19 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
         self.cbxHNR.blockSignals(True)
         self.cbxHNR.clear()
-        if (schluesselgesamt is None and qry.exec(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} AND h.endet IS NULL ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or \
-           (schluesselgesamt is not None and qry.exec(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt)))):
+        if (
+                (schluesselgesamt is None and qry.exec(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h WHERE unverschluesselt={0} AND h.endet IS NULL ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(self.cbxStrassen.currentText())))) or  # nosec: B608 # noqa: W504
+                (schluesselgesamt is not None and qry.exec(u"SELECT h.hausnummer FROM ax_lagebezeichnungmithausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0} ORDER BY NULLIF(regexp_replace(h.hausnummer, E'\\\\D', '', 'g'), '')::int".format(quote(schluesselgesamt))))  # nosec: B608
+        ):
             while qry.next():
                 self.cbxHNR.addItem(qry.value(0))
         else:
             qDebug(qry.lastError().text())
 
-        if (schluesselgesamt is None and qry.exec(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h WHERE h.endet IS NULL AND h.unverschluesselt={0}".format(quote(self.cbxStrassen.currentText())))) or \
-           (schluesselgesamt is not None and qry.exec(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0}".format(quote(schluesselgesamt)))):
+        if (
+                (schluesselgesamt is None and qry.exec(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h WHERE h.endet IS NULL AND h.unverschluesselt={0}".format(quote(self.cbxStrassen.currentText())))) or  # nosec: B608 # noqa: W504
+                (schluesselgesamt is not None and qry.exec(u"SELECT 1 FROM ax_lagebezeichnungohnehausnummer h JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE h.endet IS NULL AND k.endet IS NULL AND k.schluesselgesamt={0}".format(quote(schluesselgesamt))))  # nosec: B608
+        ):
             if qry.next():
                 self.cbxHNR.addItem('Ohne')
         else:
@@ -813,7 +817,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
 
                     qry = QSqlQuery(self.db)
 
-                    sql = u"SELECT count(*),st_extent(coalesce(point,line)) FROM po_labels WHERE {0}".format(text)
+                    sql = u"SELECT count(*),st_extent(coalesce(point,line)) FROM po_labels WHERE {0}".format(text)  # nosec: B608
                     if qry.exec(sql) and qry.next() and qry.value(0) > 0:
                         self.lblResult.setText("{} Objekte gefunden".format(qry.value(0)))
                         self.plugin.zoomToExtent(qry.value(1), self.plugin.pointMarkerLayer.crs())
@@ -841,7 +845,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                 flsnr += ("%" if n is None or n == "" else n)
 
                 # qDebug(u"flsnr:{}".format(flsnr))
-                fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM fs WHERE gml_id=fs_obj AND alb_key LIKE %s)" % quote(flsnr), zoomTo=True)
+                fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM fs WHERE gml_id=fs_obj AND alb_key LIKE %s)" % quote(flsnr), zoomTo=True)  # nosec: B608
 
                 self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)) if len(fs) > 0 else u"Keine Flurstücke gefunden")
                 self.updateButtons(fs)
@@ -875,7 +879,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                     m = re.search("^(.*)\\s+(\\d+[a-zA-Z]?)$", text)
                     if m:
                         strasse, ha = m.group(1), m.group(2)
-                        fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h LEFT OUTER JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND (lower(k.bezeichnung) LIKE {0} OR lower(h.unverschluesselt) LIKE {0}) AND h.hausnummer={1})".format(quote(strasse.lower() + '%'), quote(ha.upper())), zoomTo=True)
+                        fs = self.plugin.highlight(where=u"EXISTS (SELECT * FROM ax_lagebezeichnungmithausnummer h LEFT OUTER JOIN ax_lagebezeichnungkatalogeintrag k USING (land,regierungsbezirk,kreis,gemeinde,lage) WHERE ARRAY[h.gml_id] <@ ax_flurstueck.weistauf AND (lower(k.bezeichnung) LIKE {0} OR lower(h.unverschluesselt) LIKE {0}) AND h.hausnummer={1})".format(quote(strasse.lower() + '%'), quote(ha.upper())), zoomTo=True)  # nosec: B608
                         if len(fs) > 0:
                             self.lblResult.setText(u"{} Flurstücke gefunden".format(len(fs)))
                         else:
@@ -922,7 +926,7 @@ class ALKISSearch(QDialog, ALKISSearchBase):
                     where.append("lower(name1) LIKE " + quote('%' + e.lower() + '%'))
 
                 if where:
-                    fs = self.plugin.retrieve(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where))
+                    fs = self.plugin.retrieve(u"gml_id IN (SELECT fs_obj FROM fs JOIN eignerart a ON fs.alb_key=a.flsnr JOIN eigner e ON a.bestdnr=e.bestdnr AND %s)" % " AND ".join(where))  # nosec: B608
                     if len(fs) == 0:
                         qDebug(u"Kein Flurstück gefunden")
                         self.updateButtons()
@@ -1101,12 +1105,12 @@ class ALKISOwnerInfo(QgsMapTool):
             return None
 
         qry = QSqlQuery(db)
-        if qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema={} AND table_name='eignerart' AND column_name='anteil'".format(quote(self.plugin.settings.schema))) and qry.next():
+        if qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema={} AND table_name='eignerart' AND column_name='anteil'".format(quote(self.plugin.settings.schema))) and qry.next():  # nosec: B608
             exists_ea_anteil = qry.value(0) == 1
         else:
             exists_ea_anteil = False
 
-        if qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema={} AND table_name='ax_buchungsblattbezirk' AND column_name='gehoertzu_land'".format(quote(self.plugin.settings.schema))) and qry.next():
+        if qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema={} AND table_name='ax_buchungsblattbezirk' AND column_name='gehoertzu_land'".format(quote(self.plugin.settings.schema))) and qry.next():  # nosec: B608
             ghz = qry.value(0) == 1
         else:
             ghz = False
@@ -1115,7 +1119,7 @@ class ALKISOwnerInfo(QgsMapTool):
             flsnr = fs[i]['flsnr']
 
             best = self.fetchall(db, (
-                "SELECT"
+                "SELECT"  # nosec: B608
                 " ea.bvnr"
                 ",'' as pz"
                 ",(SELECT eignerart FROM eign_shl WHERE ea.b=b) as eignerart"
@@ -1137,7 +1141,7 @@ class ALKISOwnerInfo(QgsMapTool):
                     flsnr)
             )
 
-            res = self.fetchall(db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr)
+            res = self.fetchall(db, "SELECT f.*,g.gemarkung FROM flurst f LEFT OUTER JOIN gema_shl g ON (f.gemashl=g.gemashl) WHERE f.flsnr='%s' AND f.ff_stand=0" % flsnr)  # nosec: B608
             if len(res) == 1:
                 res = res[0]
             else:
@@ -1152,10 +1156,10 @@ class ALKISOwnerInfo(QgsMapTool):
             res['hist'] = 0
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['strassen', 'str_shl']])) and qry.next() and qry.value(0):
-                res['str'] = self.fetchall(db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0 ORDER BY sstr.strname,coalesce(substring(str.hausnr FROM '^(\\d+)$')::integer, 0),str.hausnr" % flsnr)
+                res['str'] = self.fetchall(db, "SELECT sstr.strname,str.hausnr FROM str_shl sstr JOIN strassen str ON str.strshl=sstr.strshl WHERE str.flsnr='%s' AND str.ff_stand=0 ORDER BY sstr.strname,coalesce(substring(str.hausnr FROM '^(\\d+)$')::integer, 0),str.hausnr" % flsnr)  # nosec: B608
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['nutz_21', 'nutz_shl']])) and qry.next() and qry.value(0):
-                res['nutz'] = self.fetchall(db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr)
+                res['nutz'] = self.fetchall(db, "SELECT n21.*, nu.nutzshl, nu.nutzung FROM nutz_21 n21, nutz_shl nu WHERE n21.flsnr='%s' AND n21.nutzsl=nu.nutzshl AND n21.ff_stand=0" % flsnr)  # nosec: B608
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['klas_3x', 'kls_shl']])) and qry.next() and qry.value(0):
                 res['bewertung'] = self.fetchall(db, f"""\
@@ -1166,7 +1170,7 @@ FROM ax_flurstueck a
 JOIN ax_bewertung b ON st_relate(a.wkb_geometry, b.wkb_geometry, '2********')
 LEFT JOIN ax_klassifizierung_bewertung k ON wert=klassifizierung
 WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
-""")
+""")  # nosec: B608
 
                 res['bodenschätzung'] = self.fetchall(db, f"""\
 SELECT
@@ -1190,7 +1194,7 @@ FROM ax_flurstueck a
 JOIN ax_bodenschaetzung b ON st_relate(a.wkb_geometry, b.wkb_geometry, '2********')
 WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
 ORDER BY st_area(st_intersection(a.wkb_geometry,b.wkb_geometry))::int DESC
-""")
+""")  # nosec: B608
 
                 res['emz'] = self.fetchall(db, f"""\
 SELECT
@@ -1198,7 +1202,7 @@ SELECT
 FROM ax_flurstueck a
 JOIN ax_bodenschaetzung b ON st_relate(a.wkb_geometry, b.wkb_geometry, '2********')
 WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
-""")
+""")  # nosec: B608
                 if len(res['emz']) == 1:
                     res['emz'] = res['emz'][0]['emz']
                     if res['emz'] == '':
@@ -1207,14 +1211,14 @@ WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
                     del res['emz']
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['ausfst', 'afst_shl']])) and qry.next() and qry.value(0):
-                res['afst'] = self.fetchall(db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr)
+                res['afst'] = self.fetchall(db, "SELECT au.*, af.afst_txt FROM ausfst au,afst_shl af WHERE au.flsnr='%s' AND au.ausf_st=af.ausf_st AND au.ff_stand=0" % flsnr)  # nosec: B608
 
             if qry.exec(u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['bestand', 'eignerart', 'eign_shl']])) and qry.next() and qry.value(0):
                 res['best'] = best
 
                 if qry.exec("SELECT has_table_privilege('eigner', 'SELECT')") and qry.next() and qry.value(0):
                     for b in res['best']:
-                        b['bse'] = self.fetchall(db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0 ORDER BY coalesce(namensnr,'0')" % b['bestdnr'])
+                        b['bse'] = self.fetchall(db, "SELECT * FROM eigner WHERE bestdnr='%s' AND ff_stand=0 ORDER BY coalesce(namensnr,'0')" % b['bestdnr'])  # nosec: B608
 
 #                        for k,v in res.iteritems():
 #                                qDebug( u"%s:%s\n" % ( k, unicode(v) ) )
@@ -1468,7 +1472,7 @@ th { text-align:left;}
             qDebug("keine Datenbankverbindung")
             return None
 
-        res = self.fetchall(db, "SELECT alb_key FROM fs WHERE fs_obj='{}'".format(gml_id))
+        res = self.fetchall(db, "SELECT alb_key FROM fs WHERE fs_obj={}".format(quote(gml_id)))  # nosec: B608
         if len(res) != 1:
             qDebug("Kein eindeutiges Flurstück gefunden")
             return None

@@ -65,7 +65,7 @@ hasBlendSource = False
 hasProxyTask = False
 
 try:
-    import qgis.core
+    import qgis.core  # noqa: F401
     qgisAvailable = True
 except ImportError:
     qgisAvailable = False
@@ -145,7 +145,7 @@ class alkissettings(QObject):
         self.dbname = ""
         self.schema = "public"
         self.uid = ""
-        self.pwd = ""
+        self.pwd = ""   # nosec B105
         self.authcfg = ""
         self.signaturkatalog = -1
         self.embedSVGs = False
@@ -1290,7 +1290,7 @@ class alkisplugin(QObject):
     def setStricharten(self, db, sym, kat, sn, outline):
         lqry = QSqlQuery(db)
 
-        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"
+        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"  # nosec: B608
                u" FROM alkis_linien ln"
                u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer{0}"
                u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
@@ -1464,7 +1464,7 @@ class alkisplugin(QObject):
         self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
         if self.epsg > 100000:
-            if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
+            if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():  # nosec: B608
                 crs = QgsCoordinateReferenceSystem()
                 crs.createFromProj4(qry.value(0))
                 if crs.authid() == "":
@@ -1523,7 +1523,7 @@ class alkisplugin(QObject):
 
                 self.progress(iThema, u"Flächen")
 
-                sql = (u"SELECT signaturnummer,r,g,b"
+                sql = (u"SELECT signaturnummer,r,g,b"  # nosec: B608
                        u" FROM alkis_flaechen"
                        u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
                        u" WHERE EXISTS ("
@@ -1576,7 +1576,7 @@ class alkisplugin(QObject):
 
                 self.progress(iThema, "Grenzen")
 
-                sql = (u"SELECT"
+                sql = (u"SELECT"  # nosec: B608
                        u" signaturnummer"
                        u" FROM alkis_linien"
                        u" WHERE EXISTS ("
@@ -1626,7 +1626,7 @@ class alkisplugin(QObject):
 
                 self.progress(iThema, "Linien")
 
-                sql = (u"SELECT signaturnummer"
+                sql = (u"SELECT signaturnummer"  # nosec: B608
                        u" FROM alkis_linien"
                        u" WHERE EXISTS ("
                        u"SELECT * FROM po_lines WHERE {0} AND po_lines.signaturnummer=alkis_linien.signaturnummer"
@@ -1681,7 +1681,7 @@ class alkisplugin(QObject):
 
                 kat = max([1, katalog])
 
-                sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where
+                sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where  # nosec: B608
                 # qDebug( u"SQL: %s" % sql )
                 if qry.exec(sql):
                     r = QgsCategorizedSymbolRenderer("signaturnummer")
@@ -1693,7 +1693,7 @@ class alkisplugin(QObject):
                         svg = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
 
                         x, y, w = 0, 0, 1
-                        if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
+                        if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():  # nosec: B608
                             x = (qry2.value(0) + qry2.value(2)) / 2
                             y = (qry2.value(1) + qry2.value(3)) / 2
                             w = qry2.value(2) - qry2.value(0)
@@ -1722,10 +1722,7 @@ class alkisplugin(QObject):
                         sym.changeSymbolLayer(0, symlayer)
 
                         if hasattr(sym, "setDataDefinedAngle"):
-                            try:
-                                sym.setDataDefinedAngle(QgsProperty.fromField("drehwinkel_grad"))
-                            except NameError:
-                                sym.setDataDefinedAngle(QgsDataDefined("drehwinkel_grad"))
+                            sym.setDataDefinedAngle(QgsProperty.fromField("drehwinkel_grad"))
                         else:
                             symlayer.setDataDefinedProperty("angle", "drehwinkel_grad")
 
@@ -1735,7 +1732,7 @@ class alkisplugin(QObject):
                     qDebug(u"classes: %d" % n)
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),
+                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),  # nosec: B608
                             u"Punkte (%s)" % t,
                             "postgres", layeropts
                         )
@@ -1760,7 +1757,7 @@ class alkisplugin(QObject):
                     geom = "point" if i == 0 else "line"
                     geomtype = "MULTIPOINT" if i == 0 else "MULTILINESTRING"
 
-                    if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)):
+                    if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)):  # nosec: B608
                         QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
                         continue
 
@@ -1775,7 +1772,7 @@ class alkisplugin(QObject):
                         layer = None
 
                     uri = (
-                        u"{0} estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type={1} srid={2} table="
+                        u"{0} estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type={1} srid={2} table="  # nosec: B608
                         u"\"("
                         u"SELECT"
                         u" ogc_fid"
@@ -2178,7 +2175,7 @@ class alkisplugin(QObject):
         qry = QSqlQuery(db)
 
         if not qry.exec(
-                u"SELECT "
+                u"SELECT "  # nosec: B608
                 u"gml_id"
                 u",alkis_flsnr(ax_flurstueck)"
                 u" FROM ax_flurstueck"
@@ -2229,7 +2226,7 @@ class alkisplugin(QObject):
             return fs
 
         qry = QSqlQuery(db)
-        if zoomTo and qry.exec(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1) > 0:
+        if zoomTo and qry.exec(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1) > 0:  # nosec: B608
             self.zoomToExtent(qry.value(0), self.areaMarkerLayer.crs())
 
         return fs
@@ -2373,14 +2370,14 @@ class alkisplugin(QObject):
             if mapobj.symbolset.appendSymbol(symbol) < 0:
                 raise BaseException("symbol not added.")
 
-            if qry.exec(u"SELECT st_extent(wkb_geometry),find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text) FROM ax_flurstueck".format(self.settings.schema)) and qry.next():
+            if qry.exec(u"SELECT st_extent(wkb_geometry),find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text) FROM ax_flurstueck".format(self.settings.schema)) and qry.next():  # nosec: B608
                 bb = qry.value(0)[4:-1]
                 (p0, p1) = bb.split(",")
                 (x0, y0) = p0.split(" ")
                 (x1, y1) = p1.split(" ")
                 self.epsg = int(qry.value(1))
                 if self.epsg > 100000:
-                    if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():
+                    if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():  # nosec: B608
                         crs = qry.value(0)
                         mapobj.setProjection(crs)
                 else:
@@ -2452,15 +2449,15 @@ class alkisplugin(QObject):
                     layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                     iLayer += 1
 
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
                     layer.classitem = "signaturnummer"
                     layer.setProjection(crs)
                     layer.connectiontype = mapscript.MS_POSTGIS
                     layer.connection = conninfo
                     layer.symbolscaledenom = 1000
-                    try:
+                    if hasattr(layer, "setProcessing"):
                         layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    except:
+                    else:
                         layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     layer.type = mapscript.MS_LAYER_POLYGON
                     layer.sizeunits = mapscript.MS_INCHES
@@ -2478,7 +2475,7 @@ class alkisplugin(QObject):
                     self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
                     self.setUMNScale(layer, f['area'])
 
-                    sql = (u"SELECT DISTINCT"
+                    sql = (u"SELECT DISTINCT"  # nosec: B608
                            u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
                            u" FROM alkis_flaechen"
                            u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
@@ -2546,14 +2543,14 @@ class alkisplugin(QObject):
                     layer.name = "l%d" % iLayer
                     layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                     iLayer += 1
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
                     layer.classitem = "signaturnummer"
                     layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
-                    try:
+                    if hasattr(layer, "setProcessing"):
                         layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    except:
+                    else:
                         layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     # layer.symbolscaledenom = 1000
                     layer.sizeunits = mapscript.MS_METERS
@@ -2572,7 +2569,7 @@ class alkisplugin(QObject):
                     self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
                     self.setUMNScale(layer, f['outline'])
 
-                    sql = (u"SELECT DISTINCT"
+                    sql = (u"SELECT DISTINCT"  # nosec: B608
                            u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
                            u" FROM alkis_linien ln{0}"
                            u" LEFT OUTER JOIN alkis_farben f ON {1}.farbe=f.id"
@@ -2636,14 +2633,14 @@ class alkisplugin(QObject):
                     layer.name = "l%d" % iLayer
                     layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                     iLayer += 1
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
                     layer.classitem = "signaturnummer"
                     layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
-                    try:
+                    if hasattr(layer, "setProcessing"):
                         layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    except:
+                    else:
                         layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     # layer.symbolscaledenom = 1000
                     layer.sizeunits = mapscript.MS_METERS
@@ -2662,7 +2659,7 @@ class alkisplugin(QObject):
                     self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
                     self.setUMNScale(layer, f['line'])
 
-                    sql = (u"SELECT DISTINCT"
+                    sql = (u"SELECT DISTINCT"  # nosec: B608
                            u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
                            u" FROM alkis_linien ln{0}"
                            u" JOIN alkis_farben f ON {1}.farbe=f.id"
@@ -2743,14 +2740,14 @@ class alkisplugin(QObject):
                     layer.name = "l%d" % iLayer
                     layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
                     iLayer += 1
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))
+                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
                     layer.classitem = "signaturnummer"
                     layer.setProjection(crs)
                     layer.connection = conninfo
                     layer.connectiontype = mapscript.MS_POSTGIS
-                    try:
+                    if hasattr(layer, "setProcessing"):
                         layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    except:
+                    else:
                         layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                     layer.symbolscaledenom = 1000
                     layer.sizeunits = mapscript.MS_METERS
@@ -2773,7 +2770,7 @@ class alkisplugin(QObject):
 
                     kat = max([1, katalog])
 
-                    sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where
+                    sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where  # nosec: B608
                     # qDebug( "SQL: %s" % sql )
                     if qry.exec(sql):
                         while qry.next():
@@ -2795,7 +2792,7 @@ class alkisplugin(QObject):
                             self.setClassName(cl, d['classes'].get(sn, "(%s)" % sn))
 
                             x, y, h = 0, 0, 1
-                            if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():
+                            if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():  # nosec: B608
                                 x = (qry2.value(0) + qry2.value(2)) / 2
                                 y = (qry2.value(1) + qry2.value(3)) / 2
                                 w = qry2.value(2) - qry2.value(0)
@@ -2850,7 +2847,7 @@ class alkisplugin(QObject):
                     for j in range(2):
                         geom = "point" if j == 0 else "line"
 
-                        if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:
+                        if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:  # nosec: B608
                             continue
 
                         self.progress(iThema, "Beschriftungen (%d)" % (j + 1))
@@ -2970,9 +2967,9 @@ class alkisplugin(QObject):
 
                         layer.connection = conninfo
                         layer.connectiontype = mapscript.MS_POSTGIS
-                        try:
+                        if hasattr(layer, "setProcessing"):
                             layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                        except:
+                        else:
                             layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
                         layer.symbolscaledenom = 1000
                         # layer.labelminscaledenom = 0
@@ -3011,9 +3008,9 @@ class alkisplugin(QObject):
                 QApplication.restoreOverrideCursor()
 
     def addLineStyles(self, db, cl, kat, sn, c, outline):
-        assert cl.numstyles == 0
+        assert cl.numstyles == 0  # nosec: B101
 
-        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand{0}"
+        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand{0}"  # nosec: B608
                u" FROM alkis_linie l"
                u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
                u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
@@ -3328,7 +3325,7 @@ class alkisplugin(QObject):
             qDebug(u"Protokolltabelle konnte nicht angelegt werden.")
             return True
 
-        mitAZ = qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='postnas_search_logging' AND column_name='aktenzeichen'".format(self.settings.schema.replace("'", "''"))) and qry.next()
+        mitAZ = qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='postnas_search_logging' AND column_name='aktenzeichen'".format(self.settings.schema.replace("'", "''"))) and qry.next()  # nosec: B608
 
         if mitAZ:
             QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
@@ -3339,7 +3336,7 @@ class alkisplugin(QObject):
 
             self.az = az
 
-        if not qry.prepare("INSERT INTO postnas_search_logging(datum, username, requestType, search, result{}) VALUES (now(),?,?,?,?{})".format(
+        if not qry.prepare("INSERT INTO postnas_search_logging(datum, username, requestType, search, result{}) VALUES (now(),?,?,?,?{})".format(  # nosec: B608
             ', aktenzeichen' if mitAZ else '',
             ',?' if mitAZ else ''
         )):

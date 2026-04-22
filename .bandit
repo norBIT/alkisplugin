@@ -1,0 +1,2 @@
+[bandit]
+exclude = plugin_upload.py

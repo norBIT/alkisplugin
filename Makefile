@@ -13,6 +13,12 @@ alkisplugin-$(VERSION).zip: plugin.xml
 upload: plugin.xml alkisplugin-$(VERSION).zip
 	python3 plugin_upload.py alkisplugin-$(VERSION).zip
 
-release:
+check:
+	flake8 $(wildcard *.py)
+	bandit -q -r .
+
+release: check
 	@perl mkxml.pl -r
 	vim +/changelog= -c "set list" metadata.txt
+
+.PHONY: check upload release

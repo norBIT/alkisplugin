@@ -4,3 +4,5 @@ README.md export-ignore
 .gitignore export-ignore
 Makefile export-ignore
 plugin_upload.py export-ignore
+.bandit export-ignore
+.flake8 export-ignore
