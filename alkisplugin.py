@@ -1240,7 +1240,7 @@ class alkisplugin(QObject):
             return "(%s)" % sn
 
     def run(self):
-        if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", u"Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.Ok | QMessageBox.Cancel) == QMessageBox.Cancel:
+        if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", u"Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel) == QMessageBox.StandardButton.Cancel:
             return
 
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -1871,6 +1871,8 @@ class alkisplugin(QObject):
                     if geom == "point":
                         c.setProperty(QgsPalLayerSettings.PositionX, QgsProperty.fromField("tx"))
                         c.setProperty(QgsPalLayerSettings.PositionY, QgsProperty.fromField("ty"))
+                    else:
+                        c.setProperty(QgsPalLayerSettings.LinePlacementOptions, QgsProperty.fromExpression("CASE WHEN valign='Cap' THEN 'AL' WHEN valign='Base' THEN 'BL' ELSE 'OL' END"))
 
                     c.setProperty(QgsPalLayerSettings.LabelRotation, QgsProperty.fromExpression("-tangle"))
                     c.setProperty(QgsPalLayerSettings.AlwaysShow, QgsProperty.fromField("tshow"))
