@@ -18,93 +18,62 @@
 *                                                                         *
 ***************************************************************************
 """
-from builtins import str
-from builtins import range
-try:
-    from builtins import unicode
-except ImportError:
-    unicode = str
 
-from io import open
-
-try:
-    import sip
-    if sip.SIP_VERSION >> 16 < 5:
-        for c in ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]:
-            sip.setapi(c, 2)
-except ModuleNotFoundError:
-    pass
-
-try:
-    from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice
-    from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
-    from qgis.PyQt.QtGui import QIcon, QColor, QPainter
-    from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
-    from qgis.PyQt import QtCore
-except ImportError:
-    from PyQt5.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice
-    from PyQt5.QtWidgets import QApplication, QMessageBox, QAction, QFileDialog, QInputDialog, QProgressBar
-    from PyQt5.QtGui import QIcon, QColor, QPainter
-    from PyQt5.QtSql import QSqlDatabase, QSqlQuery
-    from PyQt5 import QtCore
-
-from tempfile import mkstemp
+from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice
+from qgis.PyQt.QtWidgets import QMessageBox, QAction, QInputDialog, QProgressBar
+from qgis.PyQt.QtGui import QIcon, QColor, QPainter
+from qgis.PyQt import QtCore
+from qgis.utils import OverrideCursor
+from qgis.core import (
+    QgsProviderRegistry,
+    QgsProviderConnectionException,
+    QgsMessageLog,
+    QgsProject,
+    QgsCoordinateReferenceSystem,
+    QgsPalLayerSettings,
+    QgsRectangle,
+    QgsCoordinateTransform,
+    QgsVectorLayer,
+    QgsApplication,
+    QgsLayerTreeGroup,
+    Qgis,
+    QgsWkbTypes,
+    QgsProperty,
+    QgsPropertyCollection,
+    QgsVectorLayerSimpleLabeling,
+    QgsMarkerLineSymbolLayer,
+    QgsSymbol,
+    QgsSimpleLineSymbolLayer,
+    QgsCategorizedSymbolRenderer,
+    QgsRendererCategory,
+    QgsSvgMarkerSymbolLayer,
+    QgsSingleSymbolRenderer,
+    QgsMarkerSymbol,
+    QgsLineSymbol,
+    QgsFillSymbol,
+    QgsDataSourceUri,
+    QgsUnitTypes,
+    QgsTextFormat,
+    QgsTextBufferSettings,
+    QgsSettings
+)
 
 import os
 import re
 
-try:
-    import sys
-    BASEDIR = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
-except TypeError:
-    BASEDIR = os.path.dirname(__file__)
+from .qgisclasses import About, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
-qgisAvailable = False
-authAvailable = False
-hasBlendSource = False
+BASEDIR = os.path.dirname(__file__)
+
 hasProxyTask = False
 
+
 try:
-    import qgis.core  # noqa: F401
-    qgisAvailable = True
+    from qgis.core import QgsProxyProgressTask
+    hasProxyTask = True
 except ImportError:
-    qgisAvailable = False
+    pass
 
-if qgisAvailable:
-    from qgis.core import QgsMessageLog, QgsProject, QgsCoordinateReferenceSystem, QgsPalLayerSettings, QgsCredentials, QgsRectangle, QgsCoordinateTransform, QgsVectorLayer, QgsApplication, QgsLayerTreeGroup
-
-    from qgis.core import (
-        Qgis,
-        QgsWkbTypes,
-        QgsProperty,
-        QgsPropertyCollection,
-        QgsVectorLayerSimpleLabeling,
-        QgsMarkerLineSymbolLayer,
-        QgsSymbol,
-        QgsSimpleLineSymbolLayer,
-        QgsCategorizedSymbolRenderer,
-        QgsRendererCategory,
-        QgsSvgMarkerSymbolLayer,
-        QgsSingleSymbolRenderer,
-        QgsMarkerSymbol,
-        QgsLineSymbol,
-        QgsFillSymbol,
-        QgsDataSourceUri,
-        QgsUnitTypes,
-        QgsTextFormat,
-        QgsTextBufferSettings,
-        QgsSettings
-    )
-    authAvailable = True
-    hasBlendSource = True
-
-    try:
-        from qgis.core import QgsProxyProgressTask
-        hasProxyTask = True
-    except ImportError:
-        pass
-
-    from .qgisclasses import About, ALKISPointInfo, ALKISPolygonInfo, ALKISOwnerInfo, ALKISSearch, ALKISConf
 
 try:
     import win32api
@@ -112,14 +81,7 @@ try:
 except ImportError:
     import getpass
     import socket
-    USERNAME = u"{}@{}".format(getpass.getuser(), socket.gethostname())
-
-try:
-    import mapscript
-    from mapscript import fromstring
-    mapscriptAvailable = True
-except ImportError:
-    mapscriptAvailable = False
+    USERNAME = "{}@{}".format(getpass.getuser(), socket.gethostname())
 
 
 def qDebug(s):
@@ -127,10 +89,7 @@ def qDebug(s):
 
 
 def logMessage(s):
-    if qgisAvailable:
-        QgsMessageLog.logMessage(s, "ALKIS")
-    else:
-        QtCore.qWarning(s.encode("utf-8"))
+    QgsMessageLog.logMessage(s, "ALKIS")
 
 
 class alkissettings(QObject):
@@ -152,8 +111,6 @@ class alkissettings(QObject):
         self.modellarten = ['DLKM', 'DKKM1000']
         self.footnote = ""
         self.template = ""
-        self.umnpath = BASEDIR
-        self.umntemplate = ""
 
         self.load()
 
@@ -176,8 +133,6 @@ class alkissettings(QObject):
         s.setValue("modellarten", self.modellarten)
         s.setValue("footnote", self.footnote)
         s.setValue("template", self.template)
-        s.setValue("umnpath", self.umnpath)
-        s.setValue("umntemplate", self.umntemplate)
 
         logMessage("Einstellungen gespeichert.")
 
@@ -191,7 +146,6 @@ class alkissettings(QObject):
         self.uid = s.value("uid", "")
         self.pwd = s.value("pwd", "")
         self.authcfg = s.value("authcfg", "")
-
         try:
             self.signaturkatalog = int(s.value("signaturkatalog", -1))
         except Exception:
@@ -202,11 +156,8 @@ class alkissettings(QObject):
         self.modellarten = s.value("modellarten", ['DLKM', 'DKKM1000'])
         self.footnote = s.value("footnote", "")
         self.template = s.value("template", "")
-        self.umnpath = s.value("umnpath", BASEDIR)
-        self.umntemplate = s.value("umntemplate", "")
 
-        if self.plugin.db and self.plugin.db.isOpen():
-            self.plugin.db.close()
+        self.plugin.db = None
 
     def saveToProject(self):
         p = QgsProject.instance()
@@ -223,10 +174,8 @@ class alkissettings(QObject):
         p.writeEntry("alkis", "settings/modellarten", self.modellarten)
         p.writeEntry("alkis", "settings/footnote", self.footnote)
         p.writeEntry("alkis", "settings/template", self.template)
-        p.writeEntry("alkis", "settings/umnpath", self.umnpath)
-        p.writeEntry("alkis", "settings/umntemplate", self.umntemplate)
 
-        logMessage(u"Einstellungen in Projekt gespeichert.")
+        logMessage("Einstellungen in Projekt gespeichert.")
 
     def hasSettings(self):
         return len(QgsProject.instance().entryList("alkis", "settings")) > 0
@@ -235,9 +184,6 @@ class alkissettings(QObject):
         QgsProject.instance().removeEntry("alkis", "settings")
 
     def load(self):
-        if not qgisAvailable:
-            self.loadSettings()
-            return
 
         p = QgsProject.instance()
         if len(p.entryList("alkis", "settings")) > 0:
@@ -254,10 +200,8 @@ class alkissettings(QObject):
             self.modellarten, ok = p.readListEntry("alkis", "settings/modellarten", ['DLKM', 'DKKM1000'])
             self.footnote, ok = p.readEntry("alkis", "settings/footnote", "")
             self.template, ok = p.readEntry("alkis", "settings/template", "")
-            self.umnpath, ok = p.readEntry("alkis", "settings/umnpath", BASEDIR)
-            self.umntemplate, ok = p.readEntry("alkis", "settings/umntemplate", "")
 
-            # logMessage(u"Einstellungen aus Projekt geladen.")
+            # logMessage("Einstellungen aus Projekt geladen.")
         else:
             self.loadSettings()
 
@@ -274,14 +218,12 @@ class alkissettings(QObject):
                 self.pwd = uri.password()
                 self.authcfg = uri.authConfigId()
 
-                logMessage(u"Datenbankeinstellungen aus Punkthervorhebungslayer abgeleitet.")
+                logMessage("Datenbankeinstellungen aus Punkthervorhebungslayer abgeleitet.")
 
         self.plugin.pointMarkerLayer = None
         self.plugin.lineMarkerLayer = None
         self.plugin.areaMarkerLayer = None
-
-        if self.plugin.db and self.plugin.db.isOpen():
-            self.plugin.db.close()
+        self.plugin.db = None
 
 
 class alkisplugin(QObject):
@@ -290,113 +232,113 @@ class alkisplugin(QObject):
 
     themen = (
         {
-            'name': u"Flurstücke",
+            'name': "Flurstücke",
             'area': {'min': 0, 'max': 5000},
-            'outline': {'min': 0, 'max': 5000, 'umntemplate': 1, },
+            'outline': {'min': 0, 'max': 5000},
             'line': {'min': 0, 'max': 5000},
             'point': {'min': 0, 'max': 5000},
             'label': {'min': 0, 'max': 5000},
             'filter': [
-                {'name': u"Flächen", 'filter': "NOT layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')"},
-                {'name': u"Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')"},
+                {'name': "Flächen", 'filter': "NOT layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')"},
+                {'name': "Nummern", 'filter': "layer IN ('ax_flurstueck_nummer','ax_flurstueck_zuordnung','ax_flurstueck_zuordnung_pfeil')"},
             ],
             'classes': {
-                '2001': u'Bruchstriche',
-                '2004': u'Zuordnungspfeil',
-                '2005': u'Zuordnungspfeil, abweichender Rechtszustand',
-                '2006': u'Strittige Grenze',
-                '2008': u'Flurstücksgrenze nicht feststellbar',
-                '2028': u'Flurstücksgrenze',
-                '2029': u'Flurstücksgrenze, abw. Rechtszustand',
-                '3010': u'Flurstücksüberhaken',
-                '3020': u'Abgemarkter Grenzpunkt',
-                '3021': u'Abgemarkter Grenzpunkt, abw. Rechtszustand',
-                '3022': u'Grenzpunkt, Abmarkung zeitweilig ausgesetzt',
-                '3024': u'Grenzpunkt ohne spezifizierte Abmarkung',
+                '2001': 'Bruchstriche',
+                '2004': 'Zuordnungspfeil',
+                '2005': 'Zuordnungspfeil, abweichender Rechtszustand',
+                '2006': 'Strittige Grenze',
+                '2008': 'Flurstücksgrenze nicht feststellbar',
+                '2028': 'Flurstücksgrenze',
+                '2029': 'Flurstücksgrenze, abw. Rechtszustand',
+                '3010': 'Flurstücksüberhaken',
+                '3020': 'Abgemarkter Grenzpunkt',
+                '3021': 'Abgemarkter Grenzpunkt, abw. Rechtszustand',
+                '3022': 'Grenzpunkt, Abmarkung zeitweilig ausgesetzt',
+                '3024': 'Grenzpunkt ohne spezifizierte Abmarkung',
             },
         },
         {
-            'name': u"Gebäude",
+            'name': "Gebäude",
             'area': {'min': 0, 'max': 10000},
             'outline': {'min': 0, 'max': 3500},
             'line': {'min': 0, 'max': 3500},
             'point': {'min': 0, 'max': 3500},
             'label': {'min': 0, 'max': 3500},
             'filter': [
-                {'name': u"Laufende Hausnummern", 'filter': "layer='ax_lagebezeichnungmitpseudonummer'"},
-                {'name': u"Dachform", 'filter': "layer IN ('ax_gebaeude_dachform','ax_bauteil_dachform')"},
-                {'name': u"Funktion", 'filter': "layer IN ('ax_gebaeude_funktion','ax_bauteil_funktion','ax_turm_funktion')"},
-                {'name': u"Geschosse", 'filter': "layer IN ('ax_gebaeude_geschosse','ax_bauteil_geschosse')"},
-                {'name': u"Zustand", 'filter': "layer='ax_gebaeude_zustand'"},
-                {'name': u"Gebäude", 'filter': "layer NOT IN ('ax_lagebezeichnungmitpseudonummer','ax_gebaeude_dachform','ax_gebaeude_funktion','ax_gebaeude_geschosse','ax_gebaeude_zustand','ax_bauteil_dachform','ax_bauteil_funktion','ax_bauteil_geschosse','ax_turm_funktion')"},
+                {'name': "Laufende Hausnummern", 'filter': "layer='ax_lagebezeichnungmitpseudonummer'"},
+                {'name': "Dachform", 'filter': "layer IN ('ax_gebaeude_dachform','ax_bauteil_dachform')"},
+                {'name': "Funktion", 'filter': "layer IN ('ax_gebaeude_funktion','ax_bauteil_funktion','ax_turm_funktion')"},
+                {'name': "Geschosse", 'filter': "layer IN ('ax_gebaeude_geschosse','ax_bauteil_geschosse')"},
+                {'name': "Zustand", 'filter': "layer='ax_gebaeude_zustand'"},
+                {'name': "Gebäude", 'filter': "layer NOT IN ('ax_lagebezeichnungmitpseudonummer','ax_gebaeude_dachform','ax_gebaeude_funktion','ax_gebaeude_geschosse','ax_gebaeude_zustand','ax_bauteil_dachform','ax_bauteil_funktion','ax_bauteil_geschosse','ax_turm_funktion')"},
             ],
             'classes': {
-                '1301': u'Wohngebäude',
-                '1304': u'Anderes Gebäude',
-                '1305': u'Mauer',
-                '2510': u'Mauer',
-                '1309': u'Gebäude für öffentliche Zwecke',
-                '1501': u'Aussichtsturm',
-                'rn1501': u'Anderes Gebäude',
-                '1525': u'Brunnen',
-                '2002': u'Zaun',
-                '2030': u'Gebäude',
-                '2031': u'Anderes Gebäude',
-                '2032': u'Gebäude unter der Erdoberfläche',
-                '2305': u'Offene Gebäudelinie',
-                '2505': u'Öffentliches Gebäude',
-                # '2508': u'sonstiges Gebäudeteil',
-                '2508': u'aufgeständert',
-                '2509': u'Hochhausbauteil',
-                '2513': u'Unterirdisch',
-                # '2513': u'Schornstein im Gebäude',
-                '2514': u'Turm im Gebäude',
-                '2515': u'Brunnen',
-                '2519': u'Kanal, Im Bau',
-                '2623': u'Hochhaus',
-                '3300': u'Bank',
-                '3302': u'Hotel',
-                '3303': u'Jugendherberge',
-                '3305': u'Gaststätte',
-                '3306': u'Kino',
-                '3308': u'Spielcasino',
-                '3309': u'Parkhaus',
-                '3311': u'Toilette',
-                '3312': u'Post',
-                '3314': u'Theater',
-                '3315': u'Bibliothek',
-                '3316': u'Kirche',
-                '3317': u'Synagoge',
-                '3318': u'Kapelle',
-                '3319': u'Moschee',
-                '3321': u'Krankenhaus',
-                '3323': u'Kindergarten',
-                '3324': u'Polizei',
-                '3326': u'Feuerwehr',
-                '3327': u'Grabhügel (Hügelgrab)',
-                '3332': u'Gebäude zum Busbahnhof',
-                '3532': u'Denkmal',
-                '3334': u'Hallenbad',
-                '3336': u'Tiefgarage',
-                '3338': u'Apotheke',
-                '3521': u'Umformer',
-                '3526': u'Großsteingrab (Dolmen), Hünenbett',
-                '3529': u'Brunnen / Gasquelle, Mofette / Heilquelle',
-                '3534': u'Bildstock',
-                '3535': u'Gipfel-/Wegekreuz',
-                '3536': u'Meilenstein, historischer Grenzstein',
-                '3537': u'Brunnen (Trinkwasserversorgung)',
-                '3539': u'Springbrunnen, Zierbrunnen',
-                '3540': u'Ziehbrunnen',
-                '3580': u'Zaun',
+                '1301': 'Wohngebäude',
+                '1304': 'Anderes Gebäude',
+                '1305': 'Mauer',
+                '2510': 'Mauer',
+                '1309': 'Gebäude für öffentliche Zwecke',
+                '1501': 'Aussichtsturm',
+                'rn1501': 'Anderes Gebäude',
+                '1525': 'Brunnen',
+                '2002': 'Zaun',
+                '2030': 'Gebäude',
+                '2031': 'Anderes Gebäude',
+                '2032': 'Gebäude unter der Erdoberfläche',
+                '2305': 'Offene Gebäudelinie',
+                '2505': 'Öffentliches Gebäude',
+                # '2508': 'sonstiges Gebäudeteil',
+                '2508': 'aufgeständert',
+                '2509': 'Hochhausbauteil',
+                '2513': 'Unterirdisch',
+                # '2513': 'Schornstein im Gebäude',
+                '2514': 'Turm im Gebäude',
+                '2515': 'Brunnen',
+                '2519': 'Kanal, Im Bau',
+                '2623': 'Hochhaus',
+                '3300': 'Bank',
+                '3302': 'Hotel',
+                '3303': 'Jugendherberge',
+                '3305': 'Gaststätte',
+                '3306': 'Kino',
+                '3308': 'Spielcasino',
+                '3309': 'Parkhaus',
+                '3311': 'Toilette',
+                '3312': 'Post',
+                '3314': 'Theater',
+                '3315': 'Bibliothek',
+                '3316': 'Kirche',
+                '3317': 'Synagoge',
+                '3318': 'Kapelle',
+                '3319': 'Moschee',
+                '3321': 'Krankenhaus',
+                '3323': 'Kindergarten',
+                '3324': 'Polizei',
+                '3326': 'Feuerwehr',
+                '3327': 'Grabhügel (Hügelgrab)',
+                '3332': 'Gebäude zum Busbahnhof',
+                '3532': 'Denkmal',
+                '3334': 'Hallenbad',
+                '3336': 'Tiefgarage',
+                '3338': 'Apotheke',
+                '3521': 'Umformer',
+                '3526': 'Großsteingrab (Dolmen), Hünenbett',
+                '3529': 'Brunnen / Gasquelle, Mofette / Heilquelle',
+                '3534': 'Bildstock',
+                '3535': 'Gipfel-/Wegekreuz',
+                '3536': 'Meilenstein, historischer Grenzstein',
+                '3537': 'Brunnen (Trinkwasserversorgung)',
+                '3539': 'Springbrunnen, Zierbrunnen',
+                '3540': 'Ziehbrunnen',
+                '3580': 'Zaun',
 
-                '2901': u'Geplantes Gebäude (gebaut)',
-                '2902': u'Geplantes Gebäude (Bauantrag)',
-                '2903': u'Nicht eingemessenes Gebäude',
+                '2901': 'Geplantes Gebäude (gebaut)',
+                '2902': 'Geplantes Gebäude (Bauantrag)',
+                '2903': 'Nicht eingemessenes Gebäude',
             },
         },
         {
-            'name': u"Lagebezeichnungen",
+            'name': "Lagebezeichnungen",
             'area': {'min': 0, 'max': 5000},
             'outline': {'min': 0, 'max': 5000},
             'line': {'min': 0, 'max': 5000},
@@ -404,7 +346,7 @@ class alkisplugin(QObject):
             'label': {'min': 0, 'max': 5000},
         },
         {
-            'name': u"Politische Grenzen",
+            'name': "Politische Grenzen",
             'area': {'min': 0, 'max': None},
             'outline': {'min': 0, 'max': None},
             'line': {'min': 0, 'max': 10000},
@@ -412,35 +354,35 @@ class alkisplugin(QObject):
             'label': {'min': 0, 'max': None},
             'filter': [
                 {
-                    'name': u"Grenzen",
+                    'name': "Grenzen",
                     'filter': "layer NOT LIKE 'ax_flurstueck%'",
                     'area': {'min': 0, 'max': 10000},
                     'outline': {'min': 0, 'max': 10000},
                     'label': {'min': 0, 'max': 10000},
                 },
                 {
-                    'name': u"Flure",
+                    'name': "Flure",
                     'filter': "layer LIKE 'ax_flurstueck_flur%'",
                     'area': {'min': 10000, 'max': 100000},
                     'outline': {'min': 10000, 'max': 50000},
                     'label': {'min': 10000, 'max': 50000},
                 },
                 {
-                    'name': u"Gemarkung",
+                    'name': "Gemarkung",
                     'filter': "layer LIKE 'ax_flurstueck_gemarkung%'",
                     'area': {'min': 10000, 'max': 150000},
                     'outline': {'min': 10000, 'max': 150000},
                     'label': {'min': 10000, 'max': 150000},
                 },
                 {
-                    'name': u"Gemeinde",
+                    'name': "Gemeinde",
                     'filter': "layer LIKE 'ax_flurstueck_gemeinde%'",
                     'area': {'min': 10000, 'max': 200000},
                     'outline': {'min': 10000, 'max': 200000},
                     'label': {'min': 50000, 'max': 200000},
                 },
                 {
-                    'name': u"Kreis",
+                    'name': "Kreis",
                     'filter': "layer LIKE 'ax_flurstueck_kreis%'",
                     'area': {'min': 10000, 'max': None},
                     'outline': {'min': 10000, 'max': None},
@@ -448,179 +390,179 @@ class alkisplugin(QObject):
                 },
             ],
             'classes': {
-                '2010': u'Landkreisgrenze',
-                '2012': u'Flurgrenze',
-                '2014': u'Gemarkungsgrenze',
-                '2016': u'Staatsgrenze',
-                '2018': u'Landesgrenze',
-                '2020': u'Regierungsbezirksgrenze',
-                '2022': u'Gemeindegrenze',
-                '2026': u'Verwaltungsbezirksgrenze',
-                'pg-flur': u'Flure',
-                'pg-gemarkung': u'Gemarkungen',
-                'pg-gemeinde': u'Gemeinden',
-                'pg-kreis': u'Kreise',
+                '2010': 'Landkreisgrenze',
+                '2012': 'Flurgrenze',
+                '2014': 'Gemarkungsgrenze',
+                '2016': 'Staatsgrenze',
+                '2018': 'Landesgrenze',
+                '2020': 'Regierungsbezirksgrenze',
+                '2022': 'Gemeindegrenze',
+                '2026': 'Verwaltungsbezirksgrenze',
+                'pg-flur': 'Flure',
+                'pg-gemarkung': 'Gemarkungen',
+                'pg-gemeinde': 'Gemeinden',
+                'pg-kreis': 'Kreise',
             },
         },
         {
-            'name': u"Rechtliche Festlegungen",
+            'name': "Rechtliche Festlegungen",
             'area': {'min': 0, 'max': 500000},
             'outline': {'min': 0, 'max': 25000},
             'line': {'min': 0, 'max': 25000},
             'point': {'min': 0, 'max': 25000},
             'label': {'min': 0, 'max': 25000},
             'classes': {
-                '1701': u'Bundesautobahn/-straße',
-                '1702': u'Landes-/Staatsstraße',
-                'rn1701': u'Bundesautobahn/-straße',
-                'rn1702': u'Landes-/Staatsstraße',
-                'rn1703': u'Schutzgebiet',
-                'rn1704': u'Bau-, Raum-, Bodenordnungsrecht',
+                '1701': 'Bundesautobahn/-straße',
+                '1702': 'Landes-/Staatsstraße',
+                'rn1701': 'Bundesautobahn/-straße',
+                'rn1702': 'Landes-/Staatsstraße',
+                'rn1703': 'Schutzgebiet',
+                'rn1704': 'Bau-, Raum-, Bodenordnungsrecht',
             },
         },
         {
-            'name': u"Topographie",
+            'name': "Topographie",
             'area': {'min': 0, 'max': 500000},
             'outline': {'min': 0, 'max': 10000},
             'line': {'min': 0, 'max': 10000},
             'point': {'min': 0, 'max': 10000},
             'label': {'min': 0, 'max': 10000},
             'classes': {
-                '2620': u'Damm, Wall, Deich, Graben, Knick, Wallkante',
-                '3484': u'Düne, Sand',
-                '3601': u'Busch, Hecke, Knick',
-                '3625': u'Höhleneingang',
-                '3627': u'Felsen, Felsblock, Felsnadel',
-                '3629': u'Besonderer topographischer Punkt',
-                '3632': u'Busch, Hecke, Knick',
-                '3634': u'Felsen, Felsblock, Felsnadel',
+                '2620': 'Damm, Wall, Deich, Graben, Knick, Wallkante',
+                '3484': 'Düne, Sand',
+                '3601': 'Busch, Hecke, Knick',
+                '3625': 'Höhleneingang',
+                '3627': 'Felsen, Felsblock, Felsnadel',
+                '3629': 'Besonderer topographischer Punkt',
+                '3632': 'Busch, Hecke, Knick',
+                '3634': 'Felsen, Felsblock, Felsnadel',
             },
         },
         {
-            'name': u"Verkehr",
+            'name': "Verkehr",
             'area': {'min': 0, 'max': 25000},
             'outline': {'min': 0, 'max': 5000},
             'line': {'min': 0, 'max': 5000},
             'point': {'min': 0, 'max': 5000},
             'label': {'min': 0, 'max': 5000},
             'classes': {
-                '1406': u'Begleitfläche',
-                '1414': u'Fußgängerzone',
-                '1530': u'Brücke, Hochbahn/-straße',
-                'rn1530': u'Brücke, Hochbahn/-straße',
-                'rn1533': u'Tunnel, Unterführung',
-                'rn1535': u'Schleusenkammer',
-                '1542': u'Weg',
-                'rn1542': u'Weg',
-                '1543': u'Wattenweg',
-                '1544': u'Anleger',
-                'rn1544': u'Anleger',
-                '1540': u'Fahrbahn',
-                'rn1540': u'Fahrbahn',
-                '1808': u'Landeplatz, -bahn, Vorfeld, Rollbahn',
-                'rn1808': u'Landeplatz, -bahn, Vorfeld, Rollbahn',
-                '2305': u'Durchfahrt, Bauwerk',
-                '2533': u'Widerlager',
-                '2515': u'Bahnverkehr, Platz',
-                '3330': u'S-Bahnhof',
-                '3424': u'Fußweg',
-                '3426': u'Radweg',
-                '3428': u'Rad- und Fußweg',
-                '3430': u'Reitweg',
-                '3432': u'Parkplatz',
-                '3434': u'Rastplatz',
-                '3439': u'Segelfluggelände',
-                '3541': u'Kommunikationseinrichtung',
-                '3542': u'Fernsprechhäuschen',
-                '3544': u'Briefkasten',
-                '3546': u'Feuermelder',
-                '3547': u'Polizeirufsäule',
-                '3548': u'Kabelkasten, Schaltkasten',
-                '3550': u'Verkehrsampel',
-                '3551': u'Freistehende Hinweistafel, -zeichen',
-                '3552': u'Wegweiser von besonderer Bedeutung',
-                '3553': u'Freistehende Warntafel',
-                '3554': u'Haltestelle',
-                '3556': u'Kilometerstein',
-                '3558': u'Gaslaterne',
-                '3559': u'Laterne, elektrisch',
-                '3563': u'Säule, Werbefläche',
-                '3564': u'Leuchtsäule',
-                '3565': u'Fahnenmast',
-                '3566': u'Straßensinkkasten',
-                '3567': u'Müllbox',
-                '3568': u'Kehrichtgrube',
-                '3569': u'Uhr',
-                '3571': u'Flutlichtmast',
-                '3578': u'Haltepunkt',
-                '3588': u'Hubschrauberlandeplatz',
-                '3590': u'Leuchtfeuer',
-                '3645': u'Materialseilbahn',
-                '3646': u'Straßenbahngleis',
+                '1406': 'Begleitfläche',
+                '1414': 'Fußgängerzone',
+                '1530': 'Brücke, Hochbahn/-straße',
+                'rn1530': 'Brücke, Hochbahn/-straße',
+                'rn1533': 'Tunnel, Unterführung',
+                'rn1535': 'Schleusenkammer',
+                '1542': 'Weg',
+                'rn1542': 'Weg',
+                '1543': 'Wattenweg',
+                '1544': 'Anleger',
+                'rn1544': 'Anleger',
+                '1540': 'Fahrbahn',
+                'rn1540': 'Fahrbahn',
+                '1808': 'Landeplatz, -bahn, Vorfeld, Rollbahn',
+                'rn1808': 'Landeplatz, -bahn, Vorfeld, Rollbahn',
+                '2305': 'Durchfahrt, Bauwerk',
+                '2533': 'Widerlager',
+                '2515': 'Bahnverkehr, Platz',
+                '3330': 'S-Bahnhof',
+                '3424': 'Fußweg',
+                '3426': 'Radweg',
+                '3428': 'Rad- und Fußweg',
+                '3430': 'Reitweg',
+                '3432': 'Parkplatz',
+                '3434': 'Rastplatz',
+                '3439': 'Segelfluggelände',
+                '3541': 'Kommunikationseinrichtung',
+                '3542': 'Fernsprechhäuschen',
+                '3544': 'Briefkasten',
+                '3546': 'Feuermelder',
+                '3547': 'Polizeirufsäule',
+                '3548': 'Kabelkasten, Schaltkasten',
+                '3550': 'Verkehrsampel',
+                '3551': 'Freistehende Hinweistafel, -zeichen',
+                '3552': 'Wegweiser von besonderer Bedeutung',
+                '3553': 'Freistehende Warntafel',
+                '3554': 'Haltestelle',
+                '3556': 'Kilometerstein',
+                '3558': 'Gaslaterne',
+                '3559': 'Laterne, elektrisch',
+                '3563': 'Säule, Werbefläche',
+                '3564': 'Leuchtsäule',
+                '3565': 'Fahnenmast',
+                '3566': 'Straßensinkkasten',
+                '3567': 'Müllbox',
+                '3568': 'Kehrichtgrube',
+                '3569': 'Uhr',
+                '3571': 'Flutlichtmast',
+                '3578': 'Haltepunkt',
+                '3588': 'Hubschrauberlandeplatz',
+                '3590': 'Leuchtfeuer',
+                '3645': 'Materialseilbahn',
+                '3646': 'Straßenbahngleis',
             },
         },
         {
-            'name': u"Friedhöfe",
+            'name': "Friedhöfe",
             'area': {'min': 0, 'max': 25000},
             'outline': {'min': 0, 'max': 5000},
             'line': {'min': 0, 'max': 5000},
             'point': {'min': 0, 'max': 5000},
             'label': {'min': 0, 'max': 5000},
             'classes': {
-                '1405': u'[1405]',
-                '2515': u'[2515]',
+                '1405': '[1405]',
+                '2515': '[2515]',
             },
         },
         {
-            'name': u"Vegetation",
+            'name': "Vegetation",
             'area': {'min': 0, 'max': 25000},
             'outline': {'min': 0, 'max': 5000},
             'line': {'min': 0, 'max': 5000},
             'point': {'min': 0, 'max': 5000},
             'label': {'min': 0, 'max': 5000},
             'classes': {
-                '1404': u'Brachland, Heide, Moor, Sumpf, Torf',
-                '1406': u'Garten',
-                '1409': u'Ackerland',
-                '1414': u'Wald',
-                '1561': u'Schneise',
-                '2515': u'Ackerland',
-                '2517': u'Wald',
-                '3413': u'Gras',
-                '3415': u'Park',
-                '3421': u'Garten',
-                '3440': u'Streuobstacker',
-                '3441': u'Streuobstwiese',
-                '3444': u'Spargel',
-                '3446': u'Baumschule',
-                '3448': u'Weingarten',
-                '3450': u'Obstplantage',
-                '3452': u'Obstbaumplantage',
-                '3454': u'Obststrauchplantage',
-                '3456': u'Wald',
-                '3457': u'Nadelbaum',
-                '3458': u'Laubwald',
-                '3460': u'Nadelwald',
-                '3462': u'Mischwald',
-                '3470': u'Mischwald',
-                '3474': u'Heide',
-                '3476': u'Moor',
-                '3478': u'Sumpf',
-                '3480': u'Unland',
-                '3481': u'Fels',
-                '3482': u'Steine, Schotter / Wellenbrecher, Buhne',
-                '3484': u'Düne, Sand',
-                '3597': u'Nadelbaum',
-                '3599': u'Laubbaum',
-                '3601': u'Busch, Hecke, Knick',
-                '3603': u'Röhricht, Schilf',
-                '3605': u'Zierfläche',
-                '3607': u'Korbweide',
-                '3613': u'Quelle',
+                '1404': 'Brachland, Heide, Moor, Sumpf, Torf',
+                '1406': 'Garten',
+                '1409': 'Ackerland',
+                '1414': 'Wald',
+                '1561': 'Schneise',
+                '2515': 'Ackerland',
+                '2517': 'Wald',
+                '3413': 'Gras',
+                '3415': 'Park',
+                '3421': 'Garten',
+                '3440': 'Streuobstacker',
+                '3441': 'Streuobstwiese',
+                '3444': 'Spargel',
+                '3446': 'Baumschule',
+                '3448': 'Weingarten',
+                '3450': 'Obstplantage',
+                '3452': 'Obstbaumplantage',
+                '3454': 'Obststrauchplantage',
+                '3456': 'Wald',
+                '3457': 'Nadelbaum',
+                '3458': 'Laubwald',
+                '3460': 'Nadelwald',
+                '3462': 'Mischwald',
+                '3470': 'Mischwald',
+                '3474': 'Heide',
+                '3476': 'Moor',
+                '3478': 'Sumpf',
+                '3480': 'Unland',
+                '3481': 'Fels',
+                '3482': 'Steine, Schotter / Wellenbrecher, Buhne',
+                '3484': 'Düne, Sand',
+                '3597': 'Nadelbaum',
+                '3599': 'Laubbaum',
+                '3601': 'Busch, Hecke, Knick',
+                '3603': 'Röhricht, Schilf',
+                '3605': 'Zierfläche',
+                '3607': 'Korbweide',
+                '3613': 'Quelle',
             },
         },
         {
-            'name': u"Landwirtschaftliche Nutzung",
+            'name': "Landwirtschaftliche Nutzung",
             'area': {'min': 0, 'max': None},
             'outline': {'min': 0, 'max': None},
             'line': {'min': 0, 'max': None},
@@ -630,128 +572,128 @@ class alkisplugin(QObject):
             },
         },
         {
-            'name': u"Gewässer",
+            'name': "Gewässer",
             'area': {'min': 0, 'max': 500000},
             'outline': {'min': 0, 'max': 5000},
             'line': {'min': 0, 'max': 5000},
             'point': {'min': 0, 'max': 5000},
             'label': {'min': 0, 'max': 5000},
             'classes': {
-                '1410': u'Gewässer',
-                '2518': u'Gewässer',
-                '3484': u'Düne, Sand',
-                '3488': u'Fließgewässer',
-                '3490': u'Gewässer',
-                '3529': u'Brunnen / Gasquelle, Mofette / Heilquelle',
-                '3594': u'Schöpfwerk',
-                '3613': u'Quelle',
-                '3617': u'Stromschnelle',
-                '3619': u'Unterirdisches Fließgewässer',
-                '3621': u'Fließgewässer, nicht ständig Wasser führend',
-                '3623': u'Höhe des Wasserspiegels',
-                '3653': u'[3653]',
-                'rn1548': u'Fischtreppe, Sicherheitstor, Sperrwerk',
-                'rn1550': u'Unterirdisches Gewässer',
+                '1410': 'Gewässer',
+                '2518': 'Gewässer',
+                '3484': 'Düne, Sand',
+                '3488': 'Fließgewässer',
+                '3490': 'Gewässer',
+                '3529': 'Brunnen / Gasquelle, Mofette / Heilquelle',
+                '3594': 'Schöpfwerk',
+                '3613': 'Quelle',
+                '3617': 'Stromschnelle',
+                '3619': 'Unterirdisches Fließgewässer',
+                '3621': 'Fließgewässer, nicht ständig Wasser führend',
+                '3623': 'Höhe des Wasserspiegels',
+                '3653': '[3653]',
+                'rn1548': 'Fischtreppe, Sicherheitstor, Sperrwerk',
+                'rn1550': 'Unterirdisches Gewässer',
             },
         },
         {
-            'name': u"Industrie und Gewerbe",
+            'name': "Industrie und Gewerbe",
             'area': {'min': 0, 'max': 500000, },
             'outline': {'min': 0, 'max': 10000, },
             'line': {'min': 0, 'max': 10000, },
             'point': {'min': 0, 'max': 10000, },
             'label': {'min': 0, 'max': 10000, },
             'classes': {
-                '1305': u'[1305]',
-                'rn1305': u'[rn1305]',
-                '1306': u'Mast',
-                'rn1306': u'Mast',
-                'rn1321': u'Vorratsbehälter, Speicherbauwerk unterirdisch',
-                'rn1501': u'[rn1501]',
-                'rn1510': u'Klärbecken',
-                '1304': u'Vorratsbehälter, aufgeständert',
-                '1401': u'[1401]',
-                '1403': u'[1403]',
-                '1404': u'[1404]',
-                '1501': u'[1501]',
-                '1510': u'[1510]',
-                '2031': u'[2031]',
-                '2515': u'[2515]',
-                '2524': u'[2524]',
-                '3401': u'Tankstelle',
-                '3403': u'Kraftwerk',
-                '3404': u'Umspannstation',
-                '3406': u'Stillgelegter Bergbaubetrieb',
-                '3407': u'Torf',
-                '3501': u'Windrad',
-                '3502': u'Solarzellen',
-                '3504': u'Mast',
-                '3506': u'Antenne / Funkmast',
-                '3507': u'Radioteleskop',
-                '3508': u'Schornstein, Schlot, Esse',
-                '3509': u'Stollenmundloch',
-                '3510': u'Schachtöffnung',
-                '3511': u'Kran',
-                '3512': u'Drehkran',
-                '3513': u'Portalkran',
-                '3514': u'Laufkran, Brückenlaufkran',
-                '3515': u'Portalkran',
-                '3517': u'Oberflurhydrant',
-                '3518': u'Unterflurhydrant',
-                '3519': u'Schieberkappe',
-                '3520': u'Einsteigeschacht',
-                '3521': u'Umformer',
-                '3522': u'Vorratsbehälter',
-                '3523': u'Pumpe',
-                '3653': u'Wehr',
+                '1305': '[1305]',
+                'rn1305': '[rn1305]',
+                '1306': 'Mast',
+                'rn1306': 'Mast',
+                'rn1321': 'Vorratsbehälter, Speicherbauwerk unterirdisch',
+                'rn1501': '[rn1501]',
+                'rn1510': 'Klärbecken',
+                '1304': 'Vorratsbehälter, aufgeständert',
+                '1401': '[1401]',
+                '1403': '[1403]',
+                '1404': '[1404]',
+                '1501': '[1501]',
+                '1510': '[1510]',
+                '2031': '[2031]',
+                '2515': '[2515]',
+                '2524': '[2524]',
+                '3401': 'Tankstelle',
+                '3403': 'Kraftwerk',
+                '3404': 'Umspannstation',
+                '3406': 'Stillgelegter Bergbaubetrieb',
+                '3407': 'Torf',
+                '3501': 'Windrad',
+                '3502': 'Solarzellen',
+                '3504': 'Mast',
+                '3506': 'Antenne / Funkmast',
+                '3507': 'Radioteleskop',
+                '3508': 'Schornstein, Schlot, Esse',
+                '3509': 'Stollenmundloch',
+                '3510': 'Schachtöffnung',
+                '3511': 'Kran',
+                '3512': 'Drehkran',
+                '3513': 'Portalkran',
+                '3514': 'Laufkran, Brückenlaufkran',
+                '3515': 'Portalkran',
+                '3517': 'Oberflurhydrant',
+                '3518': 'Unterflurhydrant',
+                '3519': 'Schieberkappe',
+                '3520': 'Einsteigeschacht',
+                '3521': 'Umformer',
+                '3522': 'Vorratsbehälter',
+                '3523': 'Pumpe',
+                '3653': 'Wehr',
             },
         },
         {
-            'name': u"Sport und Freizeit",
+            'name': "Sport und Freizeit",
             'area': {'min': 0, 'max': 500000},
             'outline': {'min': 0, 'max': 10000},
             'line': {'min': 0, 'max': 10000},
             'point': {'min': 0, 'max': 10000},
             'label': {'min': 0, 'max': 10000},
             'classes': {
-                '1405': u'[1405]',
-                '1519': u'Überdachte Tribüne',
-                'rn1519': u'Überdachte Tribüne',
-                '1520': u'Hart-, Rasenplatz, Spielfeld',
-                'rn1520': u'Hart-, Rasenplatz, Spielfeld',
-                '1521': u'Rennbahn, Laufbahn, Geläuf',
-                'rn1521': u'Rennbahn, Laufbahn, Geläuf',
-                '1522': u'Stadion',
-                'rn1522': u'Stadion',
-                'rn1524': u'[1524]',
-                '1526': u'Schwimmbecken',
-                'rn1526': u'Schwimmbecken',
-                '2515': u'[2515]',
-                '3409': u'Skating',
-                '3410': u'Zoo',
-                '3411': u'Safaripark, Wildpark',
-                '3412': u'Campingplatz',
-                '3413': u'Rasen',
-                '3415': u'Park',
-                '3417': u'Botanischer Garten',
-                '3419': u'Kleingarten',
-                '3421': u'Garten',
-                '3423': u'Spielplatz, Bolzplatz',
-                '3424': u'Fußweg',
-                '3524': u'Schießanlage',
-                '3525': u'Gradierwerk',
+                '1405': '[1405]',
+                '1519': 'Überdachte Tribüne',
+                'rn1519': 'Überdachte Tribüne',
+                '1520': 'Hart-, Rasenplatz, Spielfeld',
+                'rn1520': 'Hart-, Rasenplatz, Spielfeld',
+                '1521': 'Rennbahn, Laufbahn, Geläuf',
+                'rn1521': 'Rennbahn, Laufbahn, Geläuf',
+                '1522': 'Stadion',
+                'rn1522': 'Stadion',
+                'rn1524': '[1524]',
+                '1526': 'Schwimmbecken',
+                'rn1526': 'Schwimmbecken',
+                '2515': '[2515]',
+                '3409': 'Skating',
+                '3410': 'Zoo',
+                '3411': 'Safaripark, Wildpark',
+                '3412': 'Campingplatz',
+                '3413': 'Rasen',
+                '3415': 'Park',
+                '3417': 'Botanischer Garten',
+                '3419': 'Kleingarten',
+                '3421': 'Garten',
+                '3423': 'Spielplatz, Bolzplatz',
+                '3424': 'Fußweg',
+                '3524': 'Schießanlage',
+                '3525': 'Gradierwerk',
             },
         },
         {
-            'name': u"Wohnbauflächen",
+            'name': "Wohnbauflächen",
             'area': {'min': 0, 'max': 500000},
             'outline': {'min': 0, 'max': 10000},
             'line': {'min': 0, 'max': 10000},
             'point': {'min': 0, 'max': 10000},
             'label': {'min': 0, 'max': 10000},
             'classes': {
-                '1401': u'Wohnbaufläche',
-                '2515': u'[2515]',
+                '1401': 'Wohnbaufläche',
+                '2515': '[2515]',
             },
         },
     )
@@ -993,9 +935,6 @@ class alkisplugin(QObject):
 
         self.settings = alkissettings(self)
 
-        if not qgisAvailable:
-            return
-
         if hasattr(QgsSymbol, "MapUnit"):
             self.MapUnit = QgsSymbol.MapUnit
             self.Millimeter = QgsSymbol.MM
@@ -1010,7 +949,7 @@ class alkisplugin(QObject):
             self.PolygonGeometry = QgsWkbTypes.PolygonGeometry
 
     def initGui(self):
-        self.toolbar = self.iface.addToolBar(u"norGIS: ALKIS")
+        self.toolbar = self.iface.addToolBar("norGIS: ALKIS")
         self.toolbar.setObjectName("norGIS_ALKIS_Toolbar")
 
         self.importAction = QAction(QIcon("alkis:logo.svg"), "Layer einbinden", self.iface.mainWindow())
@@ -1018,21 +957,13 @@ class alkisplugin(QObject):
         self.importAction.setStatusTip("ALKIS-Layer einbinden")
         self.importAction.triggered.connect(self.run)
 
-        if mapscriptAvailable:
-            self.umnAction = QAction(QIcon("alkis:logo.svg"), u"UMN-Mapdatei erzeugen…", self.iface.mainWindow())
-            self.umnAction.setWhatsThis("UMN-Mapserver-Datei erzeugen")
-            self.umnAction.setStatusTip("UMN-Mapserver-Datei erzeugen")
-            self.umnAction.triggered.connect(self.mapfile)
-        else:
-            self.umnAction = None
-
-        self.searchAction = QAction(QIcon("alkis:find.svg"), u"Suchen…", self.iface.mainWindow())
+        self.searchAction = QAction(QIcon("alkis:find.svg"), "Suchen…", self.iface.mainWindow())
         self.searchAction.setWhatsThis("ALKIS-Beschriftung suchen")
         self.searchAction.setStatusTip("ALKIS-Beschriftung suchen")
         self.searchAction.triggered.connect(self.search)
         self.toolbar.addAction(self.searchAction)
 
-        self.queryOwnerAction = QAction(QIcon("alkis:eigner.svg"), u"Flurstücksnachweis", self.iface.mainWindow())
+        self.queryOwnerAction = QAction(QIcon("alkis:eigner.svg"), "Flurstücksnachweis", self.iface.mainWindow())
         self.queryOwnerAction.triggered.connect(self.setQueryOwnerTool)
         self.queryOwnerAction.setCheckable(True)
         self.toolbar.addAction(self.queryOwnerAction)
@@ -1045,32 +976,30 @@ class alkisplugin(QObject):
         self.clearAction.triggered.connect(self.clearHighlight)
         self.toolbar.addAction(self.clearAction)
 
-        self.confAction = QAction(QIcon("alkis:logo.svg"), u"Konfiguration…", self.iface.mainWindow())
+        self.confAction = QAction(QIcon("alkis:logo.svg"), "Konfiguration…", self.iface.mainWindow())
         self.confAction.setWhatsThis("Konfiguration der ALKIS-Erweiterung")
         self.confAction.setStatusTip("Konfiguration der ALKIS-Erweiterung")
         self.confAction.triggered.connect(self.conf)
 
-        self.aboutAction = QAction(QIcon("alkis:logo.svg"), u"Über...", self.iface.mainWindow())
-        self.aboutAction.setWhatsThis(u"Über die Erweiterung")
-        self.aboutAction.setStatusTip(u"Über die Erweiterung")
+        self.aboutAction = QAction(QIcon("alkis:logo.svg"), "Über…", self.iface.mainWindow())
+        self.aboutAction.setWhatsThis("Über die Erweiterung")
+        self.aboutAction.setStatusTip("Über die Erweiterung")
         self.aboutAction.triggered.connect(self.about)
 
         self.iface.addPluginToDatabaseMenu("&ALKIS", self.importAction)
-        if self.umnAction:
-            self.iface.addPluginToDatabaseMenu("&ALKIS", self.umnAction)
         self.iface.addPluginToDatabaseMenu("&ALKIS", self.confAction)
         self.iface.addPluginToDatabaseMenu("&ALKIS", self.aboutAction)
 
         ns = QSettings("norBIT", "EDBSgen/PRO")
         if ns.contains("norGISPort") or ns.contains("useTempfile"):
-            self.pointInfoAction = QAction(QIcon("alkis:info.svg"), u"Flurstücksabfrage (Punkt)", self.iface.mainWindow())
+            self.pointInfoAction = QAction(QIcon("alkis:info.svg"), "Flurstücksabfrage (Punkt)", self.iface.mainWindow())
             self.pointInfoAction.triggered.connect(self.setPointInfoTool)
             self.pointInfoAction.setCheckable(True)
             self.toolbar.addAction(self.pointInfoAction)
             self.pointInfoTool = ALKISPointInfo(self)
             self.pointInfoTool.setAction(self.pointInfoAction)
 
-            self.polygonInfoAction = QAction(QIcon("alkis:pinfo.svg"), u"Flurstücksabfrage (Polygon)", self.iface.mainWindow())
+            self.polygonInfoAction = QAction(QIcon("alkis:pinfo.svg"), "Flurstücksabfrage (Polygon)", self.iface.mainWindow())
             self.polygonInfoAction.triggered.connect(self.setPolygonInfoTool)
             self.polygonInfoAction.setCheckable(True)
             self.toolbar.addAction(self.polygonInfoAction)
@@ -1090,8 +1019,6 @@ class alkisplugin(QObject):
 
     def unload(self):
         self.iface.removePluginDatabaseMenu("&ALKIS", self.importAction)
-        if self.umnAction:
-            self.iface.removePluginDatabaseMenu("&ALKIS", self.umnAction)
         self.iface.removePluginDatabaseMenu("&ALKIS", self.confAction)
         self.iface.removePluginDatabaseMenu("&ALKIS", self.aboutAction)
 
@@ -1103,9 +1030,6 @@ class alkisplugin(QObject):
         if self.importAction:
             self.importAction.deleteLater()
             self.importAction = None
-        if self.umnAction:
-            self.umnAction.deleteLater()
-            self.umnAction = None
         if self.confAction:
             self.confAction.deleteLater()
             self.confAction = None
@@ -1159,14 +1083,14 @@ class alkisplugin(QObject):
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            logMessage(u"Keinen Flächenmarkierungslayer gefunden.")
+            logMessage("Keinen Flächenmarkierungslayer gefunden.")
             return
 
         if self.areaMarkerLayer in layers or self.areaMarkerLayer.id() in layers:
             QgsProject.instance().removeEntry("alkis", "/areaMarkerLayer")
             self.areaMarkerLayer = None
             self.settings.removeSettings()
-            logMessage(u"ALKIS-Layer entfernt.")
+            logMessage("ALKIS-Layer entfernt.")
 
     def conf(self):
         dlg = ALKISConf(self)
@@ -1183,7 +1107,7 @@ class alkisplugin(QObject):
                 self.pointMarkerLayer = self.mapLayer(layerId)
 
         if self.pointMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!")
+            QMessageBox.warning(None, "ALKIS", "Fehler: Punktmarkierungslayer nicht gefunden!")
             return False
 
         if self.lineMarkerLayer is None:
@@ -1192,7 +1116,7 @@ class alkisplugin(QObject):
                 self.lineMarkerLayer = self.mapLayer(layerId)
 
         if self.lineMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Linienmarkierungslayer nicht gefunden!")
+            QMessageBox.warning(None, "ALKIS", "Fehler: Linienmarkierungslayer nicht gefunden!")
             return False
 
         return True
@@ -1216,52 +1140,34 @@ class alkisplugin(QObject):
         except AttributeError:
             layer.toggleScaleBasedVisibility(True)
 
-    def setUMNScale(self, layer, d):
-        if d.get('umntemplate', 0):
-            template = self.settings.umntemplate
-            if template:
-                layer.template = template
-                layer.tolerance = 1
-                layer.toleranceunits = mapscript.MS_PIXELS
-        if d['min'] is None and d['max'] is None:
-            return
-
-        if d['min'] is not None:
-            layer.minscaledenom = d['min']
-
-        if d['max'] is not None:
-            layer.maxscaledenom = d['max']
-
     def categoryLabel(self, d, sn):
-        qDebug(u"categories: %s" % d['classes'])
+        qDebug("categories: %s" % d['classes'])
         if str(sn) in d['classes']:
             return d['classes'][str(sn)]
         else:
             return "(%s)" % sn
 
     def run(self):
-        if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", u"Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel) == QMessageBox.StandardButton.Cancel:
+        if self.settings.hasSettings() and QMessageBox.warning(None, "ALKIS", "Im Projekt sind bereits ALKIS-Daten eingebunden.\nNach dem Einbinden werden nur die neuen Layer abfragbar sein.", QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel) == QMessageBox.StandardButton.Cancel:
             return
 
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-        try:
-            self.alkisimport()
-        finally:
-            if Qgis.QGIS_VERSION_INT >= 31800:
-                QMetaObject.invokeMethod(self.iface.layerTreeView().model(), 'invalidate', Qt.ConnectionType.QueuedConnection)
+        with OverrideCursor(Qt.CursorShape.WaitCursor):
+            try:
+                self.alkisimport()
+            finally:
+                if Qgis.QGIS_VERSION_INT >= 31800:
+                    QMetaObject.invokeMethod(self.iface.layerTreeView().model(), 'invalidate', Qt.ConnectionType.QueuedConnection)
 
-            QApplication.restoreOverrideCursor()
-
-            if self.proxyTask:
-                self.proxyTask.finalize(True)
-                self.proxyTask = None
+                if self.proxyTask:
+                    self.proxyTask.finalize(True)
+                    self.proxyTask = None
 
     def progress(self, i, m):
-        self.showStatusMessage.emit(u"%s/%s" % (alkisplugin.themen[i]['name'], m))
+        self.showStatusMessage.emit("%s/%s" % (alkisplugin.themen[i]['name'], m))
 
         if hasProxyTask:
             if self.proxyTask is None:
-                self.proxyTask = QgsProxyProgressTask(u"Lade ALKIS-Layer…")
+                self.proxyTask = QgsProxyProgressTask("Lade ALKIS-Layer…")
                 QgsApplication.taskManager().addTask(self.proxyTask)
 
             self.proxyTask.setProxyProgress(self.step * 100 / self.steps)
@@ -1288,35 +1194,28 @@ class alkisplugin(QObject):
             b.setValue(i)
 
     def setStricharten(self, db, sym, kat, sn, outline):
-        lqry = QSqlQuery(db)
 
-        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"  # nosec: B608
-               u" FROM alkis_linien ln"
-               u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer{0}"
-               u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
-               u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-               u" LEFT OUTER JOIN alkis_farben ON {1}.farbe=alkis_farben.id"
-               u" WHERE ln.signaturnummer='{2}'{3}").format(
-                   "" if kat < 0 else u" AND l.katalog=%d" % kat,
-                   u"ln" if kat < 0 else u"l",
-                   sn,
-                   "" if kat < 0 else u" AND ln.katalog=%d" % kat
-        )
-
-        if lqry.exec(sql):
+        try:
             stricharten = []
-
             maxStrichstaerke = None
 
-            while lqry.next():
-                try:
-                    abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, c = \
-                        lqry.value(0), lqry.value(1), float(lqry.value(2)), \
-                        float(lqry.value(3)), float(lqry.value(4)), lqry.value(5), \
-                        QColor(int(lqry.value(6)), int(lqry.value(7)), lqry.value(8))
-                except TypeError as e:
-                    logMessage(u"Signaturnummer %s: Ausnahme %s\nSQL:%s" % (sn, str(e), sql))
-                    continue
+            for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, r, g, b in db.executeSql(
+                (
+                    "SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand,r,g,b"  # nosec: B608
+                    " FROM alkis_linien ln"
+                    " LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer{0}"
+                    " LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
+                    " LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
+                    " LEFT OUTER JOIN alkis_farben ON {1}.farbe=alkis_farben.id"
+                    " WHERE ln.signaturnummer='{2}'{3}"
+                ).format(
+                    "" if kat < 0 else " AND l.katalog=%d" % kat,
+                    "ln" if kat < 0 else "l",
+                    sn,
+                    "" if kat < 0 else " AND ln.katalog=%d" % kat
+                )
+            ):
+                c = QColor(r, g, b)
 
                 if maxStrichstaerke is None or abs(strichstaerke) > abs(maxStrichstaerke):
                     maxStrichstaerke = strichstaerke
@@ -1341,14 +1240,14 @@ class alkisplugin(QObject):
                 if gesamtl0 is None:
                     gesamtl0 = gesamtl
                 elif gesamtl0 != gesamtl:
-                    raise BaseException(u"Signaturnummer %s: Stricharten nicht gleich lang (%lf vs %lf)" % (sn, gesamtl0, gesamtl))
+                    raise BaseException("Signaturnummer %s: Stricharten nicht gleich lang (%lf vs %lf)" % (sn, gesamtl0, gesamtl))
 
                 if laenge > 0:
                     if leinzug is None:
                         leinzug = einzug
                     elif leinzug != einzug:
-                        # raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
-                        logMessage(u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug))
+                        # raise BaseException( "Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
+                        logMessage("Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug))
                         return False
 
             for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
@@ -1400,20 +1299,21 @@ class alkisplugin(QObject):
                     sym.appendSymbolLayer(sl)
 
             if sym.symbolLayerCount() == 1:
-                logMessage(u"Signaturnummer %s: Keine Linienarten erzeugt." % sn)
+                logMessage(f"Signaturnummer {sn}: Keine Linienarten erzeugt.")
                 return False
 
             if outline:
                 sym.deleteSymbolLayer(0)
             else:
-                sl = QgsSimpleLineSymbolLayer(QColor(0, 0, 0, 0) if hasBlendSource else Qt.GlobalColor.white, maxStrichstaerke * 1.01, Qt.PenStyle.SolidLine)
+                sl = QgsSimpleLineSymbolLayer(QColor(0, 0, 0, 0), maxStrichstaerke * 1.01, Qt.PenStyle.SolidLine)
                 sl.setWidthUnit(self.MapUnit)
                 sym.changeSymbolLayer(0, sl)
-        else:
-            logMessage(u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, sql, lqry.lastError().text()))
-            return False
 
-        return True
+            return True
+
+        except QgsProviderConnectionException as e:
+            logMessage(f"Signaturnummer {sn}: Linienarten konnten nicht abgefragt werden. [{e}]")
+            return False
 
     def alkisimport(self):
         self.settings.loadSettings()
@@ -1427,9 +1327,6 @@ class alkisplugin(QObject):
         embedSVGs = self.settings.embedSVGs
 
         self.iface.mapCanvas().setRenderFlag(False)
-
-        qry = QSqlQuery(db)
-        qry2 = QSqlQuery(db)
 
         svgpath = os.path.abspath(os.path.join(BASEDIR, "svg"))
         qs = QgsSettings()
@@ -1464,15 +1361,18 @@ class alkisplugin(QObject):
         self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
 
         if self.epsg > 100000:
-            if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():  # nosec: B608
-                crs = QgsCoordinateReferenceSystem()
-                crs.createFromProj4(qry.value(0))
-                if crs.authid() == "":
-                    crs.saveAsUserCrs("ALKIS %d" % self.epsg)
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), qry.executedQuery()))
-            else:
-                QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), qry.executedQuery()))
+            try:
+                rows = db.executeSql("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg)  # nosec: B608
+                if len(rows) == 1:
+                    crs = QgsCoordinateReferenceSystem()
+                    crs.createFromProj4(rows[0][0])
+                    if crs.authid() == "":
+                        crs.saveAsUserCrs("ALKIS %d" % self.epsg)
+                    else:
+                        QMessageBox.critical(None, "ALKIS", f"Konnte Projektion für SRID {self.epsg} nicht zuweisen: {rows[0][0]}")
+
+            except QgsProviderConnectionException as e:
+                QMessageBox.critical(None, "ALKIS", f"Fehler: {e}")
                 return
 
         self.steps = 0
@@ -1494,7 +1394,7 @@ class alkisplugin(QObject):
 
             nSubGroups = 0
 
-            qDebug(u"Thema: %s" % t)
+            qDebug("Thema: %s" % t)
 
             for f in d['filter']:
                 name = f.get('name', t)
@@ -1521,31 +1421,29 @@ class alkisplugin(QObject):
                 if f.get('filter', None):
                     where += " AND (%s)" % f['filter']
 
-                self.progress(iThema, u"Flächen")
+                self.progress(iThema, "Flächen")
 
-                sql = (u"SELECT signaturnummer,r,g,b"  # nosec: B608
-                       u" FROM alkis_flaechen"
-                       u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                       u" WHERE EXISTS ("
-                       u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
-                       u"){1}"
-                       u" ORDER BY darstellungsprioritaet DESC"
-                       ).format(
-                           where,
-                           "" if katalog < 0 else " AND alkis_flaechen.katalog=%d" % katalog
-                )
-
-                # qDebug( u"SQL: %s" % sql )
-                if qry.exec(sql):
+                try:
                     r = QgsCategorizedSymbolRenderer("sn_flaeche")
                     r.deleteAllCategories()
 
                     n = 0
-                    while qry.next():
+                    for sn, c0, c1, c2 in db.executeSql(
+                        (
+                            "SELECT signaturnummer,r,g,b"  # nosec: B608
+                            " FROM alkis_flaechen"
+                            " JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
+                            " WHERE EXISTS ("
+                            "SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
+                            "){1}"
+                            " ORDER BY darstellungsprioritaet DESC"
+                        ).format(
+                            where,
+                            "" if katalog < 0 else " AND alkis_flaechen.katalog=%d" % katalog
+                        )
+                    ):
                         sym = QgsFillSymbol()
-
-                        sn = qry.value(0)
-                        sym.setColor(QColor(int(qry.value(1)), int(qry.value(2)), int(qry.value(3))))
+                        sym.setColor(QColor(c0, c1, c2))
                         try:
                             sym.symbolLayer(0).setBorderStyle(Qt.PenStyle.NoPen)
                         except AttributeError:
@@ -1556,8 +1454,8 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
-                            u"Flächen (%s)" % t,
+                            "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
+                            "Flächen (%s)" % t,
                             "postgres", layeropts
                         )
                         layer.setReadOnly()
@@ -1570,48 +1468,45 @@ class alkisplugin(QObject):
                         nLayers += 1
                     else:
                         del r
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+                except QgsProviderConnectionException as e:
+                    QMessageBox.critical(None, "ALKIS", f"Fehler: {e}")
                     break
 
                 self.progress(iThema, "Grenzen")
 
-                sql = (u"SELECT"  # nosec: B608
-                       u" signaturnummer"
-                       u" FROM alkis_linien"
-                       u" WHERE EXISTS ("
-                       u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_randlinie=alkis_linien.signaturnummer"
-                       u"){1}"
-                       u" ORDER BY darstellungsprioritaet"
-                       ).format(
-                           where,
-                           "" if katalog < 0 else " AND alkis_linien.katalog=%d" % katalog,
-                )
-
-                # qDebug( u"SQL: %s" % sql )
-                if qry.exec(sql):
+                try:
                     r = QgsCategorizedSymbolRenderer("sn_randlinie")
                     r.deleteAllCategories()
 
                     n = 0
-                    while qry.next():
+                    for sn, in db.executeSql(
+                        (
+                            "SELECT"  # nosec: B608
+                            " signaturnummer"
+                            " FROM alkis_linien"
+                            " WHERE EXISTS ("
+                            "SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_randlinie=alkis_linien.signaturnummer"
+                            "){1}"
+                            " ORDER BY darstellungsprioritaet"
+                        ).format(
+                            where,
+                            "" if katalog < 0 else " AND alkis_linien.katalog=%d" % katalog,
+                        )
+                    ):
                         sym = QgsFillSymbol()
-                        sn = qry.value(0)
-
                         if self.setStricharten(db, sym, katalog, sn, True):
                             r.addCategory(QgsRendererCategory(sn, sym, self.categoryLabel(d, sn)))
                             n += 1
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
-                            u"Grenzen (%s)" % t,
+                            "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
+                            "Grenzen (%s)" % t,
                             "postgres", layeropts
                         )
                         layer.setReadOnly()
                         self.setRenderer(layer, r)
-                        if hasBlendSource:
-                            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Source)
+                        layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Source)
                         self.setScale(layer, f['outline'])
                         self.refreshLayer(layer)
 
@@ -1620,34 +1515,32 @@ class alkisplugin(QObject):
                         nLayers += 1
                     else:
                         del r
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+                except QgsProviderConnectionException as e:
+                    QMessageBox.critical(None, "ALKIS", f"Fehler: {e}")
                     break
 
                 self.progress(iThema, "Linien")
 
-                sql = (u"SELECT signaturnummer"  # nosec: B608
-                       u" FROM alkis_linien"
-                       u" WHERE EXISTS ("
-                       u"SELECT * FROM po_lines WHERE {0} AND po_lines.signaturnummer=alkis_linien.signaturnummer"
-                       u"){1}"
-                       u" ORDER BY darstellungsprioritaet ASC"
-                       ).format(
-                           where,
-                           "" if katalog < 0 else u" AND alkis_linien.katalog=%d" % katalog,
-                )
-
-                # qDebug( u"SQL: %s" % sql )
-                if qry.exec(sql):
+                try:
                     r = QgsCategorizedSymbolRenderer("signaturnummer")
                     r.setUsingSymbolLevels(True)
                     r.deleteAllCategories()
 
                     n = 0
-                    while qry.next():
+                    for sn, in db.executeSql(
+                        (
+                            "SELECT signaturnummer"  # nosec: B608
+                            " FROM alkis_linien"
+                            " WHERE EXISTS ("
+                            "SELECT * FROM po_lines WHERE {0} AND po_lines.signaturnummer=alkis_linien.signaturnummer"
+                            "){1}"
+                            " ORDER BY darstellungsprioritaet ASC"
+                        ).format(
+                            where,
+                            "" if katalog < 0 else " AND alkis_linien.katalog=%d" % katalog,
+                        )
+                    ):
                         sym = QgsLineSymbol()
-                        sn = qry.value(0)
-
                         if self.setStricharten(db, sym, katalog, sn, False):
                             for i in range(0, sym.symbolLayerCount()):
                                 sym.symbolLayer(i).setRenderingPass(n)
@@ -1657,14 +1550,13 @@ class alkisplugin(QObject):
 
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_lines (line) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
-                            u"Linien (%s)" % t,
+                            "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_lines (line) sql=%s" % (conninfo, self.epsg, self.quotedschema(), where),
+                            "Linien (%s)" % t,
                             "postgres", layeropts
                         )
                         layer.setReadOnly()
                         self.setRenderer(layer, r)
-                        if hasBlendSource:
-                            layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Source)
+                        layer.setFeatureBlendMode(QPainter.CompositionMode.CompositionMode_Source)
                         self.setScale(layer, f['line'])
                         self.refreshLayer(layer)
 
@@ -1673,31 +1565,29 @@ class alkisplugin(QObject):
                         nLayers += 1
                     else:
                         del r
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+                except QgsProviderConnectionException as e:
+                    QMessageBox.critical(None, "ALKIS", f"Fehler: {e}")
                     break
 
                 self.progress(iThema, "Punkte")
 
                 kat = max([1, katalog])
 
-                sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE %s" % where  # nosec: B608
-                # qDebug( u"SQL: %s" % sql )
-                if qry.exec(sql):
+                try:
                     r = QgsCategorizedSymbolRenderer("signaturnummer")
                     r.deleteAllCategories()
 
                     n = 0
-                    while qry.next():
-                        sn = qry.value(0)
+                    for sn, in db.executeSql(f"SELECT DISTINCT signaturnummer FROM po_points WHERE {where}"):  # nosec: B608
                         svg = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
 
                         x, y, w = 0, 0, 1
-                        if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():  # nosec: B608
-                            x = (qry2.value(0) + qry2.value(2)) / 2
-                            y = (qry2.value(1) + qry2.value(3)) / 2
-                            w = qry2.value(2) - qry2.value(0)
-                            # h = qry2.value(3) - qry2.value(1)
+                        bounds = db.executeSql("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn))  # nosec: B608
+                        if len(bounds) == 1:
+                            x = (bounds[0][0] + bounds[0][2]) / 2
+                            y = (bounds[0][1] + bounds[0][3]) / 2
+                            w = bounds[0][2] - bounds[0][0]
+                            # h = bounds[0][3] - bounds[0][1]
                         elif sn in alkisplugin.exts:
                             x = (alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx']) / 2
                             y = (alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy']) / 2
@@ -1729,11 +1619,11 @@ class alkisplugin(QObject):
                         r.addCategory(QgsRendererCategory("%s" % sn, sym, self.categoryLabel(d, sn)))
                         n += 1
 
-                    qDebug(u"classes: %d" % n)
+                    qDebug("classes: %d" % n)
                     if n > 0:
                         layer = QgsVectorLayer(
-                            u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),  # nosec: B608
-                            u"Punkte (%s)" % t,
+                            "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=\"(SELECT ogc_fid,gml_id,thema,layer,signaturnummer,-drehwinkel_grad AS drehwinkel_grad,point FROM %s.po_points WHERE %s)\" (point) sql=" % (conninfo, self.epsg, self.quotedschema().replace('"', '\\"'), where),  # nosec: B608
+                            "Punkte (%s)" % t,
                             "postgres", layeropts
                         )
                         layer.setReadOnly()
@@ -1746,8 +1636,9 @@ class alkisplugin(QObject):
                         nLayers += 1
                     else:
                         del r
-                else:
-                    QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
+
+                except QgsProviderConnectionException as e:
+                    QMessageBox.critical(None, "ALKIS", e)
                     break
 
                 n = 0
@@ -1757,13 +1648,16 @@ class alkisplugin(QObject):
                     geom = "point" if i == 0 else "line"
                     geomtype = "MULTIPOINT" if i == 0 else "MULTILINESTRING"
 
-                    if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)):  # nosec: B608
-                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                        continue
+                    try:
+                        rows = db.executeSql("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom))  # nosec: B608
 
-                    self.progress(iThema, "Beschriftungen (%d)" % (i + 1))
+                        self.progress(iThema, "Beschriftungen (%d)" % (i + 1))
 
-                    if not qry.next() or int(qry.value(0)) == 0:
+                        if len(rows) == 0 or rows[0][0] == 0:
+                            continue
+
+                    except QgsProviderConnectionException as e:
+                        QMessageBox.critical(None, "ALKIS", f"Fehler: {e}")
                         continue
 
                     if n == 1:
@@ -1772,51 +1666,51 @@ class alkisplugin(QObject):
                         layer = None
 
                     uri = (
-                        u"{0} estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type={1} srid={2} table="  # nosec: B608
-                        u"\"("
-                        u"SELECT"
-                        u" ogc_fid"
-                        u",layer"
+                        "{0} estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type={1} srid={2} table="  # nosec: B608
+                        "\"("
+                        "SELECT"
+                        " ogc_fid"
+                        ",layer"
                         # FIXME: Faktor 1.3225 empirisch bestimmt (QGIS: Schriftgröße mit ascent/decent; ALKIS: reine Schriftgröße)
-                        u",CASE WHEN grad_pt<0 THEN abs(s.grad_pt) ELSE 0.25*coalesce(skalierung,1)*s.grad_pt*1.3225 END AS tsize"
-                        u",CASE WHEN grad_pt<0 THEN 'Point' ELSE 'MapUnit' END AS tunit"
-                        u",text"
-                        u",CASE coalesce(po_labels.horizontaleausrichtung,s.horizontaleausrichtung)"
-                        u" WHEN 'linksbündig' THEN 'Left'"
-                        u" WHEN 'rechtsbündig' THEN 'Right'"
-                        u" ELSE 'Center'"
-                        u" END AS halign"
-                        u",CASE coalesce(po_labels.vertikaleausrichtung,s.vertikaleausrichtung)"
-                        u" WHEN 'oben' THEN 'Cap'"
-                        u" WHEN 'Basis' THEN 'Base'"
-                        u" ELSE 'Half'"
-                        u" END AS valign"
-                        u",coalesce(s.art,'Arial'::text) AS family"
-                        u",CASE WHEN s.stil LIKE '%Kursiv%' THEN 1 ELSE 0 END AS italic"
-                        u",CASE WHEN s.stil LIKE '%Fett%' THEN 1 ELSE 0 END AS bold"
-                        u",coalesce(sperrung_pt*0.25,0) AS fontsperrung"
-                        u",replace(f.umn,' ',',') AS tcolor"
-                        u",CASE WHEN grad_pt<0 THEN 0 ELSE 1 END AS tshow"
-                        u",{3}"
-                        u" FROM {7}.po_labels"
-                        u" LEFT OUTER JOIN {7}.alkis_schriften s ON po_labels.signaturnummer=s.signaturnummer{4}"
-                        u" LEFT OUTER JOIN {7}.alkis_farben f ON s.farbe=f.id"
-                        u" WHERE {5}"
-                        u")\" ({6}) sql="
+                        ",CASE WHEN grad_pt<0 THEN abs(s.grad_pt) ELSE 0.25*coalesce(skalierung,1)*s.grad_pt*1.3225 END AS tsize"
+                        ",CASE WHEN grad_pt<0 THEN 'Point' ELSE 'MapUnit' END AS tunit"
+                        ",text"
+                        ",CASE coalesce(po_labels.horizontaleausrichtung,s.horizontaleausrichtung)"
+                        " WHEN 'linksbündig' THEN 'Left'"
+                        " WHEN 'rechtsbündig' THEN 'Right'"
+                        " ELSE 'Center'"
+                        " END AS halign"
+                        ",CASE coalesce(po_labels.vertikaleausrichtung,s.vertikaleausrichtung)"
+                        " WHEN 'oben' THEN 'Cap'"
+                        " WHEN 'Basis' THEN 'Base'"
+                        " ELSE 'Half'"
+                        " END AS valign"
+                        ",coalesce(s.art,'Arial'::text) AS family"
+                        ",CASE WHEN s.stil LIKE '%Kursiv%' THEN 1 ELSE 0 END AS italic"
+                        ",CASE WHEN s.stil LIKE '%Fett%' THEN 1 ELSE 0 END AS bold"
+                        ",coalesce(sperrung_pt*0.25,0) AS fontsperrung"
+                        ",replace(f.umn,' ',',') AS tcolor"
+                        ",CASE WHEN grad_pt<0 THEN 0 ELSE 1 END AS tshow"
+                        ",{3}"
+                        " FROM {7}.po_labels"
+                        " LEFT OUTER JOIN {7}.alkis_schriften s ON po_labels.signaturnummer=s.signaturnummer{4}"
+                        " LEFT OUTER JOIN {7}.alkis_farben f ON s.farbe=f.id"
+                        " WHERE {5}"
+                        ")\" ({6}) sql="
                     ).format(
                         conninfo, geomtype, self.epsg,
-                        u"point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom == "point" else "line",
+                        "point,st_x(point) AS tx,st_y(point) AS ty,drehwinkel_grad AS tangle" if geom == "point" else "line",
                         "" if katalog < 0 else " AND s.katalog=%d" % katalog,
                         where,
                         geom,
-                        self.quotedschema().replace(u'"', u'\\"')
+                        self.quotedschema().replace('"', '\\"')
                     )
 
-                    qDebug(u"URI: %s" % uri)
+                    qDebug("URI: %s" % uri)
 
                     layer = QgsVectorLayer(
                         uri,
-                        u"Beschriftungen (%s)" % t,
+                        "Beschriftungen (%s)" % t,
                         "postgres", layeropts
                     )
                     layer.setReadOnly()
@@ -1909,8 +1803,8 @@ class alkisplugin(QObject):
             self.setGroupVisible(self.alkisGroup, False)
 
             self.pointMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=%s.po_labels (point) sql=false" % (conninfo, self.epsg, self.quotedschema()),
-                u"Punktmarkierung",
+                "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOINT srid=%d table=%s.po_labels (point) sql=false" % (conninfo, self.epsg, self.quotedschema()),
+                "Punktmarkierung",
                 "postgres", layeropts
             )
 
@@ -1927,8 +1821,8 @@ class alkisplugin(QObject):
             self.addLayer(self.pointMarkerLayer, markerGroup)
 
             self.lineMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_labels (line) sql=false" % (conninfo, self.epsg, self.quotedschema()),
-                u"Linienmarkierung",
+                "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTILINESTRING srid=%d table=%s.po_labels (line) sql=false" % (conninfo, self.epsg, self.quotedschema()),
+                "Linienmarkierung",
                 "postgres", layeropts
             )
 
@@ -1943,8 +1837,8 @@ class alkisplugin(QObject):
             self.addLayer(self.lineMarkerLayer, markerGroup)
 
             self.areaMarkerLayer = QgsVectorLayer(
-                u"%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=false" % (conninfo, self.epsg, self.quotedschema()),
-                u"Flächenmarkierung",
+                "%s estimatedmetadata=true checkPrimaryKeyUnicity=0 key='ogc_fid' type=MULTIPOLYGON srid=%d table=%s.po_polygons (polygon) sql=false" % (conninfo, self.epsg, self.quotedschema()),
+                "Flächenmarkierung",
                 "postgres", layeropts
             )
 
@@ -1963,7 +1857,7 @@ class alkisplugin(QObject):
 
             restrictedLayers, ok = QgsProject.instance().readListEntry("WMSRestrictedLayers", "/", [])
 
-            for lyr in [u'Punktmarkierung', u'Linienmarkierung', u'Flächenmarkierung']:
+            for lyr in ['Punktmarkierung', 'Linienmarkierung', 'Flächenmarkierung']:
                 try:
                     restrictedLayers.index(lyr)
                 except ValueError:
@@ -1997,9 +1891,9 @@ class alkisplugin(QObject):
         edbsgen = self.iface.mainWindow().findChild(QObject, "EDBSQuery")
         if edbsgen:
             if edbsgen.received.connect(self.message):
-                qDebug(u"connected")
+                qDebug("connected")
             else:
-                qDebug(u"not connected")
+                qDebug("not connected")
         else:
             return False
 
@@ -2014,36 +1908,16 @@ class alkisplugin(QObject):
             uid = self.settings.uid
             pwd = self.settings.pwd
 
-            if qgisAvailable:
-                uri = QgsDataSourceUri()
-                if service:
-                    uri.setConnection(service, dbname, uid, pwd)
-                else:
-                    uri.setConnection(host, port, dbname, uid, pwd)
-
-                if authAvailable:
-                    authcfg = self.settings.authcfg
-                    if authcfg:
-                        uri.setAuthConfigId(authcfg)
-                    conninfo = uri.connectionInfo(False)
-                else:
-                    conninfo = uri.connectionInfo()
+            uri = QgsDataSourceUri()
+            if service:
+                uri.setConnection(service, dbname, uid, pwd)
             else:
-                conninfo = ""
-                if service:
-                    conninfo = "service={} ".format(service)
-                if host:
-                    conninfo += "host={} ".format(host)
-                if port:
-                    conninfo += "port={} ".format(port)
-                if dbname:
-                    conninfo += "dbname={} ".format(dbname)
-                if uid:
-                    conninfo += "user={} ".format(uid)
-                if pwd:
-                    conninfo += "password={} ".format(pwd)
+                uri.setConnection(host, port, dbname, uid, pwd)
 
-                conninfo = conninfo.strip()
+            authcfg = self.settings.authcfg
+            if authcfg:
+                uri.setAuthConfigId(authcfg)
+            conninfo = uri.connectionInfo(False)
 
         else:
             uid = None
@@ -2052,65 +1926,50 @@ class alkisplugin(QObject):
 
         conninfo0 = conninfo
 
-        if conninfo0 == self.conninfo and self.db and self.db.isOpen() and schema == self.schema:
-            qry = QSqlQuery(self.db)
-            if qry.exec("SELECT 1"):
-                return (self.db, self.conninfo)
+        if conninfo0 == self.conninfo and self.db and schema == self.schema:
+            try:
+                rows = self.db.executeSql("SELECT 1")
+                if len(rows) == 1:
+                    return (self.db, self.conninfo)
+            except QgsProviderConnectionException:
+                pass
             logMessage("Bestehende Verbindung nicht verfügbar - wird neu verbunden")
-            self.db.close()
             self.db = None
 
-        if authAvailable:
-            conninfo = uri.connectionInfo(True)
+        conninfo = uri.connectionInfo(True)
 
-        QSqlDatabase.removeDatabase("ALKIS")
-        db = QSqlDatabase.addDatabase("QPSQL", "ALKIS")
-        db.setConnectOptions(conninfo)
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
 
-        if not db.open() and qgisAvailable:
-            while not db.open():
-                ok, uid, pwd = QgsCredentials.instance().get(conninfo0, uid, pwd, u"Datenbankverbindung schlug fehl [%s]" % db.lastError().text())
-                if not ok:
-                    return (None, None)
+        try:
+            db = md.createConnection(conninfo, {})
 
-                uri.setUsername(uid)
-                uri.setPassword(pwd)
-                conninfo = uri.connectionInfo(False) if authAvailable else uri.connectionInfo()
-                db.setConnectOptions(conninfo)
+            db.executeSql(f"SELECT set_config('search_path', {self.quotedvalue(schema)} || ',' ||current_setting('search_path'), false)")
 
-            QgsCredentials.instance().put(conninfo0, uid, pwd)
+            rows = db.executeSql("SELECT current_schema()")
+            if len(rows) < 1:
+                QMessageBox.warning(None, "ALKIS", f"Fehler: Aktiviertes Schema {schema} konnte nicht abgefragt werden!")
+            elif rows[0][0] != schema:
+                QMessageBox.warning(None, "ALKIS", f"Fehler: Schema {schema} wurde nicht aktiviert [noch aktiv: {rows[0][0]}]")
 
-        if db.isOpen() and qgisAvailable:
-            qry = QSqlQuery(db)
-            if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
-                QMessageBox.warning(None, "ALKIS", u"Fehler: Konnte Schema-Aktivierung nicht vorbereiten [{}]!".format(qry.lastError().text()))
-
-            qry.addBindValue(schema)
-
-            if not qry.exec():
-                QMessageBox.warning(None, "ALKIS", u"Fehler: Schema {} konnte nicht aktiviert werden [{}]!".format(schema, qry.lastError().text()))
-            elif not qry.exec("SELECT current_schema()") or not qry.next():
-                QMessageBox.warning(None, "ALKIS", u"Fehler: Aktiviertes Schema {} konnte nicht abgefragt werden [{}]!".format(schema, qry.lastError().text()))
-            elif qry.value(0) != schema:
-                QMessageBox.warning(None, "ALKIS", u"Fehler: Schema {} wurde nicht aktiviert [noch aktiv: {}]!".format(schema, qry.value(0)))
-
-            sql = u"SELECT " + u" AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['gema_shl', 'eignerart', 'bestand', 'flurst']])
-            buchZugriff = True if qry.exec(sql) and qry.next() and qry.value(0) else False
-
+            rows = db.executeSql("SELECT " + " AND ".join(["has_table_privilege('{}', 'SELECT')".format(x) for x in ['gema_shl', 'eignerart', 'bestand', 'flurst']]))
+            buchZugriff = len(rows) == 1 and rows[0][0]
             self.queryOwnerAction.setVisible(buchZugriff)
 
-            if qry.exec(u"SELECT find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text)".format(schema.replace("'", "''"))) and qry.next():
-                self.epsg = int(qry.value(0))
-            else:
-                QMessageBox.warning(None, "ALKIS", u"Fehler: Keine Daten im Schema {} gefunden!".format(schema))
+            rows = db.executeSql(f"SELECT find_srid({self.quotedvalue(schema)}::text,'ax_flurstueck'::text,'wkb_geometry'::text)")
+            if len(rows) == 0:
+                QMessageBox.warning(None, "ALKIS", f"Fehler: Keine Daten im Schema {schema} gefunden!")
                 return (None, None)
 
+            self.epsg = rows[0][0]
             self.schema = schema
+            self.db = db
+            self.conninfo = conninfo0
 
-        self.db = db
-        self.conninfo = conninfo0
-
-        return (db, self.conninfo)
+            return (self.db, self.conninfo)
+        except QgsProviderConnectionException as e:
+            logMessage(f"Datenbankfehler: {e}")
+            QMessageBox.warning(None, "ALKIS", f"Fehler: Fehler bei Datenbankverbindung [{e}]!")
+            return (None, None)
 
     def message(self, msg):
         if msg.startswith("ALKISDRAW"):
@@ -2129,7 +1988,7 @@ class alkisplugin(QObject):
                 self.pointMarkerLayer = self.mapLayer(layerId)
 
         if self.pointMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Punktmarkierungslayer nicht gefunden!")
+            QMessageBox.warning(None, "ALKIS", "Fehler: Punktmarkierungslayer nicht gefunden!")
             return
 
         self.pointMarkerLayer.setSubsetString("false")
@@ -2140,7 +1999,7 @@ class alkisplugin(QObject):
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
+            QMessageBox.warning(None, "ALKIS", "Fehler: Flächenmarkierungslayer nicht gefunden!")
             return
 
         self.areaMarkerLayer.setSubsetString("false")
@@ -2167,30 +2026,26 @@ class alkisplugin(QObject):
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
         if self.areaMarkerLayer is None:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
+            QMessageBox.warning(None, "ALKIS", "Fehler: Flächenmarkierungslayer nicht gefunden!")
             return fs
 
         (db, conninfo) = self.opendb()
         if db is None:
             return fs
 
-        qry = QSqlQuery(db)
+        try:
+            for gmlid, flsnr in db.executeSql(
+                "SELECT "  # nosec: B608
+                "gml_id"
+                ",alkis_flsnr(ax_flurstueck)"
+                " FROM ax_flurstueck"
+                " WHERE endet IS NULL"
+                " AND (%s)" % " AND ".join(where)
+            ):
+                fs.append({'gmlid': gmlid, 'flsnr': flsnr})
 
-        if not qry.exec(
-                u"SELECT "  # nosec: B608
-                u"gml_id"
-                u",alkis_flsnr(ax_flurstueck)"
-                u" FROM ax_flurstueck"
-                u" WHERE endet IS NULL"
-                u" AND (%s)" % u" AND ".join(where)
-        ):
-            QMessageBox.critical(None, "Fehler", u"Konnte Abfrage nicht ausführen.\nSQL:%s\nFehler:%s" % (qry.lastQuery(), qry.lastError().text()))
-            return fs
-
-        qDebug(qry.lastQuery())
-
-        while qry.next():
-            fs.append({'gmlid': qry.value(0), 'flsnr': qry.value(1)})
+        except QgsProviderConnectionException as e:
+            QMessageBox.critical(None, "Fehler", f"Konnte Flurstücke nicht abfragen [{e}]")
 
         return fs
 
@@ -2201,7 +2056,7 @@ class alkisplugin(QObject):
                 self.areaMarkerLayer = self.mapLayer(layerId)
 
         if not self.areaMarkerLayer:
-            QMessageBox.warning(None, "ALKIS", u"Fehler: Flächenmarkierungslayer nicht gefunden!")
+            QMessageBox.warning(None, "ALKIS", "Fehler: Flächenmarkierungslayer nicht gefunden!")
             return []
 
         if (fs and where) or (not fs and not where):
@@ -2227,9 +2082,13 @@ class alkisplugin(QObject):
         if db is None:
             return fs
 
-        qry = QSqlQuery(db)
-        if zoomTo and qry.exec(u"SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')") and qry.next() and qry.value(1) > 0:  # nosec: B608
-            self.zoomToExtent(qry.value(0), self.areaMarkerLayer.crs())
+        if zoomTo:
+            try:
+                rows = db.executeSql("SELECT st_extent(wkb_geometry),count(*) FROM ax_flurstueck WHERE gml_id IN ('" + "','".join(gmlids) + "')")  # nosec: B608
+                if len(rows) == 1 and rows[0][1] > 0:
+                    self.zoomToExtent(rows[0][0], self.areaMarkerLayer.crs())
+            except QgsProviderConnectionException:
+                pass
 
         return fs
 
@@ -2241,7 +2100,7 @@ class alkisplugin(QObject):
         (p0, p1) = bb.split(",")
         (x0, y0) = p0.split(" ")
         (x1, y1) = p1.split(" ")
-        qDebug(u"x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1))
+        qDebug("x0:%s y0:%s x1:%s y1:%s" % (x0, y0, x1, y1))
         rect = QgsRectangle(float(x0), float(y0), float(x1), float(y1))
 
         if not isinstance(crs, QgsCoordinateReferenceSystem):
@@ -2249,937 +2108,15 @@ class alkisplugin(QObject):
             crs = QgsCoordinateReferenceSystem(epsg)
 
             if not crs.isValid():
-                QMessageBox.critical(None, "ALKIS", u"Ungültiges Koordinatensystem %d" % epsg)
+                QMessageBox.critical(None, "ALKIS", "Ungültiges Koordinatensystem %d" % epsg)
                 return
 
         rect = self.transform(rect, crs, self.destinationCrs())
 
-        qDebug(u"rect:%s" % rect.toString())
+        qDebug("rect:%s" % rect.toString())
 
         self.iface.mapCanvas().setExtent(rect)
         self.iface.mapCanvas().refresh()
-
-    def setLayerData(self, layer, data):
-        if int(sys.version[0]) < 3:
-            layer.data = data.encode("utf-8")
-        else:
-            layer.data = data
-
-    def setLayerMetaData(self, layer, k, v):
-        if int(sys.version[0]) < 3:
-            layer.setMetaData(k, v.encode("utf-8"))
-        elif hasattr(layer, "setMetaData"):
-            layer.setMetaData(k, v)
-        else:
-            layer.metadata.set(k, v)
-
-    def setClassName(self, c, name):
-        if int(sys.version[0]) < 3:
-            c.name = name.encode("utf-8")
-        else:
-            c.name = name
-
-    def mapfile(self, conninfo=None, dstfile=None):
-        try:
-            if qgisAvailable:
-                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-
-            self.settings.loadSettings()
-            (db, conninfo) = self.opendb(conninfo)
-            if db is None or not db.isOpen():
-                if not qgisAvailable:
-                    raise BaseException("Database connection failed.")
-                return
-
-            qry = QSqlQuery(db)
-            qry2 = QSqlQuery(db)
-
-            if dstfile is None:
-                if not self.iface or not self.iface:
-                    raise BaseException("Destination file missing.")
-
-                try:
-                    QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
-                    dstfile = QFileDialog.getSaveFileName(None, "Mapfiledateinamen angeben", "", "UMN-Mapdatei (*.map)")
-                finally:
-                    QApplication.restoreOverrideCursor()
-
-                if dstfile is None:
-                    return
-
-                if isinstance(dstfile, tuple):
-                    dstfile = dstfile[0]
-
-            if qgisAvailable:
-                if hasattr(self.iface.mainWindow(), "showProgress"):
-                    self.showProgress.connect(self.iface.mainWindow().showProgress)
-                else:
-                    self.showProgress.connect(self.doShowProgress)
-                self.showStatusMessage.connect(self.iface.mainWindow().showStatusMessage)
-
-            if not self.iface:
-                if not qry.prepare("SELECT set_config('search_path', quote_ident(?)||','||current_setting('search_path'), false)"):
-                    raise BaseException("Could not prepare search path update [{}]".format(qry.lastError().text()))
-
-                qry.addBindValue(self.settings.schema)
-                self.schema = self.settings.schema
-
-                if not qry.exec():
-                    raise BaseException("Could not set search path.")
-
-            mapobj = mapscript.mapObj()
-            mapobj.name = "ALKIS"
-            mapobj.setFontSet(os.path.join(BASEDIR, "fonts", "fonts.txt"))
-
-            mapobj.outputformat.driver = "GD/PNG"
-            mapobj.outputformat.imagemode = mapscript.MS_IMAGEMODE_RGB
-
-            mapobj.legend.label.type = mapscript.MS_TRUETYPE
-            mapobj.legend.label.font = 'arial'
-
-            mapobj.maxsize = 20480
-            mapobj.setSize(400, 400)
-            try:
-                mapobj.web.metadata.set(u"wms_title", "ALKIS")
-                mapobj.web.metadata.set(u"wms_enable_request", "*")
-                mapobj.web.metadata.set(u"wfs_enable_request", "*")
-                mapobj.web.metadata.set(u"ows_enable_request", "*")
-                mapobj.web.metadata.set(u"wms_feature_info_mime_type", "text/html")
-                mapobj.web.metadata.set(u"wms_encoding", "UTF-8")
-            except AttributeError:
-                mapobj.web.metadata[u"wms_title"] = "ALKIS"
-                mapobj.web.metadata[u"wms_enable_request"] = "*"
-                mapobj.web.metadata[u"wfs_enable_request"] = "*"
-                mapobj.web.metadata[u"ows_enable_request"] = "*"
-                mapobj.web.metadata[u"wms_feature_info_mime_type"] = "text/html"
-                mapobj.web.metadata[u"wms_encoding"] = "UTF-8"
-
-            symbol = mapscript.symbolObj("0")
-            symbol.inmapfile = True
-            symbol.type = mapscript.MS_SYMBOL_ELLIPSE
-            symbol.filled = mapscript.MS_TRUE
-            line = mapscript.lineObj()
-            p = mapscript.pointObj()
-            p.x = 1
-            p.y = 1
-            line.add(p)
-            if line.add(p) != mapscript.MS_SUCCESS:
-                raise BaseException("failed to add point %d" % p)
-
-            if symbol.setPoints(line) != 2:
-                raise BaseException("failed to add all %d points" % line.numpoints)
-
-            if mapobj.symbolset.appendSymbol(symbol) < 0:
-                raise BaseException("symbol not added.")
-
-            if qry.exec(u"SELECT st_extent(wkb_geometry),find_srid('{}'::text,'ax_flurstueck'::text,'wkb_geometry'::text) FROM ax_flurstueck".format(self.settings.schema)) and qry.next():  # nosec: B608
-                bb = qry.value(0)[4:-1]
-                (p0, p1) = bb.split(",")
-                (x0, y0) = p0.split(" ")
-                (x1, y1) = p1.split(" ")
-                self.epsg = int(qry.value(1))
-                if self.epsg > 100000:
-                    if qry.exec("SELECT proj4text FROM spatial_ref_sys WHERE srid=%d" % self.epsg) and qry.next():  # nosec: B608
-                        crs = qry.value(0)
-                        mapobj.setProjection(crs)
-                else:
-                    crs = "init=epsg:%d" % self.epsg
-                    mapobj.setProjection(crs)
-                mapobj.setExtent(float(x0), float(y0), float(x1), float(y1))
-            else:
-                crs = "init=epsg:%d" % self.epsg
-
-            modelle = self.settings.modellarten
-            katalog = self.settings.signaturkatalog
-
-            missing = {}
-            symbols = {}
-
-            self.steps = 0
-            for d in alkisplugin.themen:
-                self.steps += 6 * len(d.get('filter', [1]))
-
-            self.step = 0
-
-            iThema = -1
-            iLayer = 0
-            for d in alkisplugin.themen:
-                iThema += 1
-                thema = d['name']
-
-                if 'filter' not in d:
-                    d['filter'] = [{'name': None, 'filter': None}]
-
-                qDebug(u"Thema: %s" % thema)
-
-                for f in d['filter']:
-                    name = f.get('name', thema)
-                    tname = thema
-
-                    where = u"thema='%s'" % thema
-                    if len(modelle) > 0:
-                        where += u" AND modell && ARRAY['%s']::varchar[]" % "','".join(modelle)
-
-                    if f.get('name', None):
-                        tname += u" / " + f['name']
-
-                    if f.get('filter', None):
-                        where += u" AND (%s)" % f['filter']
-
-                    for k in ['area', 'outline', 'line', 'point', 'label']:
-                        if k not in f:
-                            f[k] = d[k]
-
-                    self.progress(iThema, u"Flächen")
-
-                    # 1 Polylinien
-                    # 1.1 Flächen
-                    # 1.2 Randlinien
-                    # 2 Linien
-                    # 3 Punkte
-                    # 4 Beschriftungen
-
-                    group = []
-                    layer = None
-                    sprio = None
-                    minprio = None
-                    maxprio = None
-                    nclasses = None
-
-                    layer = mapscript.layerObj(mapobj)
-                    layer.name = "l%d" % iLayer
-                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                    iLayer += 1
-
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_flaeche AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT sn_flaeche IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
-                    layer.classitem = "signaturnummer"
-                    layer.setProjection(crs)
-                    layer.connectiontype = mapscript.MS_POSTGIS
-                    layer.connection = conninfo
-                    layer.symbolscaledenom = 1000
-                    if hasattr(layer, "setProcessing"):
-                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    else:
-                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
-                    layer.type = mapscript.MS_LAYER_POLYGON
-                    layer.sizeunits = mapscript.MS_INCHES
-                    layer.status = mapscript.MS_OFF
-                    layer.tileitem = None
-                    self.setLayerMetaData(layer, u"norGIS_label", (u"ALKIS / %s / Flächen" % tname))
-                    self.setLayerMetaData(layer, u"wms_layer_group", (u"/%s" % tname))
-                    self.setLayerMetaData(layer, u"wms_title", u"Flächen")
-                    self.setLayerMetaData(layer, u"wfs_title", u"Flächen")
-                    self.setLayerMetaData(layer, u"gml_geom_type", "multipolygon")
-                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
-                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
-                    self.setLayerMetaData(layer, u"gml_include_items", "all")
-                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
-                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
-                    self.setUMNScale(layer, f['area'])
-
-                    sql = (u"SELECT DISTINCT"  # nosec: B608
-                           u" signaturnummer,umn,darstellungsprioritaet,alkis_flaechen.name"
-                           u" FROM alkis_flaechen"
-                           u" JOIN alkis_farben ON alkis_flaechen.farbe=alkis_farben.id"
-                           u" WHERE EXISTS ("
-                           u"SELECT * FROM po_polygons WHERE {0} AND po_polygons.sn_flaeche=alkis_flaechen.signaturnummer"
-                           u"){1}"
-                           u" ORDER BY darstellungsprioritaet"
-                           ).format(
-                               where,
-                               "" if katalog < 0 else " AND katalog=%d" % katalog
-                    )
-                    # qDebug( "SQL: %s" % sql )
-
-                    if qry.exec(sql):
-                        sprio = 0
-                        nclasses = 0
-                        minprio = None
-                        maxprio = None
-
-                        while qry.next():
-                            sn = qry.value(0)
-                            color = qry.value(1)
-                            prio = qry.value(2)
-                            name = qry.value(3)
-
-                            cl = mapscript.classObj(layer)
-                            cl.setExpression(sn)
-                            self.setClassName(cl, d['classes'].get(sn, name))
-
-                            style = mapscript.styleObj()
-                            if color:
-                                r, g, b = color.split(" ")
-                                style.color.setRGB(int(r), int(g), int(b))
-                            else:
-                                style.color.setRGB(0, 0, 0)
-
-                            cl.insertStyle(style)
-
-                            nclasses += 1
-                            sprio += prio
-                            if not minprio or prio < minprio:
-                                minprio = prio
-                            if not maxprio or prio > maxprio:
-                                maxprio = prio
-
-                    else:
-                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                        break
-
-                    if layer.numclasses > 0:
-                        self.setLayerMetaData(layer, "norGIS_zindex", "%d" % (sprio / nclasses))
-                        self.setLayerMetaData(layer, "norGIS_minprio", "%d" % minprio)
-                        self.setLayerMetaData(layer, "norGIS_maxprio", "%d" % maxprio)
-
-                        group.append(layer.name)
-                    else:
-                        mapobj.removeLayer(layer.index)
-
-                    self.progress(iThema, "Grenzen")
-
-                    #
-                    # 1.2 Randlinien
-                    #
-                    layer = mapscript.layerObj(mapobj)
-                    layer.name = "l%d" % iLayer
-                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                    iLayer += 1
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,polygon AS geom,sn_randlinie AS signaturnummer FROM %s.po_polygons WHERE %s AND NOT polygon IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
-                    layer.classitem = "signaturnummer"
-                    layer.setProjection(crs)
-                    layer.connection = conninfo
-                    layer.connectiontype = mapscript.MS_POSTGIS
-                    if hasattr(layer, "setProcessing"):
-                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    else:
-                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
-                    # layer.symbolscaledenom = 1000
-                    layer.sizeunits = mapscript.MS_METERS
-                    layer.type = mapscript.MS_LAYER_POLYGON
-                    layer.status = mapscript.MS_OFF
-                    layer.tileitem = None
-                    self.setLayerMetaData(layer, "norGIS_label", u"ALKIS / %s / Grenzen" % tname)
-                    self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
-                    self.setLayerMetaData(layer, u"wms_title", u"Grenzen")
-                    self.setLayerMetaData(layer, u"wfs_title", u"Grenzen")
-                    self.setLayerMetaData(layer, u"gml_geom_type", "multiline")
-                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
-                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
-                    self.setLayerMetaData(layer, u"gml_include_items", "all")
-                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
-                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
-                    self.setUMNScale(layer, f['outline'])
-
-                    sql = (u"SELECT DISTINCT"  # nosec: B608
-                           u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
-                           u" FROM alkis_linien ln{0}"
-                           u" LEFT OUTER JOIN alkis_farben f ON {1}.farbe=f.id"
-                           u" WHERE EXISTS ("
-                           u"SELECT * FROM po_polygons WHERE {2} AND po_polygons.sn_randlinie=ln.signaturnummer"
-                           u"){3}"
-                           u" ORDER BY darstellungsprioritaet"
-                           ).format(
-                               "" if katalog < 0 else u" LEFT OUTER JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
-                               "ln" if katalog < 0 else "l",
-                               where,
-                               "" if katalog < 0 else " AND ln.katalog=%d" % katalog
-                    )
-
-                    # qDebug( "SQL: %s" % sql )
-                    if qry.exec(sql):
-                        sprio = 0
-                        nclasses = 0
-                        minprio = None
-                        maxprio = None
-
-                        while qry.next():
-                            sn = qry.value(0)
-                            color = qry.value(1)
-                            prio = qry.value(2)
-                            name = qry.value(3)
-
-                            cl = mapscript.classObj(layer)
-                            cl.setExpression(sn)
-                            self.setClassName(cl, d['classes'].get(sn, name))
-
-                            if not self.addLineStyles(db, cl, katalog, sn, color, True):
-                                layer.removeClass(layer.numclasses - 1)
-
-                            nclasses += 1
-                            sprio += prio
-                            if not minprio or prio < minprio:
-                                minprio = prio
-                            if not maxprio or prio > maxprio:
-                                maxprio = prio
-
-                    else:
-                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                        break
-
-                    if layer.numclasses > 0:
-                        self.setLayerMetaData(layer, "norGIS_zindex", "%d" % (sprio / nclasses))
-                        self.setLayerMetaData(layer, "norGIS_minprio", "%d" % minprio)
-                        self.setLayerMetaData(layer, "norGIS_maxprio", "%d" % maxprio)
-
-                        group.append(layer.name)
-                    else:
-                        mapobj.removeLayer(layer.index)
-
-                    self.progress(iThema, "Linien")
-
-                    #
-                    # 2 Linien
-                    #
-                    layer = mapscript.layerObj(mapobj)
-                    layer.name = "l%d" % iLayer
-                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                    iLayer += 1
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,line AS geom,signaturnummer FROM %s.po_lines WHERE %s AND NOT line IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
-                    layer.classitem = "signaturnummer"
-                    layer.setProjection(crs)
-                    layer.connection = conninfo
-                    layer.connectiontype = mapscript.MS_POSTGIS
-                    if hasattr(layer, "setProcessing"):
-                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    else:
-                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
-                    # layer.symbolscaledenom = 1000
-                    layer.sizeunits = mapscript.MS_METERS
-                    layer.type = mapscript.MS_LAYER_LINE
-                    layer.status = mapscript.MS_OFF
-                    layer.tileitem = None
-                    self.setLayerMetaData(layer, "norGIS_label", u"ALKIS / %s / Linien" % tname)
-                    self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
-                    self.setLayerMetaData(layer, u"wms_title", u"Linien")
-                    self.setLayerMetaData(layer, u"wfs_title", u"Linien")
-                    self.setLayerMetaData(layer, u"gml_geom_type", "multiline")
-                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
-                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
-                    self.setLayerMetaData(layer, u"gml_include_items", "all")
-                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
-                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
-                    self.setUMNScale(layer, f['line'])
-
-                    sql = (u"SELECT DISTINCT"  # nosec: B608
-                           u" ln.signaturnummer,umn,darstellungsprioritaet,ln.name"
-                           u" FROM alkis_linien ln{0}"
-                           u" JOIN alkis_farben f ON {1}.farbe=f.id"
-                           u" WHERE EXISTS ("
-                           u"SELECT * FROM po_lines WHERE {2} AND po_lines.signaturnummer=ln.signaturnummer"
-                           u"){3}"
-                           u" ORDER BY darstellungsprioritaet"
-                           ).format(
-                               "" if katalog < 0 else u" JOIN alkis_linie l ON ln.signaturnummer=l.signaturnummer AND l.katalog=%d" % katalog,
-                               "ln" if katalog < 0 else "l",
-                               where,
-                               "" if katalog < 0 else u" AND ln.katalog=%d" % katalog
-                    )
-                    # qDebug( "SQL: %s" % sql )
-                    if qry.exec(sql):
-                        sprio = 0
-                        nclasses = 0
-                        minprio = None
-                        maxprio = None
-
-                        while qry.next():
-                            sn = qry.value(0)
-                            color = qry.value(1)
-                            prio = qry.value(2)
-                            name = qry.value(3)
-
-                            cl = mapscript.classObj(layer)
-                            cl.setExpression(sn)
-                            self.setClassName(cl, d['classes'].get(sn, name))
-
-                            if not self.addLineStyles(db, cl, katalog, sn, color, False):
-                                layer.removeClass(layer.numclasses - 1)
-
-                            nclasses += 1
-                            sprio += prio
-                            if not minprio or prio < minprio:
-                                minprio = prio
-                            if not maxprio or prio > maxprio:
-                                maxprio = prio
-
-                        # style caching (https://github.com/mapserver/mapserver/issues/4612) berücksichtigen
-                        haveMultipleStyles = False
-                        for i in range(layer.numclasses):
-                            cl = layer.getClass(i)
-                            if cl.numstyles > 0:
-                                haveMultipleStyles = True
-                                break
-
-                        if haveMultipleStyles:
-                            nStyles = 0
-                            for i in range(layer.numclasses):
-                                cl = layer.getClass(i)
-                                for j in range(nStyles):
-                                    cl.insertStyle(mapscript.styleObj(), 0)   # Leeren Style einfügen
-                                nStyles += cl.numstyles
-
-                    else:
-                        QMessageBox.critical(None, "ALKIS", u"Fehler: %s\nSQL: %s" % (qry.lastError().text(), sql))
-                        break
-
-                    if layer.numclasses > 0:
-                        self.setLayerMetaData(layer, "norGIS_zindex", "%d" % (sprio / nclasses))
-                        self.setLayerMetaData(layer, "norGIS_minprio", "%d" % minprio)
-                        self.setLayerMetaData(layer, "norGIS_maxprio", "%d" % maxprio)
-
-                        group.append(layer.name)
-                    else:
-                        n = mapobj.numlayers
-                        mapobj.removeLayer(layer.index)
-                        if n == mapobj.numlayers:
-                            raise BaseException("No layer removed")
-
-                    #
-                    # 3 Punkte (TODO: Darstellungspriorität)
-                    #
-
-                    layer = mapscript.layerObj(mapobj)
-                    layer.name = "l%d" % iLayer
-                    layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                    iLayer += 1
-                    self.setLayerData(layer, u"geom FROM (SELECT ogc_fid,gml_id,point AS geom,drehwinkel_grad,signaturnummer FROM %s.po_points WHERE %s AND NOT point IS NULL) AS foo USING UNIQUE ogc_fid USING SRID=%d" % (self.quotedschema(), where, self.epsg))  # nosec: B608
-                    layer.classitem = "signaturnummer"
-                    layer.setProjection(crs)
-                    layer.connection = conninfo
-                    layer.connectiontype = mapscript.MS_POSTGIS
-                    if hasattr(layer, "setProcessing"):
-                        layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                    else:
-                        layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
-                    layer.symbolscaledenom = 1000
-                    layer.sizeunits = mapscript.MS_METERS
-                    layer.type = mapscript.MS_LAYER_POINT
-                    layer.status = mapscript.MS_OFF
-                    layer.tileitem = None
-                    self.setLayerMetaData(layer, "norGIS_label", u"ALKIS / %s / Punkte" % tname)
-                    self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
-                    self.setLayerMetaData(layer, u"wms_title", u"Punkte")
-                    self.setLayerMetaData(layer, u"wfs_title", u"Punkte")
-                    self.setLayerMetaData(layer, u"gml_geom_type", "multipoint")
-                    self.setLayerMetaData(layer, u"gml_geometries", "geom")
-                    self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
-                    self.setLayerMetaData(layer, u"gml_include_items", "all")
-                    self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
-                    self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
-                    self.setUMNScale(layer, f['point'])
-
-                    self.progress(iThema, "Punkte")
-
-                    kat = max([1, katalog])
-
-                    sql = u"SELECT DISTINCT signaturnummer FROM po_points WHERE (%s)" % where  # nosec: B608
-                    # qDebug( "SQL: %s" % sql )
-                    if qry.exec(sql):
-                        while qry.next():
-                            sn = qry.value(0)
-                            if not sn:
-                                logMessage(u"Leere Signaturnummer in po_points:%s" % thema)
-                                continue
-
-                            path = os.path.abspath(os.path.join(BASEDIR, "svg", "alkis%s_%d.svg" % (sn, kat)))
-
-                            if "norGIS_alkis%s_%d" % (sn, kat) not in symbols and not os.path.isfile(path):
-                                if sn != '6000':
-                                    logMessage("Symbol alkis%s_%d.svg nicht gefunden" % (sn, kat))
-                                    missing["norGIS_alkis%s" % sn] = 1
-                                continue
-
-                            cl = mapscript.classObj(layer)
-                            cl.setExpression(sn)
-                            self.setClassName(cl, d['classes'].get(sn, "(%s)" % sn))
-
-                            x, y, h = 0, 0, 1
-                            if qry2.exec("SELECT x0,y0,x1,y1 FROM alkis_punkte WHERE katalog=%d AND signaturnummer='%s'" % (kat, sn)) and qry2.next():  # nosec: B608
-                                x = (qry2.value(0) + qry2.value(2)) / 2
-                                y = (qry2.value(1) + qry2.value(3)) / 2
-                                w = qry2.value(2) - qry2.value(0)
-                                h = qry2.value(3) - qry2.value(1)
-                            elif sn not in alkisplugin.exts:
-                                x = (alkisplugin.exts[sn]['minx'] + alkisplugin.exts[sn]['maxx']) / 2
-                                y = (alkisplugin.exts[sn]['miny'] + alkisplugin.exts[sn]['maxy']) / 2
-                                w = alkisplugin.exts[sn]['maxx'] - alkisplugin.exts[sn]['minx']
-                                h = alkisplugin.exts[sn]['maxy'] - alkisplugin.exts[sn]['miny']
-
-                            if "norGIS_alkis%s_%d" % (sn, kat) not in symbols:
-                                fd, tempname = mkstemp()
-                                os.close(fd)
-
-                                symbolf = open(tempname, "w", encoding="utf-8")
-                                symbolf.write(u"SYMBOLSET SYMBOL TYPE SVG NAME \"norGIS_alkis{0}_{1}\" IMAGE \"{2}/alkis{0}_{1}.svg\" ANCHORPOINT {3} {4} END END".format(
-                                    sn,
-                                    kat,
-                                    self.settings.umnpath + "/svg",
-                                    0.5 + x / w,
-                                    0.5 + y / h,
-                                ))
-                                symbolf.close()
-
-                                tempsymbolset = mapscript.symbolSetObj(tempname)
-
-                                os.unlink(tempname)
-
-                                sym = tempsymbolset.getSymbolByName("norGIS_alkis%s_%d" % (sn, kat))
-                                sym.inmapfile = True
-                                if mapobj.symbolset.appendSymbol(sym) < 0:
-                                    raise BaseException("symbol not added.")
-
-                                del tempsymbolset
-                                symbols["norGIS_alkis%s_%d" % (sn, kat)] = 1
-
-                            stylestring = "STYLE ANGLE [drehwinkel_grad] SIZE %lf SYMBOL \"norGIS_alkis%s_%d\" MINSIZE 1 END" % (h, sn, kat)
-                            style = fromstring(stylestring)
-                            cl.insertStyle(style)
-
-                    if layer.numclasses > 0:
-                        group.append(layer.name)
-                    else:
-                        mapobj.removeLayer(layer.index)
-
-                    #
-                    # 4 Beschriftungen (TODO: Darstellungspriorität)
-                    #
-
-                    lgroup = []
-
-                    for j in range(2):
-                        geom = "point" if j == 0 else "line"
-
-                        if not qry.exec("SELECT count(*) FROM po_labels WHERE %s AND NOT %s IS NULL" % (where, geom)) or not qry.next() or qry.value(0) == 0:  # nosec: B608
-                            continue
-
-                        self.progress(iThema, "Beschriftungen (%d)" % (j + 1))
-
-                        layer = mapscript.layerObj(mapobj)
-                        layer.name = "l%d" % iLayer
-                        layer.setExtent(mapobj.extent.minx, mapobj.extent.miny, mapobj.extent.maxx, mapobj.extent.maxy)
-                        iLayer += 1
-                        self.setLayerMetaData(layer, u"norGIS_label", u"ALKIS / %s / Beschriftungen" % tname)
-                        self.setLayerMetaData(layer, u"wms_layer_group", u"/%s" % tname)
-                        self.setLayerMetaData(layer, u"wms_title", u"Beschriftungen (%s)" % ("Punkte" if j == 0 else "Linien"))
-                        self.setLayerMetaData(layer, u"wfs_title", u"Beschriftungen (%s)" % ("Punkte" if j == 0 else "Linien"))
-                        self.setLayerMetaData(layer, u"gml_geom_type", "multipoint")
-                        self.setLayerMetaData(layer, u"gml_geometries", "geom")
-                        self.setLayerMetaData(layer, u"gml_featureid", "ogc_fid")
-                        self.setLayerMetaData(layer, u"gml_include_items", "all")
-                        self.setLayerMetaData(layer, u"wms_srs", alkisplugin.defcrs)
-                        self.setLayerMetaData(layer, u"wfs_srs", alkisplugin.defcrs)
-                        self.setLayerMetaData(layer, u"norGIS_zindex", "999")
-                        self.setUMNScale(layer, f['label'])
-
-                        data = (u"geom FROM (SELECT"
-                                u" ogc_fid"
-                                u",gml_id"
-                                u",text"
-                                u",f.umn AS color_umn"
-                                u",lower(art) || coalesce('-'||effekt,'') ||"
-                                u"CASE"
-                                u" WHEN stil='Kursiv' THEN '-italic'"
-                                u" WHEN stil='Fett' THEN '-bold'"
-                                u" WHEN stil='Fett, Kursiv' THEN '-bold-italic'"
-                                u" ELSE ''"
-                                u" END || CASE"
-                                u" WHEN coalesce(fontsperrung,0)=0 THEN ''"
-                                u" ELSE '-'||(fontsperrung/0.25)::int"
-                                u" END AS font_umn"
-                                u",0.25/0.0254*skalierung*grad_pt AS size_umn"
-                                )
-
-                        lwhere = where
-                        if geom == "point":
-                            data += (u",CASE coalesce(l.vertikaleausrichtung,s.vertikaleausrichtung) "
-                                     u" WHEN 'oben' THEN 'L'"
-                                     u" WHEN 'Basis' THEN 'U'"
-                                     u" ELSE 'C'"
-                                     u" END || CASE coalesce(l.horizontaleausrichtung,s.horizontaleausrichtung)"
-                                     u" WHEN 'linksbündig' THEN 'L'"
-                                     u" WHEN 'rechtsbündig' THEN 'R'"
-                                     u" ELSE 'C'"
-                                     u" END AS position_umn"
-                                     u",drehwinkel_grad"
-                                     u",point AS geom"
-                                     )
-                            lwhere += " AND point IS NOT NULL"
-                        else:
-                            data += u",st_offsetcurve(line,0.125*skalierung*grad_pt,'') AS geom"
-                            lwhere += " AND line IS NOT NULL"
-
-                        data += (u" FROM {0}.po_labels l"
-                                 u" JOIN {0}.alkis_schriften s ON s.signaturnummer=l.signaturnummer{1}"
-                                 u" JOIN {0}.alkis_farben f ON s.farbe=f.id"
-                                 u" WHERE {2}"
-                                 u") AS foo USING UNIQUE ogc_fid USING SRID={3}"
-                                 ).format(
-                                     self.quotedschema(),
-                                     "" if katalog < 0 else " AND s.katalog=%d" % katalog,
-                                     lwhere,
-                                     self.epsg)
-
-                        self.setLayerData(layer, data)
-
-                        cl = mapscript.classObj(layer)
-                        label = mapscript.labelObj()
-
-                        if geom == "point":
-                            label.type = mapscript.MS_TRUETYPE
-                            label.setBinding(mapscript.MS_LABEL_BINDING_COLOR, "color_umn")
-                            label.setBinding(mapscript.MS_LABEL_BINDING_FONT, "font_umn")
-                            label.setBinding(mapscript.MS_LABEL_BINDING_ANGLE, "drehwinkel_grad")
-                            label.setBinding(mapscript.MS_LABEL_BINDING_SIZE, "size_umn")
-                            label.setBinding(mapscript.MS_LABEL_BINDING_POSITION, "position_umn")
-                            label.buffer = 2
-                            label.force = mapscript.MS_TRUE
-                            label.partials = mapscript.MS_TRUE
-                            label.antialias = mapscript.MS_TRUE
-                            label.outlinecolor.setRGB(255, 255, 255)
-                            label.mindistance = -1
-                            label.minfeaturesize = -1
-                            label.shadowsizex = 0
-                            label.shadowsizey = 0
-                            # label.minsize = 4
-                            # label.maxsize = 256
-                            label.minfeaturesize = -1
-                            label.priority = 10
-                        else:
-                            label.updateFromString("""
-    LABEL
-    ANGLE FOLLOW
-    ANTIALIAS TRUE
-    FONT [font_umn]
-    SIZE [size_umn]
-    BUFFER 2
-    COLOR [color_umn]
-    FORCE TRUE
-    OFFSET 0 0
-    OUTLINECOLOR 255 255 255
-    PRIORITY 10
-    SHADOWSIZE 0 0
-    TYPE TRUETYPE
-    END
-    """)
-
-                        cl.addLabel(label)
-
-                        layer.labelitem = "text"
-                        layer.setProjection(crs)
-
-                        layer.connection = conninfo
-                        layer.connectiontype = mapscript.MS_POSTGIS
-                        if hasattr(layer, "setProcessing"):
-                            layer.setProcessing("CLOSE_CONNECTION=DEFER")
-                        else:
-                            layer.setProcessingKey("CLOSE_CONNECTION", "DEFER")
-                        layer.symbolscaledenom = 1000
-                        # layer.labelminscaledenom = 0
-                        # layer.labelmaxscaledenom = 2000
-                        layer.sizeunits = mapscript.MS_INCHES
-                        layer.type = mapscript.MS_LAYER_POINT if mapscript.MS_VERSION_MAJOR > 6 else mapscript.MS_LAYER_ANNOTATION
-                        layer.status = mapscript.MS_OFF
-                        layer.tileitem = None
-
-                        lgroup.append(layer.name)
-
-            self.reorderLayers(mapobj)
-
-            self.showProgress.emit(len(alkisplugin.themen) * 5, len(alkisplugin.themen) * 5)
-
-            mapobj.save(dstfile)
-
-            if self.settings.umnpath != BASEDIR:
-                os.rename(dstfile, dstfile + ".bak")
-                i = open(dstfile + ".bak", "r", encoding="utf-8")
-                o = open(dstfile, "w", encoding="utf-8")
-
-                for lyr in i:
-                    if 'FONTSET "' in lyr:
-                        o.write(u'  FONTSET "%s/fonts/fonts.txt"\n' % self.settings.umnpath)
-                    else:
-                        o.write(lyr)
-
-                o.close()
-                i.close()
-
-                os.remove(dstfile + ".bak")
-
-        finally:
-            if qgisAvailable:
-                QApplication.restoreOverrideCursor()
-
-    def addLineStyles(self, db, cl, kat, sn, c, outline):
-        assert cl.numstyles == 0  # nosec: B101
-
-        sql = (u"SELECT abschluss,scheitel,coalesce(strichstaerke/100,0),coalesce(laenge/100,0),coalesce(einzug/100,0),abstand{0}"  # nosec: B608
-               u" FROM alkis_linie l"
-               u" LEFT OUTER JOIN alkis_stricharten_i ON l.strichart=alkis_stricharten_i.stricharten"
-               u" LEFT OUTER JOIN alkis_strichart ON alkis_stricharten_i.strichart=alkis_strichart.id"
-               u"{1}"
-               u" WHERE l.signaturnummer='{2}'{3}"
-               ).format(
-                   "" if kat < 0 else ",r,g,b",
-                   "" if kat < 0 else " LEFT OUTER JOIN alkis_farben ON l.farbe=alkis_farben.id",
-                   sn,
-                   "" if kat < 0 else " AND l.katalog=%d" % kat
-        )
-
-        lqry = QSqlQuery(db)
-        if lqry.exec(sql):
-            stricharten = []
-
-            maxStrichstaerke = None
-
-            while lqry.next():
-                abschluss, scheitel, strichstaerke, laenge, einzug, abstaende = \
-                    lqry.value(0), lqry.value(1), float(lqry.value(2)), \
-                    float(lqry.value(3)), float(lqry.value(4)), lqry.value(5)
-
-                if kat >= 0:
-                    c = [int(lqry.value(6)), int(lqry.value(7)), int(lqry.value(8))]
-
-                if maxStrichstaerke is None or abs(strichstaerke) > abs(maxStrichstaerke):
-                    maxStrichstaerke = strichstaerke
-
-                if abstaende:
-                    if abstaende.startswith("{") and abstaende.endswith("}"):
-                        abstaende = [float(x) / 100 for x in abstaende[1:-1].split(",")]
-                    else:
-                        abstaende = [float(abstaende) / 100]
-                else:
-                    abstaende = []
-
-                gesamtl = 0
-                for abstand in abstaende:
-                    gesamtl += laenge + abstand
-
-                stricharten.append([abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c])
-
-            gesamtl0 = None
-            leinzug = None
-            for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
-                if gesamtl0 is None:
-                    gesamtl0 = gesamtl
-                elif gesamtl0 != gesamtl:
-                    raise BaseException(u"Signaturnummer %s: Stricharten nicht gleich lang (%lf vs %lf)" % (sn, gesamtl0, gesamtl))
-
-                if laenge > 0:
-                    if leinzug is None:
-                        leinzug = einzug
-                    elif leinzug != einzug:
-                        # raise BaseException( u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug) )
-                        logMessage(u"Signaturnummer %s: Linienstricharten mit unterschiedlichen Einzügen (%lf vs %lf)" % (sn, leinzug, einzug))
-                        return False
-
-            for abschluss, scheitel, strichstaerke, laenge, einzug, abstaende, gesamtl, c in stricharten:
-                if abstaende and laenge == 0:
-                    # Marker line
-                    if leinzug:
-                        if einzug > leinzug:
-                            einzug -= leinzug
-                        else:
-                            einzug += gesamtl - leinzug
-
-                    style = mapscript.styleObj()
-
-                    s = "STYLE SYMBOL 0 PATTERN "
-                    for abstand in abstaende:
-                        s += "0 %s " % str(abstand)
-                    s += "END END"
-                    style.updateFromString(s)
-
-                    style.initialgap = einzug
-                else:
-                    # Simple line
-                    style = mapscript.styleObj()
-
-                    if abstaende:
-                        dashvector = []
-                        for abstand in abstaende:
-                            dashvector.extend([laenge, abstand])
-
-                        style.updateFromString("STYLE SYMBOL 0 PATTERN %s END END" % (' '.join([str(x) for x in dashvector])))
-
-                style.linecap = mapscript.MS_CJC_SQUARE if abschluss == "Abgeschnitten" else mapscript.MS_CJC_ROUND
-                style.linejoin = mapscript.MS_CJC_MITER if abschluss == "Spitz" else mapscript.MS_CJC_ROUND
-                if strichstaerke < 0:
-                    style.sizeunits = mapscript.MS_PIXELS
-                    style.width = abs(strichstaerke)
-                    style.size = abs(strichstaerke)
-                else:
-                    style.width = strichstaerke
-                    style.size = strichstaerke
-
-                if isinstance(c, list):
-                    r, g, b = c
-                else:
-                    r, g, b = c.split(" ")
-                if outline:
-                    style.outlinecolor.setRGB(int(r), int(g), int(b))
-                else:
-                    style.color.setRGB(int(r), int(g), int(b))
-
-                cl.insertStyle(style)
-
-            if cl.numstyles == 0:
-                logMessage(u"Signaturnummer %s: Keine Linienarten erzeugt." % sn)
-                return False
-
-            if not outline:
-                style = mapscript.styleObj()
-                style.color.setRGB(255, 255, 255)
-                style.opacity = 0
-                style.width = maxStrichstaerke * 1.01
-                cl.insertStyle(style, 0)
-        else:
-            logMessage(u"Signaturnummer %s: Linienarten konnten nicht abgefragt werden.\nSQL:%s\nFehler:%s" % (sn, lqry.lastQuery(), lqry.lastError().text()))
-            return False
-
-        return True
-
-    def reorderLayers(self, mapobj):
-        layers = {}
-        idx = {}
-        for i in range(mapobj.numlayers):
-            layer = mapobj.getLayer(i)
-            self.setLayerMetaData(layer, "norGIS_oldindex", "%d" % i)
-
-            zindex = int(layer.metadata.get("norGIS_zindex") or '-1')
-
-            if layer.type not in layers:
-                layers[layer.type] = {}
-
-            if zindex not in layers[layer.type]:
-                layers[layer.type][zindex] = []
-
-            layers[layer.type][zindex].append(i)
-            idx[i] = i
-
-        order = []
-        for t in [mapscript.MS_LAYER_RASTER, mapscript.MS_LAYER_POLYGON, mapscript.MS_LAYER_LINE, mapscript.MS_LAYER_POINT, mapscript.MS_LAYER_ANNOTATION]:
-            if t not in layers:
-                continue
-
-            keys = list(layers[t].keys())
-            keys.sort()
-            for z in keys:
-                order.extend(layers[t][z])
-
-        for i in range(mapobj.numlayers):
-            oidx = order.pop(0)
-            j = idx[oidx]
-            del idx[oidx]
-
-            layer = mapobj.getLayer(j)
-            mapobj.removeLayer(j)
-
-            if mapobj.insertLayer(layer, i if i < mapobj.numlayers else -1) < 0:
-                raise BaseException(u"Konnte Layer %d nicht wieder hinzufügen" % i)
-
-            for k in list(idx.keys()):
-                if idx[k] >= i and idx[k] < j:
-                    idx[k] += 1
 
     def getschema(self):
         (db, conninfo) = self.opendb()
@@ -3187,8 +2124,11 @@ class alkisplugin(QObject):
             return None
         return self.schema
 
+    def quotedvalue(self, v):
+        return "'" + v.replace("'", "''") + "'"
+
     def quotedschema(self):
-        return u'"{}"'.format(self.schema.replace(u'"', u'""'))
+        return '"{}"'.format(self.schema.replace('"', '""'))
 
     def getepsg(self):
         (db, conninfo) = self.opendb()
@@ -3311,58 +2251,51 @@ class alkisplugin(QObject):
         if db is None:
             return
 
-        qry = QSqlQuery(db)
-
-        if qry.exec("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')"):
-            if not qry.next() or not qry.value(0):
-                qDebug(u"Einfügerecht zur Protokollierung fehlt.")
+        try:
+            rows = db.executeSql("SELECT has_table_privilege(current_user, 'postnas_search_logging', 'INSERT')")
+            if len(rows) < 1 or not rows[0][0]:
+                qDebug("Einfügerecht zur Protokollierung fehlt.")
+                return True
+        except QgsProviderConnectionException:
+            try:
+                db.executeSql("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])")
+                qDebug("Protokolltabelle angelegt.")
+            except QgsProviderConnectionException:
+                qDebug("Protokolltabelle konnte nicht angelegt werden.")
                 return True
 
-            qDebug(u"Protokollierung aktiv.")
+        qDebug("Protokollierung aktiv.")
+        try:
+            rows = db.executeSql(f"SELECT 1 FROM information_schema.columns WHERE table_schema={self.quotedvalue(self.settings.schema)} AND table_name='postnas_search_logging' AND column_name='aktenzeichen'")  # nosec: B608
+            if len(rows) == 1:
+                with OverrideCursor(Qt.CursorShape.ArrowCursor):
+                    az, ok = QInputDialog.getText(None, "Grund der Abfrage", "Aktenzeichen:", text=self.az)
+                    if not ok:
+                        return False
 
-        elif qry.exec("CREATE TABLE postnas_search_logging(datum timestamp without time zone NOT NULL, username text NOT NULL, requestType text, search text, result text[])"):
-            qDebug(u"Protokolltabelle angelegt.")
+                    self.az = az
 
-        else:
-            qDebug(u"Protokolltabelle konnte nicht angelegt werden.")
-            return True
+                    db.executeSql(
+                        "INSERT INTO postnas_search_logging(datum, username, requestType, search, result, aktenzeichen) VALUES (now(),{},{},{},{},{})".format(  # nosec: B608
+                            self.quotedvalue(USERNAME),
+                            self.quotedvalue(requestType),
+                            self.quotedvalue(search),
+                            self.quotedvalue("{%s}" % ",".join(result)),
+                            self.quotedvalue(self.az)
+                        )
+                    )
+            else:
+                db.executeSql(
+                    "INSERT INTO postnas_search_logging(datum, username, requestType, search, result) VALUES (now(),{},{},{},{})".format(  # nosec: B608
+                        self.quotedvalue(USERNAME),
+                        self.quotedvalue(requestType),
+                        self.quotedvalue(search),
+                        self.quotedvalue("{%s}" % ",".join(result)),
+                    )
+                )
 
-        mitAZ = qry.exec("SELECT 1 FROM information_schema.columns WHERE table_schema='{}' AND table_name='postnas_search_logging' AND column_name='aktenzeichen'".format(self.settings.schema.replace("'", "''"))) and qry.next()  # nosec: B608
-
-        if mitAZ:
-            QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
-            az, ok = QInputDialog.getText(None, u"Grund der Abfrage", u"Aktenzeichen:", text=self.az)
-            QApplication.restoreOverrideCursor()
-            if not ok:
-                return False
-
-            self.az = az
-
-        if not qry.prepare("INSERT INTO postnas_search_logging(datum, username, requestType, search, result{}) VALUES (now(),?,?,?,?{})".format(  # nosec: B608
-            ', aktenzeichen' if mitAZ else '',
-            ',?' if mitAZ else ''
-        )):
-            logMessage(u"Protokolleintrag konnte nicht vorbereitet werden")
-            return False
-
-        qry.addBindValue(USERNAME)
-        qry.addBindValue(requestType)
-        qry.addBindValue(search)
-        qry.addBindValue(u"{%s}" % u",".join(result))
-        if mitAZ:
-            qry.addBindValue(self.az)
-
-        if not qry.exec():
-            logMessage(u"Protokolleintrag konnte nicht ergänzt werden")
+        except QgsProviderConnectionException as e:
+            logMessage(f"Protokolleintrag konnte nicht vorgenommen werden [{e}]")
             return False
 
         return True
-
-
-if __name__ == '__main__':
-    import sys
-    if len(sys.argv) == 2:
-        p = alkisplugin(QCoreApplication.instance())
-        p.mapfile(None, sys.argv[1])
-    else:
-        print('Fehler: alkisplugin.py "dstfile.map"')

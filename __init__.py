@@ -20,11 +20,11 @@ from __future__ import absolute_import
 
 
 def name():
-    return u"ALKIS-Einbindung"
+    return "ALKIS-Einbindung"
 
 
 def description():
-    return u"Dies Plugin dient zur Einbindung von ALKIS-Layern."
+    return "Diese Erweiterung dient zur Einbindung von ALKIS-Layern."
 
 
 def version():
@@ -36,7 +36,7 @@ def qgisMinimumVersion():
 
 
 def authorName():
-    return u"Jürgen E. Fischer <jef@norbit.de>"
+    return "Jürgen E. Fischer <jef@norbit.de>"
 
 
 def icon():

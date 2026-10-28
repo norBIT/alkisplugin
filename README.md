@@ -6,7 +6,6 @@ erzeugten PostgreSQL/PostGIS-Datenbanken.
 
 Funktion:
 * Einbindung der von ALKIS-Import vorbereiteten Layer mit Klassifizierungen inkl. SVG-Symbolen
-* Erzeugung von UMN-Mapfiles (erfordert python-mapscript)
 * Flurstückseigentümerabfrage
 * Anbindung an [norGIS Liegenschaftbuchfachschale](http://www.norbit.de/78/) (proprietär)
 

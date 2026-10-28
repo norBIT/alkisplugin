@@ -6,14 +6,13 @@ about=QGIS-Erweiterung zur ALKIS-Einbindung
  Funktion:
  * Einbinden von durch norGIS ALKIS-Import vorbereitete Datenbanken.
  * Einbinden in QGIS
- * Export von UMN-Mapfiles (optional, erfordert python-mapscript)
  * Signaturierung nach GeoInfoDok
  * Eigentümerabfrage (Einzelabfragen)
  * Client für norGIS Liegenschaftsbuch
 
 category=Database
 version=2.0.64
-qgisMinimumVersion=3.00
+qgisMinimumVersion=3.18
 qgisMaximumVersion=4.99
 author=Jürgen E. Fischer
 email=jef@norbit.de
