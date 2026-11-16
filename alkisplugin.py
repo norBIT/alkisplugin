@@ -19,7 +19,7 @@
 ***************************************************************************
 """
 
-from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice
+from qgis.PyQt.QtCore import QObject, QSettings, Qt, QPointF, pyqtSignal, QCoreApplication, QMetaObject, QFile, QIODevice, QFileInfo, QDir
 from qgis.PyQt.QtWidgets import QMessageBox, QAction, QInputDialog, QProgressBar
 from qgis.PyQt.QtGui import QIcon, QColor, QPainter
 from qgis.PyQt import QtCore
@@ -111,6 +111,7 @@ class alkissettings(QObject):
         self.modellarten = ['DLKM', 'DKKM1000']
         self.footnote = ""
         self.template = ""
+        self.templateDirs = []
 
         self.load()
 
@@ -133,6 +134,16 @@ class alkissettings(QObject):
         s.setValue("modellarten", self.modellarten)
         s.setValue("footnote", self.footnote)
         s.setValue("template", self.template)
+        s.setValue("templateDirs", self.templateDirs)
+
+        p = QgsProject.instance()
+        v, ok = p.readEntry("alkis", "settings/footnote")
+        if ok and v != self.footnote:
+            p.writeEntry("alkis", "settings/footnote", self.footnote)
+
+        v, ok = p.readEntry("alkis", "settings/template")
+        if ok and v != self.template:
+            p.writeEntry("alkis", "settings/template", self.template)
 
         logMessage("Einstellungen gespeichert.")
 
@@ -184,6 +195,7 @@ class alkissettings(QObject):
         QgsProject.instance().removeEntry("alkis", "settings")
 
     def load(self):
+        self.templateDirs = [QFileInfo(d).canonicalFilePath() for d in QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("templatedirs", [])]
 
         p = QgsProject.instance()
         if len(p.entryList("alkis", "settings")) > 0:
@@ -220,10 +232,25 @@ class alkissettings(QObject):
 
                 logMessage("Datenbankeinstellungen aus Punkthervorhebungslayer abgeleitet.")
 
+        if self.template and not self.isSafeTemplate(self.template):
+            logMessage(f"Template {self.template} nicht in Vorlageverzeichnissen.")
+
         self.plugin.pointMarkerLayer = None
         self.plugin.lineMarkerLayer = None
         self.plugin.areaMarkerLayer = None
         self.plugin.db = None
+
+    def isSafeTemplate(self, template):
+        template = QFileInfo(template).canonicalFilePath()
+
+        if template.startswith(QDir(BASEDIR).canonicalPath()):
+            return True
+
+        for d in self.templateDirs:
+            if template.startswith(d):
+                return True
+
+        return False
 
 
 class alkisplugin(QObject):

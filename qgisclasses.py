@@ -26,7 +26,7 @@ from qgis.PyQt.QtGui import QCursor, QPixmap, QIntValidator
 from qgis.PyQt.QtPrintSupport import QPrintDialog, QPrinter
 from qgis.PyQt import uic
 
-from qgis.core import QgsMessageLog, QgsProject, QgsProviderConnectionException, NULL
+from qgis.core import QgsMessageLog, QgsProject, QgsProviderConnectionException, NULL, QgsApplication
 from qgis.gui import QgsMapTool, QgsAuthConfigSelect, QgsRubberBand
 from qgis.utils import qgsfunction, OverrideCursor
 
@@ -108,6 +108,13 @@ class ALKISConf(QDialog, ConfBase):
         self.bb.rejected.connect(self.reject)
         self.bb.addButton("Modelle laden", QDialogButtonBox.ButtonRole.ActionRole).clicked.connect(self.loadModels)
         self.bb.addButton("Layer einbinden", QDialogButtonBox.ButtonRole.ActionRole).clicked.connect(self.loadLayers)
+
+        self.lwTemplateDirectories.addItems(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("templateDirs", []))
+
+        self.pbAddTemplateDir.setIcon(QgsApplication.getThemeIcon("symbologyAdd.svg"))
+        self.pbRemoveTemplateDir.setIcon(QgsApplication.getThemeIcon("symbologyRemove.svg"))
+        self.pbAddTemplateDir.clicked.connect(self.addTemplateDirectory)
+        self.pbRemoveTemplateDir.clicked.connect(self.removeTemplateDirectory)
 
         self.restoreGeometry(QSettings("norBIT", "norGIS-ALKIS-Erweiterung").value("confgeom", QByteArray(), type=QByteArray))
 
@@ -224,6 +231,8 @@ ORDER BY count(*) DESC
         self.settings.modellarten = modelle
         self.settings.signaturkatalog = self.cbxSignaturkatalog.itemData(self.cbxSignaturkatalog.currentIndex())
 
+        self.settings.templateDirs = [self.lwTemplateDirectories.item(i).text() for i in range(self.lwTemplateDirectories.count())]
+
         self.settings.saveSettings()
 
     def loadLayers(self):
@@ -244,6 +253,16 @@ ORDER BY count(*) DESC
             path = path[0]
         if path:
             self.leTemplate.setText(path)
+
+    def addTemplateDirectory(self):
+        path = QFileDialog.getExistingDirectory(self, "Verzeichnis wählen", None, QFileDialog.ShowDirsOnly)
+        if path:
+            self.lwTemplateDirectories.addItem(QDir(path).canonicalPath())
+
+    def removeTemplateDirectory(self):
+        lw = self.lwTemplateDirectories
+        for i in lw.selectedItems():
+            lw.takeItem(lw.row(i))
 
 
 class Info(QDialog):
@@ -1198,6 +1217,9 @@ WHERE a.endet IS NULL AND b.endet IS NULL AND alkis_flsnr(a)='{flsnr}'
                 res['footnote'] = self.plugin.settings.footnote
 
             if template:
+                if not self.plugin.settings.isSafeTemplate(template):
+                    return "Vorlage nicht gefunden oder nicht in einem gültigem Verzeichnis"
+
                 with open(template, "r") as f:
                     template = f.read()
             else:
