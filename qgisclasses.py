@@ -1132,7 +1132,7 @@ class ALKISOwnerInfo(QgsMapTool):
                 return None
 
             rows = db.executeSql("SELECT max(to_timestamp(datadate, 'YYYY-MM-DDTHH:MI:SSZ')) FROM alkis_importe")
-            if len(rows) == 1 and rows[0][0] is not None:
+            if len(rows) == 1 and rows[0][0] is not None and rows[0][0] != NULL:
                 res['datum'] = 'Stand: ' + QLocale.system().toString(rows[0][0], "d. MMMM yyyy")
             else:
                 res['datum'] = QLocale.system().toString(QDate.currentDate(), "d. MMMM yyyy")
